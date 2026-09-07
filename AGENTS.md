@@ -1,45 +1,53 @@
-# 以 AI 代理的身分操作 MusicCabin
+# MusicCabin AI Agent Instructions
 
-MusicCabin 是一個使用 Kotlin 開發的第三方 YouTube Music 客戶端，緊密遵循 Material 3 設計規範。
+MusicCabin is a Kotlin-based third-party YouTube Music client that follows Material 3 design guidelines.
 
-## 專案操作規則
+## Project constraints
 
-1. 開始工作前，務必先從 `main` 分支拉取最新變更，以減少合併衝突。
-2. 提交名稱應清晰明確，格式為：`type(scope): short description`。例如：`feat(ui): add dark mode support`。可選填 scope。
-3. 所有字串編輯請修改 `app/src/main/res/values/metrolist_strings.xml` 檔案，**不要**修改 `app/src/main/res/values/strings.xml`。請勿碰觸專案中其他的 `strings.xml` 或 `metrolist_strings.xml` 檔案。**只**編輯預設（英文）的 `metrolist_strings.xml` 檔案，**不要**編輯其他語言版本。
-4. 請遵循 Kotlin 與 Android 開發的最佳實務。
-5. **不要**修改 APP 的資料庫結構。
+- Follow the human contributor's instructions and preserve existing work that is outside the current task.
+- Edit app strings only in `app/src/main/res/values/metrolist_strings.xml`. Do not edit `app/src/main/res/values/strings.xml`, other language files, or other string resource files unless the task explicitly requires it.
+- Do not change the app database schema unless the user explicitly requests a database migration.
+- For user-visible app changes that materially affect documented behavior or features, update both `README.md` and `README.zh-TW.md`. Keep their structure and information aligned, translated rather than duplicated, and avoid expanding them for internal changes.
+- Increase the app patch version only for app code, resources, or dependency changes. Documentation and GitHub Actions changes do not require a version bump.
+- Prefer clear names and formatting. Add comments only for non-obvious logic, and consider performance, battery usage, and maintainability for app changes.
 
-## AI 專屬規範
+## Task boundaries and workflow
 
-1. 修改 App 相關檔案後，若變更對使用者可見，必須同步更新 `README.md` 與 `README.zh-TW.md`。兩份 README 的段落、功能清單、建置／更新說明、品牌資訊與重要規則必須保持一致，只翻譯語言，不得只更新其中一份；若沒有太大改變，不要隨意更新 README，不要一直膨脹內容。
-2. 先執行 `git status --short --branch`；若工作樹有未提交變更，不得直接拉取或覆寫，應先提交／推送既有變更，或停下來請使用者決定如何處理。
-- 工作樹乾淨時，執行 `git fetch origin`，再執行 `git pull --rebase origin main`（或目前任務指定的目標分支）。
-- 若同步發生衝突、遠端未設定、認證失敗或無法確認已是最新版本，必須先停止修改並回報，不得在未同步狀態下繼續更新。
-- 同步完成後再次確認分支與工作樹狀態，才可開始修改；不得使用 `git reset --hard`、強制推送或其他會遺失另一台電腦變更的作法，除非使用者明確授權。
-- 修正完成後，進行git commit，並立即推送至目前同步的 GitHub 遠端與目標分支（通常為 `origin/main`）。提交前確認沒有敏感資料、非本次變更或未預期的檔案，並至少執行 `git diff --check` 與 `git status --short`；
-3. 務必遵循人類貢獻者提供的指引和指示。
-4. 確保所有貢獻具備最高程式碼品質，包含正確的排版、清晰的變數命名，以及必要時提供詳盡的註解。
-5. 只有在程式邏輯複雜或非顯而易見時才加入註解。避免撰寫僅重複描述程式行為的多餘註解。
-6. 在所有程式碼貢獻中，優先考量效能、電池續航力與可維護性。隨時考量變更對整體使用者體驗與應用程式效能的影響。
-7. 如有任何疑問，請詢問人類貢獻者。切勿在未經釐清的情況下假設需求或實作細節。
-8. 若未按照下一節的說明測試你的變更，將受到人類貢獻者的指正，並可能被要求重做。務必在要求最終審查前徹底測試你的變更。
-9. 只有修改 App 程式碼、資源或依賴時，才將 App 軟體版本號的第三段加 1，如 `0.1.0` 要變成 `0.1.1`。單純修改文件或 GitHub Actions workflow 時不要提升版本號。
+- For implementation tasks, inspect `git status --short --branch` before editing. Preserve unrelated uncommitted changes; do not reset, force-push, or overwrite them.
+- Fetch and rebase from the requested target branch only when the task requires repository synchronization and the worktree is clean. Read-only reviews and documentation analysis do not require synchronization.
+- Use Conventional Commit-style messages such as `feat(ui): add dark mode support` when the user asks for a commit. Commit and push only when the user explicitly requests those actions.
+- Infer routine implementation details from the repository. Ask for clarification only when ambiguity could change behavior, data safety, an irreversible action, or an external side effect.
+- For implementation requests, continue through the relevant validation and report what was completed; do not stop after describing the next step when the task is already actionable.
 
-## 建置與測試變更
+## Subagent delegation
 
-0. 初次建置前，連同 submodule 複製本 repository：
+> Maintenance note: This section is an optional cost and quality strategy. If token usage becomes too high, remove this entire section first and compare the cost and accuracy before restoring it.
 
-   ```bash
-   git clone --recurse-submodules https://github.com/jajafu/MusicCabin.git
-   ```
+- When Sol and Luna are available, Sol remains the primary agent and owns the complete Android feature implementation, architecture, final diff, and completion decision.
+- Do not split related Android implementation across agents merely by file type. Keep Compose, ViewModel, repository, navigation, manifest, resources, and related changes with Sol when they belong to one feature.
+- Use Luna only when the task is bounded and delegation is likely to reduce context cost, improve verification, or enable useful parallel work. If subagents are unavailable, Sol continues directly.
 
-1. 修改程式碼後，應建置應用程式以確保無編譯錯誤。請在專案根目錄執行以下指令：
+### Luna roles
 
-```bash
-./gradlew :app:assembleFossDebug
-```
+- Scout: read-only repository exploration, symbol search, reference tracing, and project summaries. Do not modify files.
+- Operator: run deterministic commands such as Git status, repository searches, Gradle builds, tests, lint, and log collection. Report exact failures and do not modify Android application logic.
+- Mechanical Worker: make isolated, precisely specified, low-risk edits such as documentation, changelog, formatting, version updates, or exact text replacements. Verify the requested scope after editing.
 
-2. 若建置未成功，請檢視錯誤訊息、修正程式碼問題，然後再次嘗試建置。
-3. 建置成功後，可在模擬器或實體裝置上測試變更。安裝位於 `app/build/outputs/apk/foss/debug/app-foss-debug.apk` 的 APK，並請人類協助測試你修改的特定功能。
-4. GitHub Actions workflow 只允許手動執行，且只建置 Foss Release APK，不得在 push 或 pull request 時自動建置，也不建置 GMS、Izzy 或其他 build variant。從 main 分支手動執行並建置成功後，可將 Foss Release APK 上傳為 workflow artifact 並發布至 GitHub Release。建立 Release 時，必須根據本次實際變更填寫完整的 `--notes`，清楚列出使用者可見的新功能、修正、設定變更與必要的升級注意事項；不得只使用固定版本標題或泛用的空白說明，確保 App 更新日誌顯示實際修改內容。Release 必須使用固定的 Android 簽章金鑰，透過 `RELEASE_KEYSTORE_BASE64`、`RELEASE_STORE_PASSWORD`、`RELEASE_KEY_ALIAS` 與 `RELEASE_KEY_PASSWORD` GitHub Secrets 注入，禁止將金鑰或密碼提交至 repository。
+### Handoff and failure rules
+
+- Before delegation, define the scope, allowed files, read/write permissions, expected output, and stop condition.
+- Avoid switching agents for every file or small operation.
+- If Luna finds a failure, report the evidence to Sol. Sol analyzes the cause and performs implementation fixes; Luna may rerun verification.
+- All subagents must follow this file's Git, database, resource, documentation, safety, and validation rules. No subagent may reset, force-push, commit, or push unless explicitly authorized by the user.
+- Sol must review the final diff and validation results before declaring the task complete.
+
+## Validation
+
+- Match validation to the change. Documentation-only changes do not require an app build; app code, resources, or dependencies normally require the Foss Debug build:
+
+  ```bash
+  ./gradlew :app:assembleFossDebug
+  ```
+
+- Run focused tests or lint checks when they are relevant to the changed code. Broaden validation only when a failure or the change scope justifies it.
+- Follow [`docs/release.md`](docs/release.md) for Foss Release builds, signing, changelog, and GitHub Release procedures.

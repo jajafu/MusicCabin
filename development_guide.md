@@ -2,6 +2,18 @@
 
 This file outlines the process of setting up a local dev environment for MusicCabin.
 
+## Contribution workflow
+
+Before implementation work, inspect the current branch and worktree with `git status --short --branch`. Preserve unrelated changes and do not reset or overwrite them. Synchronize from the requested target branch only when the task requires it and the worktree is clean.
+
+Use focused validation for the affected area. App code, resources, or dependency changes normally use:
+
+```bash
+./gradlew :app:assembleFossDebug
+```
+
+Documentation-only changes do not require an app build. Run additional tests or lint checks when the changed code or a failure makes them relevant. Commit or push only when the contributor explicitly requests it. See [`docs/release.md`](docs/release.md) for release procedures.
+
 ## Prerequisites
 
 - JDK 21
