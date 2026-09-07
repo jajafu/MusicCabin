@@ -9,11 +9,13 @@ MusicCabin is a Kotlin-based third-party YouTube Music client that follows Mater
 - Do not change the app database schema unless the user explicitly requests a database migration.
 - For user-visible app changes that materially affect documented behavior or features, update both `README.md` and `README.zh-TW.md`. Keep their structure and information aligned, translated rather than duplicated, and avoid expanding them for internal changes.
 - Increase the app patch version only for app code, resources, or dependency changes. Documentation and GitHub Actions changes do not require a version bump.
+- Whenever an app version changes, add or update the matching `## <version>` section in `changelog.md` in the same change. Include the actual user-visible features, fixes, configuration changes, and upgrade notes in both Chinese and English; do not defer this until release day.
 - Prefer clear names and formatting. Add comments only for non-obvious logic, and consider performance, battery usage, and maintainability for app changes.
 
 ## Task boundaries and workflow
 
 - For implementation tasks, inspect `git status --short --branch` before editing. Preserve unrelated uncommitted changes; do not reset, force-push, or overwrite them.
+- Before editing, read this file completely and follow any directly referenced task or release documentation that applies to the requested change.
 - Fetch and rebase from the requested target branch only when the task requires repository synchronization and the worktree is clean. Read-only reviews and documentation analysis do not require synchronization.
 - Use Conventional Commit-style messages such as `feat(ui): add dark mode support` when the user asks for a commit. Commit and push only when the user explicitly requests those actions.
 - Infer routine implementation details from the repository. Ask for clarification only when ambiguity could change behavior, data safety, an irreversible action, or an external side effect.

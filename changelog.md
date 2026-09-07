@@ -4,6 +4,18 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.6.79
+
+### 中文
+
+- 交換迷你播放器與歌曲選單的主要操作：迷你播放器現在提供歌曲下載，歌曲選單改提供加入喜愛的歌手；同步更新下載、離線與訂閱狀態圖示及無障礙描述。
+- 播放與音訊設定中的「標準化音量」預設改為關閉，「自動下載喜歡的歌曲」預設改為開啟。
+
+### English
+
+- Swap the primary actions between the mini player and song menus: the mini player now offers song download, while song menus offer adding the artist to favorites. Update the download, offline, subscription-state icons, and accessibility descriptions accordingly.
+- Change the Playback & Audio defaults so volume normalization is off by default and automatically downloading liked songs is on by default.
+
 ## 13.6.78
 
 ### 中文
