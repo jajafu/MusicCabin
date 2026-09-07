@@ -72,16 +72,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
-import androidx.core.net.toUri
 import androidx.media3.common.C
 import androidx.media3.common.PlaybackParameters
-import androidx.media3.exoplayer.offline.Download
-import androidx.media3.exoplayer.offline.DownloadRequest
-import androidx.media3.exoplayer.offline.DownloadService
 import com.metrolist.innertube.YouTube
 import com.metrolist.music.LocalNavController
 import com.metrolist.music.LocalDatabase
-import com.metrolist.music.LocalDownloadUtil
 import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
@@ -90,7 +85,7 @@ import com.metrolist.music.constants.VarispeedKey
 import com.metrolist.music.listentogether.ConnectionState
 import com.metrolist.music.listentogether.ListenTogetherEvent
 import com.metrolist.music.models.MediaMetadata
-import com.metrolist.music.playback.ExoDownloadService
+import com.metrolist.music.db.entities.ArtistEntity
 import com.metrolist.music.db.entities.Song
 import com.metrolist.music.db.entities.SpeedDialItem
 import com.metrolist.music.ui.component.BottomSheetState
@@ -102,6 +97,7 @@ import com.metrolist.music.ui.component.NewActionGrid
 import com.metrolist.music.ui.component.VolumeSlider
 import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlin.math.log2
 import kotlin.math.pow
@@ -140,16 +136,18 @@ fun PlayerMenu(
     val librarySong by database.song(mediaMetadata.id).collectAsStateWithLifecycle(initialValue = null)
     val coroutineScope = rememberCoroutineScope()
 
-    val download by LocalDownloadUtil.current
-        .getDownload(mediaMetadata.id)
-        .collectAsStateWithLifecycle(initialValue = null)
-
     val isPinned by database.speedDialDao.isPinned(mediaMetadata.id).collectAsStateWithLifecycle(initialValue = false)
 
     val artists =
         remember(mediaMetadata.artists) {
             mediaMetadata.artists.filter { it.id != null }
         }
+    val primaryArtist = artists.firstOrNull()
+    val primaryArtistId = primaryArtist?.id
+    val observedArtist by remember(database, primaryArtistId) {
+        primaryArtistId?.let { database.artist(it) } ?: flowOf(null)
+    }.collectAsStateWithLifecycle(initialValue = null)
+    val libraryArtist = observedArtist?.artist
 
     var showChoosePlaylistDialog by rememberSaveable {
         mutableStateOf(false)
@@ -537,88 +535,37 @@ fun PlayerMenu(
 
         item { Spacer(modifier = Modifier.height(12.dp)) }
 
-        item {
-            Material3MenuGroup(
-                items =
-                    listOf(
-                        when (download?.state) {
-                            Download.STATE_COMPLETED -> {
-                                Material3MenuItemData(
-                                    title = {
-                                        Text(
-                                            text = stringResource(R.string.remove_download),
-                                        )
-                                    },
-                                    icon = {
-                                        Icon(
-                                            painter = painterResource(R.drawable.offline),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(24.dp),
-                                        )
-                                    },
-                                    onClick = {
-                                        DownloadService.sendRemoveDownload(
-                                            context,
-                                            ExoDownloadService::class.java,
-                                            mediaMetadata.id,
-                                            false,
-                                        )
-                                    },
+        if (!mediaMetadata.isEpisode && primaryArtist != null && primaryArtistId != null) {
+            item {
+                val isSubscribed = libraryArtist?.bookmarkedAt != null
+                Material3MenuGroup(
+                    items = listOf(
+                        Material3MenuItemData(
+                            title = {
+                                Text(stringResource(if (isSubscribed) R.string.subscribed else R.string.subscribe))
+                            },
+                            description = { Text(primaryArtist.name) },
+                            icon = {
+                                Icon(
+                                    painter = painterResource(if (isSubscribed) R.drawable.subscribed else R.drawable.subscribe),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(24.dp),
                                 )
-                            }
-
-                            Download.STATE_QUEUED, Download.STATE_DOWNLOADING -> {
-                                Material3MenuItemData(
-                                    title = { Text(text = stringResource(R.string.downloading)) },
-                                    icon = {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(24.dp),
-                                            strokeWidth = 2.dp,
-                                        )
-                                    },
-                                    onClick = {
-                                        DownloadService.sendRemoveDownload(
-                                            context,
-                                            ExoDownloadService::class.java,
-                                            mediaMetadata.id,
-                                            false,
-                                        )
-                                    },
-                                )
-                            }
-
-                            else -> {
-                                Material3MenuItemData(
-                                    title = { Text(text = stringResource(R.string.action_download)) },
-                                    icon = {
-                                        Icon(
-                                            painter = painterResource(R.drawable.download),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(24.dp),
-                                        )
-                                    },
-                                    onClick = {
-                                        database.transaction {
-                                            insert(mediaMetadata)
-                                        }
-                                        val downloadRequest =
-                                            DownloadRequest
-                                                .Builder(mediaMetadata.id, mediaMetadata.id.toUri())
-                                                .setCustomCacheKey(mediaMetadata.id)
-                                                .setData(mediaMetadata.title.toByteArray())
-                                                .build()
-                                        DownloadService.sendAddDownload(
-                                            context,
-                                            ExoDownloadService::class.java,
-                                            downloadRequest,
-                                            false,
-                                        )
-                                    },
-                                )
-                            }
-                        },
+                            },
+                            onClick = {
+                                database.transaction {
+                                    val artist = libraryArtist
+                                    if (artist != null) {
+                                        update(artist.toggleLike())
+                                    } else {
+                                        insert(ArtistEntity(id = primaryArtistId, name = primaryArtist.name).toggleLike())
+                                    }
+                                }
+                            },
+                        ),
                     ),
-            )
+                )
+            }
         }
 
         item { Spacer(modifier = Modifier.height(12.dp)) }

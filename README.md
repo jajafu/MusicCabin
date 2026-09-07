@@ -41,7 +41,7 @@ This fork is maintained by [jajafu](https://github.com/jajafu) and focuses on a 
 
 - Independent volume control. Unlike standard YouTube Music which only follows system volume, this app allows separate music volume adjustment to reduce interference with navigation guidance. Music volume now reliably returns to its configured level after navigation guidance ducks or temporarily pauses playback.
 - Stream music from YouTube Music.
-- Background playback and offline downloads.
+- Background playback and offline downloads. Download songs from the mini player; use the player's overflow menu to subscribe or unsubscribe to the primary artist.
 - Skip silence, sleep timer, audio normalization, tempo and pitch control.
 - Synced lyrics and lyrics translation.
 - Search for songs, albums, artists and playlists.

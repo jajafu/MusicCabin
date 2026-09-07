@@ -4,6 +4,16 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.6.80
+
+### 中文
+
+- 修正播放器「⋯」選單遺漏的藝人訂閱操作，將原下載項目換成訂閱／已訂閱，顯示主要藝人名稱並同步更新圖示與訂閱狀態。Podcast 或缺少藝人識別碼的項目不顯示此操作；歌曲下載可從迷你播放器操作。
+
+### English
+
+- Fix the missing artist subscription action in the player's overflow menu by replacing download with Subscribe/Subscribed, showing the primary artist's name and updating the icon and subscription state. Hide this action for podcasts or items without an artist ID; song downloads remain available from the mini player.
+
 ## 13.6.79
 
 ### 中文
