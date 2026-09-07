@@ -125,7 +125,7 @@ fun PlayerSettings(
     )
     val (audioNormalization, onAudioNormalizationChange) = rememberPreference(
         AudioNormalizationKey,
-        defaultValue = true
+        defaultValue = false
     )
 
     val (loudnessLevel, onLoudnessLevelChange) = rememberEnumPreference(
@@ -172,7 +172,7 @@ fun PlayerSettings(
     )
     val (autoDownloadOnLike, onAutoDownloadOnLikeChange) = rememberPreference(
         AutoDownloadOnLikeKey,
-        defaultValue = false
+        defaultValue = true
     )
     val (similarContentEnabled, similarContentEnabledChange) = rememberPreference(
         key = SimilarContent,

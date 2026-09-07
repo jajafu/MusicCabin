@@ -43,6 +43,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -74,15 +75,22 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.net.toUri
 import androidx.media3.common.Player
+import androidx.media3.exoplayer.offline.Download
+import androidx.media3.exoplayer.offline.DownloadRequest
+import androidx.media3.exoplayer.offline.DownloadService
 import coil3.compose.AsyncImage
 import com.metrolist.music.LocalDatabase
+import com.metrolist.music.LocalDownloadUtil
 import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
@@ -95,10 +103,10 @@ import com.metrolist.music.constants.SwipeSensitivityKey
 import com.metrolist.music.constants.SwipeThumbnailKey
 import com.metrolist.music.constants.ThumbnailCornerRadius
 import com.metrolist.music.constants.UseNewMiniPlayerDesignKey
-import com.metrolist.music.db.entities.ArtistEntity
 import com.metrolist.music.listentogether.ListenTogetherManager
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.playback.CastConnectionHandler
+import com.metrolist.music.playback.ExoDownloadService
 import com.metrolist.music.playback.PlayerConnection
 import com.metrolist.music.ui.screens.settings.DarkMode
 import com.metrolist.music.ui.utils.resize
@@ -474,11 +482,10 @@ private fun NewMiniPlayer(
                     Spacer(modifier = Modifier.width(12.dp * sizeScale))
                 }
 
-// Subscribe button - isolated composable
-                mediaMetadata?.artists?.firstOrNull()?.id?.let { artistId ->
-                    SubscribeButton(
-                        artistId = artistId,
-                        metadata = mediaMetadata!!,
+                // Download button - isolated composable
+                mediaMetadata?.let { metadata ->
+                    DownloadButton(
+                        metadata = metadata,
                         primaryColor = primaryColor,
                         outlineColor = outlineColor,
                         onSurfaceColor = onSurfaceColor,
@@ -1077,18 +1084,30 @@ private fun LegacyMiniMediaInfo(
 // ============================================================================
 
 @Composable
-private fun SubscribeButton(
-    artistId: String,
+private fun DownloadButton(
     metadata: MediaMetadata,
     primaryColor: Color,
     outlineColor: Color,
     onSurfaceColor: Color,
     sizeScale: Float,
 ) {
+    val context = LocalContext.current
     val database = LocalDatabase.current
-    val libraryArtist by database.artist(artistId).collectAsStateWithLifecycle(initialValue = null)
-    val isSubscribed = libraryArtist?.artist?.bookmarkedAt != null
-
+    val download by LocalDownloadUtil.current
+        .getDownload(metadata.id)
+        .collectAsStateWithLifecycle(initialValue = null)
+    val isDownloaded = download?.state == Download.STATE_COMPLETED
+    val isDownloading =
+        download?.state == Download.STATE_QUEUED ||
+            download?.state == Download.STATE_DOWNLOADING
+    val contentDescription =
+        stringResource(
+            when {
+                isDownloaded -> R.string.remove_download
+                isDownloading -> R.string.downloading
+                else -> R.string.action_download
+            },
+        )
 
     Box(
         contentAlignment = Alignment.Center,
@@ -1098,37 +1117,54 @@ private fun SubscribeButton(
                 .clip(CircleShape)
                 .border(
                     width = 1.dp * sizeScale,
-                    color = if (isSubscribed) primaryColor.copy(alpha = 0.5f) else outlineColor,
+                    color = if (isDownloaded || isDownloading) primaryColor.copy(alpha = 0.5f) else outlineColor,
                     shape = CircleShape,
                 ).background(
-                    color = if (isSubscribed) primaryColor.copy(alpha = 0.1f) else Color.Transparent,
+                    color = if (isDownloaded || isDownloading) primaryColor.copy(alpha = 0.1f) else Color.Transparent,
                     shape = CircleShape,
-                ).clickable {
-                    database.transaction {
-                        val artist = libraryArtist?.artist
-                        if (artist != null) {
-                            update(artist.toggleLike())
-                        } else {
-                            metadata.artists.firstOrNull()?.let { artistInfo ->
-                                insert(
-                                    ArtistEntity(
-                                        id = artistInfo.id ?: "",
-                                        name = artistInfo.name,
-                                        channelId = null,
-                                        thumbnailUrl = null,
-                                    ).toggleLike(),
-                                )
-                            }
+                ).semantics {
+                    this.contentDescription = contentDescription
+                }.clickable {
+                    if (isDownloaded || isDownloading) {
+                        DownloadService.sendRemoveDownload(
+                            context,
+                            ExoDownloadService::class.java,
+                            metadata.id,
+                            false,
+                        )
+                    } else {
+                        database.transaction {
+                            insert(metadata)
                         }
+                        val downloadRequest =
+                            DownloadRequest
+                                .Builder(metadata.id, metadata.id.toUri())
+                                .setCustomCacheKey(metadata.id)
+                                .setData(metadata.title.toByteArray())
+                                .build()
+                        DownloadService.sendAddDownload(
+                            context,
+                            ExoDownloadService::class.java,
+                            downloadRequest,
+                            false,
+                        )
                     }
                 },
     ) {
-        Icon(
-            painter = painterResource(if (isSubscribed) R.drawable.subscribed else R.drawable.subscribe),
-            contentDescription = null,
-            tint = if (isSubscribed) primaryColor else onSurfaceColor.copy(alpha = 0.7f),
-            modifier = Modifier.size(20.dp * sizeScale),
-        )
+        if (isDownloading) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(20.dp * sizeScale),
+                color = primaryColor,
+                strokeWidth = 2.dp * sizeScale,
+            )
+        } else {
+            Icon(
+                painter = painterResource(if (isDownloaded) R.drawable.offline else R.drawable.download),
+                contentDescription = null,
+                tint = if (isDownloaded) primaryColor else onSurfaceColor.copy(alpha = 0.7f),
+                modifier = Modifier.size(20.dp * sizeScale),
+            )
+        }
     }
 }
 

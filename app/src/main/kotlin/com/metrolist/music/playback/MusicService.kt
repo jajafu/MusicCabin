@@ -964,7 +964,7 @@ class MusicService :
         combine(
             currentFormat,
             dataStore.data
-                .map { it[AudioNormalizationKey] ?: true }
+                .map { it[AudioNormalizationKey] ?: false }
                 .distinctUntilChanged(),
             dataStore.data
                 .map { prefs -> prefs[LoudnessLevelKey].toEnum(LoudnessLevel.BALANCED) }
@@ -2464,7 +2464,7 @@ class MusicService :
                     update(song)
                     syncUtils.likeSong(song)
 
-                    if (cachedPreference(AutoDownloadOnLikeKey, false) && song.liked) {
+                    if (cachedPreference(AutoDownloadOnLikeKey, true) && song.liked) {
                         val downloadRequest =
                             androidx.media3.exoplayer.offline.DownloadRequest
                                 .Builder(song.id, song.id.toUri())
@@ -2538,7 +2538,7 @@ class MusicService :
 
     private fun seedLoudnessCacheFromPrefs() {
         val prefs = startupPrefs!!
-        normalizationEnabledCached = prefs[AudioNormalizationKey] ?: true
+        normalizationEnabledCached = prefs[AudioNormalizationKey] ?: false
         loudnessLevelCached = prefs[LoudnessLevelKey].toEnum(LoudnessLevel.BALANCED)
 
         Timber.tag(TAG).d(

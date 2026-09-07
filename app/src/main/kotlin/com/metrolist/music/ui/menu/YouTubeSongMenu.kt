@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -36,6 +35,7 @@ import androidx.compose.runtime.Composable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -51,16 +51,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.net.toUri
-import androidx.media3.exoplayer.offline.Download
-import androidx.media3.exoplayer.offline.DownloadRequest
-import androidx.media3.exoplayer.offline.DownloadService
 import coil3.compose.AsyncImage
 import com.metrolist.innertube.YouTube
 import com.metrolist.music.LocalNavController
 import com.metrolist.innertube.models.SongItem
 import com.metrolist.music.LocalDatabase
-import com.metrolist.music.LocalDownloadUtil
 import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.LocalSyncUtils
@@ -68,12 +63,12 @@ import com.metrolist.music.R
 import com.metrolist.music.constants.ListItemHeight
 import com.metrolist.music.constants.ListThumbnailSize
 import com.metrolist.music.constants.ThumbnailCornerRadius
+import com.metrolist.music.db.entities.ArtistEntity
 import com.metrolist.music.db.entities.SpeedDialItem
 import com.metrolist.music.db.entities.SongEntity
 import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.models.toMediaMetadata
-import com.metrolist.music.playback.ExoDownloadService
 import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.ui.component.ListDialog
 import com.metrolist.music.ui.component.LocalBottomSheetPageState
@@ -104,16 +99,24 @@ fun YouTubeSongMenu(
     val database = LocalDatabase.current
     val playerConnection = LocalPlayerConnection.current ?: return
     val librarySong by database.song(song.id).collectAsStateWithLifecycle(initialValue = null)
-    val download by LocalDownloadUtil.current.getDownload(song.id).collectAsStateWithLifecycle(initialValue = null)
     val coroutineScope = rememberCoroutineScope()
     val syncUtils = LocalSyncUtils.current
     val listenTogetherManager = LocalListenTogetherManager.current
     val isPinned by database.speedDialDao.isPinned(song.id).collectAsStateWithLifecycle(initialValue = false)
-    val artists = remember {
+    val artists = remember(song.id, song.artists) {
         song.artists.mapNotNull {
             it.id?.let { artistId ->
                 MediaMetadata.Artist(id = artistId, name = it.name)
             }
+        }
+    }
+    val primaryArtist = artists.firstOrNull()
+    val primaryArtistId = primaryArtist?.id
+    val libraryArtist by produceState<ArtistEntity?>(initialValue = null, primaryArtistId) {
+        value = null
+        val artistId = primaryArtistId ?: return@produceState
+        database.artist(artistId).collect { artist ->
+            value = artist?.artist
         }
     }
 
@@ -562,86 +565,47 @@ fun YouTubeSongMenu(
 
         item { Spacer(modifier = Modifier.height(12.dp)) }
 
-        item {
-            Material3MenuGroup(
-                items = listOf(
-                    when (download?.state) {
-                        Download.STATE_COMPLETED -> {
+        if (!song.isEpisode && primaryArtist != null && primaryArtistId != null) {
+            item {
+                val isSubscribed = libraryArtist?.bookmarkedAt != null
+                Material3MenuGroup(
+                    items =
+                        listOf(
                             Material3MenuItemData(
                                 title = {
                                     Text(
-                                        text = stringResource(R.string.remove_download)
+                                        text = stringResource(if (isSubscribed) R.string.subscribed else R.string.subscribe),
                                     )
                                 },
+                                description = { Text(text = primaryArtist.name) },
                                 icon = {
                                     Icon(
-                                        painter = painterResource(R.drawable.offline),
-                                        contentDescription = null
-                                    )
-                                },
-                                onClick = {
-                                    DownloadService.sendRemoveDownload(
-                                        context,
-                                        ExoDownloadService::class.java,
-                                        song.id,
-                                        false,
-                                    )
-                                }
-                            )
-                        }
-                        Download.STATE_QUEUED, Download.STATE_DOWNLOADING -> {
-                            Material3MenuItemData(
-                                title = { Text(text = stringResource(R.string.downloading)) },
-                                icon = {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(24.dp),
-                                        strokeWidth = 2.dp
-                                    )
-                                },
-                                onClick = {
-                                    DownloadService.sendRemoveDownload(
-                                        context,
-                                        ExoDownloadService::class.java,
-                                        song.id,
-                                        false,
-                                    )
-                                }
-                            )
-                        }
-                        else -> {
-                            Material3MenuItemData(
-                                title = { Text(text = stringResource(R.string.action_download)) },
-                                description = { Text(text = stringResource(R.string.download_desc)) },
-                                icon = {
-                                    Icon(
-                                        painter = painterResource(R.drawable.download),
+                                        painter = painterResource(if (isSubscribed) R.drawable.subscribed else R.drawable.subscribe),
                                         contentDescription = null,
                                     )
                                 },
                                 onClick = {
                                     database.transaction {
-                                        insert(song.toMediaMetadata())
+                                        val artist = libraryArtist
+                                        if (artist != null) {
+                                            update(artist.toggleLike())
+                                        } else {
+                                            insert(
+                                                ArtistEntity(
+                                                    id = primaryArtistId,
+                                                    name = primaryArtist.name,
+                                                ).toggleLike(),
+                                            )
+                                        }
                                     }
-                                    val downloadRequest = DownloadRequest
-                                        .Builder(song.id, song.id.toUri())
-                                        .setCustomCacheKey(song.id)
-                                        .setData(song.title.toByteArray())
-                                        .build()
-                                    DownloadService.sendAddDownload(
-                                        context,
-                                        ExoDownloadService::class.java,
-                                        downloadRequest,
-                                        false,
-                                    )
-                                }
-                            )
-                        }
-                    }
+                                },
+                            ),
+                        ),
                 )
-            )
-        }
+            }
 
-        item { Spacer(modifier = Modifier.height(12.dp)) }
+            item { Spacer(modifier = Modifier.height(12.dp)) }
+        }
 
         item {
             // Check if this is a podcast episode (album ID doesn't start with MPREb_)
