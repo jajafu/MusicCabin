@@ -4,6 +4,16 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.4
+
+### 中文
+
+- 修正登入流程的字串讀取方式：錯誤訊息改在 composition 期間以 `stringResource` 解析，解決 Foss Release 建置的 6 個 lint 錯誤。
+
+### English
+
+- Fix how the login flow resolves strings: error messages are now resolved with `stringResource` during composition, clearing the 6 lint errors that blocked the Foss Release build.
+
 ## 13.7.3
 
 ### 中文

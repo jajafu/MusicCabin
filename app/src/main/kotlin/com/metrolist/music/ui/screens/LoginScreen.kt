@@ -120,6 +120,14 @@ fun LoginScreen(
     var accounts by remember { mutableStateOf<List<YouTubeAccount>>(emptyList()) }
     var selectedAccount by remember { mutableStateOf<YouTubeAccount?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    // Resolve display strings at composition time so suspend functions and
+    // callbacks below don't query resources via LocalContext (lint:
+    // LocalContextGetResourceValueCall). The login-failed template keeps its
+    // %1$s placeholder until formatted with the actual error.
+    val errorUnknown = stringResource(R.string.error_unknown)
+    val youtubeChannelsFailed = stringResource(R.string.youtube_channels_failed)
+    val authDataExtractionFailed = stringResource(R.string.authentication_data_extraction_failed)
+    val loginFailedTemplate = stringResource(R.string.login_failed_with_error)
 
     suspend fun extractAuthData(webView: WebView?): AuthData? {
         val view = webView ?: return null
@@ -226,11 +234,7 @@ fun LoginScreen(
         } catch (throwable: Exception) {
             Timber.e(throwable, "Login: Failed to validate or save the selected YouTube channel")
             reportException(throwable)
-            errorMessage =
-                context.getString(
-                    R.string.login_failed_with_error,
-                    throwable.message ?: context.getString(R.string.error_unknown),
-                )
+            errorMessage = loginFailedTemplate.format(throwable.message ?: errorUnknown)
             loginStage = LoginStage.Authenticating
         }
     }
@@ -246,7 +250,7 @@ fun LoginScreen(
             YouTube.accountsList().getOrElse { throwable ->
                 Timber.e(throwable, "Login: Failed to retrieve YouTube channels")
                 if (isSwitchingChannel) {
-                    errorMessage = context.getString(R.string.youtube_channels_failed)
+                    errorMessage = youtubeChannelsFailed
                     loginStage = LoginStage.Authenticating
                     return
                 }
@@ -254,7 +258,7 @@ fun LoginScreen(
             }
 
         if (isSwitchingChannel && availableAccounts.isEmpty()) {
-            errorMessage = context.getString(R.string.youtube_channels_failed)
+            errorMessage = youtubeChannelsFailed
             loginStage = LoginStage.Authenticating
         } else if (availableAccounts.size > 1) {
             val currentAccount =
@@ -280,7 +284,7 @@ fun LoginScreen(
                 coroutineScope.launch {
                     val authData =
                         extractAuthData(webViewRef) ?: run {
-                            errorMessage = context.getString(R.string.authentication_data_extraction_failed)
+                            errorMessage = authDataExtractionFailed
                             loginStage = stage
                             return@launch
                         }
@@ -445,7 +449,7 @@ fun LoginScreen(
                             coroutineScope.launch {
                                 val authData =
                                     extractAuthData(webViewRef) ?: run {
-                                        errorMessage = context.getString(R.string.authentication_data_extraction_failed)
+                                        errorMessage = authDataExtractionFailed
                                         loginStage = LoginStage.Authenticating
                                         return@launch
                                     }
