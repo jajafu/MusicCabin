@@ -4,6 +4,22 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.5
+
+### 中文
+
+- 修正快取清理與下載完成的競態，僅清除仍符合條件的快取日期，保留最新的下載、喜愛與歌曲資料；歌曲選單訂閱藝人不再清空藝人頁面快取。
+- 還原前先驗證歌手別名資料，避免格式損壞時已替換資料庫；還原沒有別名的舊備份時清除舊別名。
+- 修改歌曲標題不再覆蓋最新的下載與喜愛狀態，僅修改標題時保留原歌手識別與含逗號的姓名；上傳使用目前登入的 Google 帳號索引。
+- 修正播放診斷報告的錯誤時間換算與 MusicCabin 名稱。無資料庫結構變更。
+
+### English
+
+- Fix cache-cleanup races with completed downloads by clearing only eligible cache dates while preserving current download, like, and song data. Subscribing through the song menu no longer clears cached artist pages.
+- Validate artist aliases before replacing restored database files; clear existing aliases when restoring an older backup without aliases.
+- Preserve current download and like state when editing a song title, along with artist identities and names containing commas in title-only edits. Upload using the currently signed-in Google account index.
+- Correct playback diagnostic timestamps and MusicCabin branding. No database schema changes.
+
 ## 13.7.4
 
 ### 中文
@@ -38,9 +54,8 @@ This file records project-specific features, fixes, and build changes in `MusicC
 
 ### 中文
 
-- 同步上游 13.7.0 的穩定性與效能修正：大量收藏不再一次載入全部藝人頁面快取，歷史紀錄改為資料庫端去重分頁，快取歌單改為資料庫驅動更新且不再每秒輪詢，音訊處理器重用緩衝區。
-- 保留手動編輯的歌曲標題與歌手：專輯同步不再覆寫自訂內容，歌曲編輯支援多位歌手並保留播放佇列中的顯示。
-- 自訂歌手名稱：重新命名歌手後，播放器、歌單、藝人頁與社群推薦同步顯示新名稱，並納入備份還原。
+- 同步上游 13.7.0 的穩定性與效能修正：大量收藏不再一次載入全部藝人頁面快取，歷史紀錄改為先在資料庫端依顯示區段去重，快取歌單改為資料庫驅動更新且不再每秒輪詢，音訊處理器重用緩衝區。
+- 保留手動編輯的歌曲標題與歌手：專輯同步不再覆寫自訂內容，歌曲編輯支援多位歌手、僅調整該歌曲的歌手關聯，並保留播放佇列中的顯示。
 - 登入流程重寫：支援同一 Google 帳號下的 YouTube 頻道選擇與切換，自動重試網路恢復後的首頁資料，改善離線時帳號顯示。
 - 下載與上傳強化：下載完成自動釋出播放器快取空間、上傳改為串流避免大檔記憶體不足、重複加入歌單改為批次檢查並在背景執行緒寫入。
 - 播放錯誤畫面可一鍵複製完整診斷報告（含版本、裝置、串流客戶端與錯誤鏈），跨淡入淡出保留重複播放模式，通知列關閉後不再自動彈回，Listen Together 心跳干擾降低。
@@ -48,9 +63,8 @@ This file records project-specific features, fixes, and build changes in `MusicC
 
 ### English
 
-- Sync upstream 13.7.0 stability and performance fixes: bulk screens no longer hydrate every cached artist page, History is deduplicated and paged in the database, the Cache playlist is database-driven instead of polling every second, and audio processors reuse buffers.
-- Preserve manually edited song titles and artists: album sync no longer overwrites custom content, and the song editor supports multiple artists while refreshing the playing queue display.
-- Custom artist names: renamed artists propagate to the player, lists, artist pages, and community recommendations, and are included in backup and restore.
+- Sync upstream 13.7.0 stability and performance fixes: bulk screens no longer hydrate every cached artist page, History is deduplicated by display section in the database, the Cache playlist is database-driven instead of polling every second, and audio processors reuse buffers.
+- Preserve manually edited song titles and artists: album sync no longer overwrites custom content, and the song editor supports multiple artists by changing only that song's artist relations while refreshing the playing queue display.
 - Reworked login: pick and switch between YouTube channels on the same Google account, auto-refresh home data after network recovery, and improved offline account display.
 - Stronger downloads and uploads: finished downloads free player-cache space, uploads stream instead of buffering large files in memory, and duplicate playlist checks are batched with writes off the main thread.
 - Playback errors offer one-tap copyable diagnostics (version, device, stream client, cause chain), repeat mode survives crossfade swaps, dismissed media controls stay dismissed, and Listen Together heartbeat interference is reduced.

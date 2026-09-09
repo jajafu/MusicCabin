@@ -9,6 +9,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.os.Build
+import android.os.SystemClock
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -194,7 +195,7 @@ fun PlaybackError(
             OutlinedButton(
                 onClick = {
                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    clipboard.setPrimaryClip(ClipData.newPlainText("Metrolist Playback Error", errorReport))
+                    clipboard.setPrimaryClip(ClipData.newPlainText("MusicCabin Playback Error", errorReport))
                 },
                 shape = RoundedCornerShape(20.dp),
             ) {
@@ -227,9 +228,9 @@ private fun buildPlaybackErrorReport(
     streamClient: String?,
 ): String =
     buildString {
-        appendLine("Metrolist Playback Error Report")
+        appendLine("MusicCabin Playback Error Report")
         appendLine("================================")
-        appendLine("Time: ${Instant.ofEpochMilli(error.timestampMs)}")
+        appendLine("Time: ${Instant.ofEpochMilli(System.currentTimeMillis() - (SystemClock.elapsedRealtime() - error.timestampMs))}")
         appendLine("App version: ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
         appendLine("Architecture: ${BuildConfig.ARCHITECTURE}")
         appendLine("Android: ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")

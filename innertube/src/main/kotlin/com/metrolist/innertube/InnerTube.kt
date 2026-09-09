@@ -746,7 +746,6 @@ class InnerTube {
         filename: String,
         contentLength: Long
     ) = withRetry {
-        val authUser = "0"
         httpClient.post("https://upload.youtube.com/upload/usermusic/http?authuser=$authUser") {
             headers {
                 append("X-Goog-Upload-Command", "start")
@@ -779,7 +778,7 @@ class InnerTube {
             headers {
                 append("X-Goog-Upload-Command", "upload, finalize")
                 append("X-Goog-Upload-Offset", "0")
-                append("X-Goog-AuthUser", "0")
+                append("X-Goog-AuthUser", authUser)
                 append("Origin", YouTubeClient.ORIGIN_YOUTUBE_MUSIC)
                 cookie?.let { cookie ->
                     append("cookie", cookie)
@@ -811,7 +810,7 @@ class InnerTube {
                 headers {
                     append("X-Goog-Upload-Command", "upload, finalize")
                     append("X-Goog-Upload-Offset", "0")
-                    append("X-Goog-AuthUser", "0")
+                    append("X-Goog-AuthUser", authUser)
                     append("Origin", YouTubeClient.ORIGIN_YOUTUBE_MUSIC)
                     cookie?.let { cookie ->
                         append("cookie", cookie)

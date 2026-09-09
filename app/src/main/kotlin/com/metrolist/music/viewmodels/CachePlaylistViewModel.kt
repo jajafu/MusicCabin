@@ -68,7 +68,7 @@ class CachePlaylistViewModel
                 if (partition.stale.isNotEmpty()) {
                     database.withTransaction {
                         partition.stale.forEach { song ->
-                            update(song.song.copy(dateDownload = null))
+                            clearStaleCacheDate(song.id, song.song.dateDownload)
                         }
                     }
                 }
@@ -88,7 +88,7 @@ class CachePlaylistViewModel
             // Dropping the bytes does not touch the database, so clear the flags explicitly.
             database.query {
                 songIds.forEach { songId ->
-                    getSongByIdBlocking(songId)?.let { update(it.song.copy(dateDownload = null)) }
+                    clearCacheDate(songId)
                 }
             }
         }

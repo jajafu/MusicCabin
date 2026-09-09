@@ -159,6 +159,12 @@ class BackupRestoreViewModel @Inject constructor(
                     val foundDatabase = InternalDatabase.DB_NAME in extractedEntries
                     val foundSettings = SETTINGS_FILENAME in extractedEntries
                     val foundAliases = ArtistNameAliases.BACKUP_FILENAME in extractedEntries
+                    // Validate optional metadata before stopping playback or replacing live files.
+                    val restoredAliases = if (foundAliases) {
+                        ArtistNameAliases.deserialize(extractedAliases.readText())
+                    } else {
+                        emptyMap()
+                    }
                     val currentDbPath =
                         database.openHelper.writableDatabase.path
                             ?: error("Database path is unavailable")
@@ -213,10 +219,10 @@ class BackupRestoreViewModel @Inject constructor(
                     appContext.filesDir.resolve(PERSISTENT_QUEUE_FILE).delete()
                     appContext.filesDir.resolve(PERSISTENT_AUTOMIX_FILE).delete()
                     appContext.filesDir.resolve(PERSISTENT_PLAYER_STATE_FILE).delete()
-                    if (foundAliases) {
+                    if (foundAliases || foundDatabase || foundSettings) {
                         ArtistNameAliases.restore(
                             appContext,
-                            ArtistNameAliases.deserialize(extractedAliases.readText()),
+                            restoredAliases,
                         )
                     }
                 }

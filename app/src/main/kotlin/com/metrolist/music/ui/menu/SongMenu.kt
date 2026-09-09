@@ -186,17 +186,20 @@ fun SongMenu(
             },
             onDoneMultiple = { values ->
                 val newTitle = values[0]
-                val newArtistNames =
+                val newArtistNames = if (values[1] == song.orderedArtists.joinToString(", ") { it.name }) {
+                    song.orderedArtists.map { it.name }
+                } else {
                     values[1]
                         .split(',')
                         .map(String::trim)
                         .filter(String::isNotEmpty)
                         .distinct()
+                }
                 val artistsChanged = newArtistNames != song.orderedArtists.map { it.name }
 
                 coroutineScope.launch {
                     database.withTransaction {
-                        update(song.song.copy(title = newTitle))
+                        updateSongTitle(song.id, newTitle)
                         if (artistsChanged) {
                             val replacementArtists =
                                 newArtistNames.map { name ->
@@ -913,7 +916,9 @@ fun SongMenu(
                                 },
                                 onClick = {
                                     database.transaction {
-                                        update(artist.toggleLike())
+                                        getArtistById(artist.id)?.let { currentArtist ->
+                                            updateArtistBookmark(currentArtist.id, currentArtist.toggleLike().bookmarkedAt)
+                                        }
                                     }
                                 },
                             ),

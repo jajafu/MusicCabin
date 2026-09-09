@@ -733,6 +733,15 @@ interface DatabaseDao : AndroidAutoDao {
     @Query("SELECT * FROM song WHERE dateDownload IS NOT NULL AND isDownloaded = 0")
     fun cachePlaylistSongs(): Flow<List<Song>>
 
+    @Query("UPDATE song SET dateDownload = NULL WHERE id = :songId AND isDownloaded = 0 AND dateDownload = :expectedDate")
+    fun clearStaleCacheDate(songId: String, expectedDate: LocalDateTime?)
+
+    @Query("UPDATE song SET dateDownload = NULL WHERE id = :songId AND isDownloaded = 0")
+    fun clearCacheDate(songId: String)
+
+    @Query("UPDATE song SET title = :title WHERE id = :songId")
+    fun updateSongTitle(songId: String, title: String)
+
     @Transaction
     @Query("SELECT * FROM song_artist_map WHERE songId = :songId")
     fun songArtistMap(songId: String): List<SongArtistMap>
@@ -1697,6 +1706,9 @@ interface DatabaseDao : AndroidAutoDao {
     // came from a relation, and those do not carry cachedPageJson.
     @Query("UPDATE artist SET thumbnailUrl = :thumbnailUrl WHERE id = :artistId")
     fun updateArtistThumbnail(artistId: String, thumbnailUrl: String)
+
+    @Query("UPDATE artist SET bookmarkedAt = :bookmarkedAt WHERE id = :artistId")
+    fun updateArtistBookmark(artistId: String, bookmarkedAt: LocalDateTime?)
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     fun insert(song: SongEntity): Long
