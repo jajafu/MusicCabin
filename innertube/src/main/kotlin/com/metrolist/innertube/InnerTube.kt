@@ -20,12 +20,16 @@ import io.ktor.client.request.*
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
+import io.ktor.utils.io.jvm.javaio.toByteReadChannel
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import java.net.Proxy
 import java.io.IOException
 import kotlinx.coroutines.delay
+import java.io.InputStream
 import java.util.*
 import kotlin.io.encoding.Base64
 import timber.log.Timber
@@ -49,6 +53,10 @@ class InnerTube {
     )
     var visitorData: String? = null
     var dataSyncId: String? = null
+    var authUser: String = "0"
+        set(value) {
+            field = value.filter(Char::isDigit).ifBlank { "0" }
+        }
     var cookie: String? = null
         set(value) {
             field = value
@@ -147,21 +155,28 @@ class InnerTube {
         }
     }
 
-    private fun HttpRequestBuilder.ytClient(client: YouTubeClient, setLogin: Boolean = false) {
+    private fun HttpRequestBuilder.ytClient(
+        client: YouTubeClient,
+        setLogin: Boolean = false,
+        origin: String = YouTubeClient.ORIGIN_YOUTUBE_MUSIC,
+        referer: String = YouTubeClient.REFERER_YOUTUBE_MUSIC,
+    ) {
         contentType(ContentType.Application.Json)
         headers {
             append("X-Goog-Api-Format-Version", "1")
             append("X-YouTube-Client-Name", client.clientId /* Not a typo. The Client-Name header does contain the client id. */)
             append("X-YouTube-Client-Version", client.clientVersion)
-            append("X-Origin", YouTubeClient.ORIGIN_YOUTUBE_MUSIC)
-            append("Referer", YouTubeClient.REFERER_YOUTUBE_MUSIC)
+            append("Origin", origin)
+            append("X-Origin", origin)
+            append("Referer", referer)
             visitorData?.let { append("X-Goog-Visitor-Id", it) }
             if (setLogin && client.loginSupported) {
                 cookie?.let { cookie ->
                     append("cookie", cookie)
+                    append("X-Goog-AuthUser", authUser)
                     if ("SAPISID" !in cookieMap) return@let
                     val currentTime = System.currentTimeMillis() / 1000
-                    val sapisidHash = sha1("$currentTime ${cookieMap["SAPISID"]} ${YouTubeClient.ORIGIN_YOUTUBE_MUSIC}")
+                    val sapisidHash = sha1("$currentTime ${cookieMap["SAPISID"]} $origin")
                     append("Authorization", "SAPISIDHASH ${currentTime}_${sapisidHash}")
                 }
             }
@@ -397,6 +412,20 @@ class InnerTube {
         httpClient.post("account/account_menu") {
             ytClient(client, setLogin = true)
             setBody(AccountMenuBody(client.toContext(locale, visitorData, dataSyncId)))
+        }
+    }
+
+    suspend fun accountsList() = withRetry {
+        val accountClient = YouTubeClient.WEB_ACCOUNT_SWITCHER
+        val origin = "https://www.youtube.com"
+        httpClient.post("$origin/youtubei/v1/account/accounts_list") {
+            ytClient(
+                client = accountClient,
+                setLogin = true,
+                origin = origin,
+                referer = "$origin/",
+            )
+            setBody(AccountsListBody(accountClient.toContext(locale, visitorData, null)))
         }
     }
 
@@ -766,6 +795,34 @@ class InnerTube {
                 contentLength?.let {
                     onProgress?.invoke(bytesSentTotal.toFloat() / it.toFloat())
                 }
+            }
+        }
+    }
+
+    /**
+     * Upload song data to the provided upload URL by streaming, without buffering the file.
+     */
+    suspend fun uploadSongStream(
+        uploadUrl: String,
+        content: () -> InputStream,
+    ) = withContext(Dispatchers.IO) {
+        withRetry {
+            httpClient.post(uploadUrl) {
+                headers {
+                    append("X-Goog-Upload-Command", "upload, finalize")
+                    append("X-Goog-Upload-Offset", "0")
+                    append("X-Goog-AuthUser", "0")
+                    append("Origin", YouTubeClient.ORIGIN_YOUTUBE_MUSIC)
+                    cookie?.let { cookie ->
+                        append("cookie", cookie)
+                        if ("SAPISID" !in cookieMap) return@let
+                        val currentTime = System.currentTimeMillis() / 1000
+                        val sapisidHash = sha1("$currentTime ${cookieMap["SAPISID"]} ${YouTubeClient.ORIGIN_YOUTUBE_MUSIC}")
+                        append("Authorization", "SAPISIDHASH ${currentTime}_${sapisidHash}")
+                    }
+                }
+                contentType(ContentType.Application.OctetStream)
+                setBody(content().toByteReadChannel(Dispatchers.IO))
             }
         }
     }

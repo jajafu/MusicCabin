@@ -3556,10 +3556,12 @@ class MusicService :
             }
         }
 
-        // An unspecified IO error can wrap a failed player-response resolution. Retrying it here
-        // only repeats the same stale player configuration for every song. Missing configurations
-        // are refreshed by PlayerConfigStore during resolution instead.
-        if (error.errorCode == PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS) {
+        // Transient source failures can surface without a more specific I/O code, so treat
+        // unspecified errors like bad HTTP status here. Missing player configurations are
+        // refreshed by PlayerConfigStore during resolution instead of by retrying here.
+        if (error.errorCode == PlaybackException.ERROR_CODE_IO_UNSPECIFIED ||
+            error.errorCode == PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS
+        ) {
             Timber.tag(TAG).d("HTTP IO error detected (${error.errorCode}), attempting bounded recovery")
             handleGenericIOError(mediaId)
             return
@@ -4257,7 +4259,7 @@ class MusicService :
             if (thumbnail != null) {
                 Timber.tag("DiscordSvc").d("fetchArtistThumbnail: got thumbnail for %s", artist.name)
                 withContext(Dispatchers.IO) {
-                    database.update(artist.copy(thumbnailUrl = thumbnail))
+                    database.updateArtistThumbnail(artist.id, thumbnail)
                 }
                 database.getSongById(song.song.id)
             } else {
@@ -4819,8 +4821,12 @@ class MusicService :
         // On Android O+, every startForegroundService() call requires
         // Service.startForeground() to be called within a short timeout.
         // Some OEMs (e.g. MIUI) strictly enforce this even when the
-        // service is already in the foreground, so always promote here.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        // service is already in the foreground, so promote here unless Media3 is handling a
+        // notification dismissal. Re-promoting that intent immediately restores the dismissed
+        // media control.
+        val isNotificationDismissal =
+            intent?.getBooleanExtra(MediaNotification.NOTIFICATION_DISMISSED_EVENT_KEY, false) == true
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !isNotificationDismissal) {
             if (!ensureForegroundWithLatestNotificationOrStop()) {
                 return START_NOT_STICKY
             }
@@ -5270,12 +5276,12 @@ class MusicService :
         playerNormalizationProcessors.values.forEach { it.enabled = false }
 
         // Preserve player state before creating the secondary player.
-        val savedRepeatMode = cachedPreference(RepeatModeKey, REPEAT_MODE_OFF)
-        val savedShuffleEnabled = cachedPreference(ShuffleModeKey, false)
+        val repeatMode = player.repeatMode
+        val shuffleModeEnabled = player.shuffleModeEnabled
 
         // For repeat-one, crossfade back into the same track
         val targetIndex =
-            if (savedRepeatMode == REPEAT_MODE_ONE) {
+            if (repeatMode == REPEAT_MODE_ONE) {
                 player.currentMediaItemIndex
             } else {
                 player.nextMediaItemIndex
@@ -5296,8 +5302,8 @@ class MusicService :
         secPlayer.seekTo(targetIndex, 0)
         secPlayer.volume = 0f
 
-        secPlayer.repeatMode = savedRepeatMode
-        secPlayer.shuffleModeEnabled = savedShuffleEnabled
+        secPlayer.repeatMode = repeatMode
+        secPlayer.shuffleModeEnabled = shuffleModeEnabled
 
         try {
             secPlayer.prepare()
@@ -5312,7 +5318,7 @@ class MusicService :
 
         performCrossfadeSwap()
 
-        if (savedShuffleEnabled) {
+        if (shuffleModeEnabled) {
             val shufflePlaylistFirst = cachedPreference(ShufflePlaylistFirstKey, false)
             applyShuffleOrder(player.currentMediaItemIndex, player.mediaItemCount, shufflePlaylistFirst)
         }
@@ -5328,8 +5334,10 @@ class MusicService :
         _playerFlow.value = player
         secondaryPlayer = null
 
+        // Do not persist the retired player's temporary repeat-off state.
         fadingPlayer?.removeListener(this)
         sleepTimer?.let { timer -> fadingPlayer?.removeListener(timer) }
+        fadingPlayer?.repeatMode = Player.REPEAT_MODE_OFF
 
         player.addListener(
             object : Player.Listener {

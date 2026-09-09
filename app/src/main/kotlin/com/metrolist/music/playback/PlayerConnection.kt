@@ -24,10 +24,13 @@ import com.metrolist.music.constants.SleepTimerEndTimeKey
 import com.metrolist.music.constants.SleepTimerRepeatKey
 import com.metrolist.music.constants.SleepTimerStartTimeKey
 import com.metrolist.music.db.MusicDatabase
+import com.metrolist.music.db.entities.Song
 import com.metrolist.music.extensions.currentMetadata
 import com.metrolist.music.extensions.getCurrentQueueIndex
 import com.metrolist.music.extensions.getQueueWindows
 import com.metrolist.music.extensions.metadata
+import com.metrolist.music.extensions.withUpdatedMetadata
+import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.playback.MusicService.MusicBinder
 import com.metrolist.music.playback.queues.Queue
 import com.metrolist.music.utils.reportException
@@ -282,6 +285,18 @@ class PlayerConnection(
             Timber.tag(TAG).e(e, "Error in playNext")
             throw e
         }
+    }
+
+    fun refreshSongMetadata(song: Song) {
+        val player = getPlayerOrNull() ?: return
+        val updatedMetadata = song.toMediaMetadata()
+        repeat(player.mediaItemCount) { index ->
+            val mediaItem = player.getMediaItemAt(index)
+            if (mediaItem.mediaId == song.id) {
+                player.replaceMediaItem(index, mediaItem.withUpdatedMetadata(updatedMetadata))
+            }
+        }
+        mediaMetadata.value = player.currentMetadata
     }
 
     fun addToQueue(item: MediaItem) = addToQueue(listOf(item))
@@ -641,6 +656,7 @@ class PlayerConnection(
     }
 
     override fun onRepeatModeChanged(mode: Int) {
+        if (mode != player.repeatMode) return
         repeatMode.value = mode
         updateCanSkipPreviousAndNext()
     }

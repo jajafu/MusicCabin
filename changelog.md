@@ -4,6 +4,48 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.3
+
+### 中文
+
+- 修正登入畫面頂部 header 過高：登入頁外層誤用了包含主畫面 AppBar 高度的 inset，導致 header 上方多出約 64dp 的黑色空白。現在頂部只保留系統狀態列高度，header 高度恢復正常。
+
+### English
+
+- Fix the oversized login screen header: the login page wrapper wrongly applied the inset containing the main app bar height, leaving about 64dp of extra black space above the header. The top now only reserves the system status bar height, restoring the normal header height.
+
+## 13.7.2
+
+### 中文
+
+- 修正大量歌曲封面空白：YouTube 只對部分影片提供高解析縮圖，舊邏輯拿不到 `maxresdefault` 就直接空白。現在圖片載入失敗（404）時自動降級重試（maxres→sd→hq→mq→default），列表、播放器、通知與車機封面同步受惠。
+
+### English
+
+- Fix widespread blank song covers: YouTube only generates high-resolution thumbnails for some videos, and the old logic left a blank when `maxresdefault` was missing. Image loads that fail with 404 now automatically retry at lower resolutions (maxres → sd → hq → mq → default) across lists, player, notifications, and car surfaces.
+
+## 13.7.1
+
+### 中文
+
+- 同步上游 13.7.0 的穩定性與效能修正：大量收藏不再一次載入全部藝人頁面快取，歷史紀錄改為資料庫端去重分頁，快取歌單改為資料庫驅動更新且不再每秒輪詢，音訊處理器重用緩衝區。
+- 保留手動編輯的歌曲標題與歌手：專輯同步不再覆寫自訂內容，歌曲編輯支援多位歌手並保留播放佇列中的顯示。
+- 自訂歌手名稱：重新命名歌手後，播放器、歌單、藝人頁與社群推薦同步顯示新名稱，並納入備份還原。
+- 登入流程重寫：支援同一 Google 帳號下的 YouTube 頻道選擇與切換，自動重試網路恢復後的首頁資料，改善離線時帳號顯示。
+- 下載與上傳強化：下載完成自動釋出播放器快取空間、上傳改為串流避免大檔記憶體不足、重複加入歌單改為批次檢查並在背景執行緒寫入。
+- 播放錯誤畫面可一鍵複製完整診斷報告（含版本、裝置、串流客戶端與錯誤鏈），跨淡入淡出保留重複播放模式，通知列關閉後不再自動彈回，Listen Together 心跳干擾降低。
+- 修復舊版資料庫升級（21→24 欄位補齊改為冪等），歌單追加改用實際最大位置避免位置衝突。
+
+### English
+
+- Sync upstream 13.7.0 stability and performance fixes: bulk screens no longer hydrate every cached artist page, History is deduplicated and paged in the database, the Cache playlist is database-driven instead of polling every second, and audio processors reuse buffers.
+- Preserve manually edited song titles and artists: album sync no longer overwrites custom content, and the song editor supports multiple artists while refreshing the playing queue display.
+- Custom artist names: renamed artists propagate to the player, lists, artist pages, and community recommendations, and are included in backup and restore.
+- Reworked login: pick and switch between YouTube channels on the same Google account, auto-refresh home data after network recovery, and improved offline account display.
+- Stronger downloads and uploads: finished downloads free player-cache space, uploads stream instead of buffering large files in memory, and duplicate playlist checks are batched with writes off the main thread.
+- Playback errors offer one-tap copyable diagnostics (version, device, stream client, cause chain), repeat mode survives crossfade swaps, dismissed media controls stay dismissed, and Listen Together heartbeat interference is reduced.
+- Repair legacy database upgrades (idempotent 21→24 column backfill) and append playlist songs after the actual max position to avoid position conflicts.
+
 ## 13.6.80
 
 ### 中文

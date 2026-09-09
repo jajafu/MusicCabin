@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.models.MediaInfo
 import com.metrolist.music.LocalDatabase
+import com.metrolist.music.LocalArtistNameAliases
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.constants.LoudnessLevel
@@ -55,6 +56,7 @@ import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.ui.component.shimmer.ShimmerHost
 import com.metrolist.music.ui.component.shimmer.TextPlaceholder
 import com.metrolist.music.utils.rememberEnumPreference
+import com.metrolist.music.utils.ArtistNameAliases
 import androidx.compose.ui.platform.LocalLocale
 
 @Composable
@@ -85,6 +87,7 @@ fun ShowMediaInfo(videoId: String) {
     val playerConnection = LocalPlayerConnection.current
     val currentStreamClient by playerConnection?.currentStreamClient?.collectAsState() ?: remember { mutableStateOf(null) }
     val context = LocalContext.current
+    val artistNameAliases = LocalArtistNameAliases.current
 
     val loudnessLevel by rememberEnumPreference(
         LoudnessLevelKey,
@@ -124,7 +127,13 @@ fun ShowMediaInfo(videoId: String) {
                 Column {
                     val baseList = listOf(
                         stringResource(R.string.song_title) to (info?.title ?: song?.title),
-                        stringResource(R.string.song_artists) to (info?.author ?: song?.artists?.joinToString { it.name }),
+                        stringResource(R.string.song_artists) to (
+                            song?.artists?.joinToString {
+                                ArtistNameAliases.resolve(artistNameAliases, it.id, it.name)
+                            } ?: info?.author?.let {
+                                ArtistNameAliases.resolve(artistNameAliases, null, it)
+                            }
+                        ),
                         stringResource(R.string.media_id) to (song?.id ?: info?.videoId)
                     )
 

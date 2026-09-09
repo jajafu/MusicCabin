@@ -19,6 +19,7 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import androidx.room.migration.AutoMigrationSpec
 import androidx.room.migration.Migration
+import androidx.room.withTransaction
 import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.sqlite.db.SupportSQLiteOpenHelper
 import com.metrolist.music.db.daos.SpeedDialDao
@@ -79,14 +80,8 @@ class MusicDatabase(
         }
 
     suspend fun withTransaction(block: suspend MusicDatabase.() -> Unit) =
-        with(delegate) {
-            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                runInTransaction {
-                    kotlinx.coroutines.runBlocking {
-                        block(this@MusicDatabase)
-                    }
-                }
-            }
+        delegate.withTransaction {
+            block(this@MusicDatabase)
         }
 
     fun close() = delegate.close()
@@ -567,68 +562,14 @@ val MIGRATION_1_2 =
 val MIGRATION_21_24 =
     object : Migration(21, 24) {
         override fun migrate(db: SupportSQLiteDatabase) {
-            // Combine all changes from 21→22→23→24
-
-            // From 21→22: Add columns
-            try {
-                db.execSQL("ALTER TABLE song ADD COLUMN libraryAddToken TEXT DEFAULT ''")
-            } catch (e: Exception) {
-                Timber.tag("Migration").w("Column libraryAddToken may already exist")
-            }
-            try {
-                db.execSQL("ALTER TABLE song ADD COLUMN libraryRemoveToken TEXT DEFAULT ''")
-            } catch (e: Exception) {
-                Timber.tag("Migration").w("Column libraryRemoveToken may already exist")
-            }
-            try {
-                db.execSQL("ALTER TABLE song ADD COLUMN romanizeLyrics INTEGER NOT NULL DEFAULT 1")
-            } catch (e: Exception) {
-                Timber.tag("Migration").w("Column romanizeLyrics may already exist")
-            }
-            try {
-                db.execSQL("ALTER TABLE song ADD COLUMN isDownloaded INTEGER NOT NULL DEFAULT 0")
-            } catch (e: Exception) {
-                Timber.tag("Migration").w("Column isDownloaded may already exist")
-            }
-
-            // From 23→24: Add isUploaded
-            var hasIsUploaded = false
-            db.query("PRAGMA table_info('song')").use { cursor ->
-                val nameIndex = cursor.getColumnIndex("name")
-                while (cursor.moveToNext()) {
-                    val colName = if (nameIndex >= 0) cursor.getString(nameIndex) else null
-                    if (colName == "isUploaded") {
-                        hasIsUploaded = true
-                        break
-                    }
-                }
-            }
-
-            if (!hasIsUploaded) {
-                db.execSQL("ALTER TABLE `song` ADD COLUMN `isUploaded` INTEGER NOT NULL DEFAULT 0")
-            }
+            addVersion24ColumnsIfMissing(db)
         }
     }
 
 val MIGRATION_22_24 =
     object : Migration(22, 24) {
         override fun migrate(db: SupportSQLiteDatabase) {
-            // From 23→24: Add isUploaded
-            var hasIsUploaded = false
-            db.query("PRAGMA table_info('song')").use { cursor ->
-                val nameIndex = cursor.getColumnIndex("name")
-                while (cursor.moveToNext()) {
-                    val colName = if (nameIndex >= 0) cursor.getString(nameIndex) else null
-                    if (colName == "isUploaded") {
-                        hasIsUploaded = true
-                        break
-                    }
-                }
-            }
-
-            if (!hasIsUploaded) {
-                db.execSQL("ALTER TABLE `song` ADD COLUMN `isUploaded` INTEGER NOT NULL DEFAULT 0")
-            }
+            addVersion24ColumnsIfMissing(db)
         }
     }
 
@@ -804,22 +745,40 @@ class Migration22To23 : AutoMigrationSpec {
 
 class Migration23To24 : AutoMigrationSpec {
     override fun onPostMigrate(db: SupportSQLiteDatabase) {
-        var hasIsUploaded = false
-        db.query("PRAGMA table_info('song')").use { cursor ->
-            val nameIndex = cursor.getColumnIndex("name")
-            while (cursor.moveToNext()) {
-                val colName = if (nameIndex >= 0) cursor.getString(nameIndex) else null
-                if (colName == "isUploaded") {
-                    hasIsUploaded = true
-                    break
-                }
+        addVersion24ColumnsIfMissing(db)
+    }
+}
+
+private fun addColumnIfMissing(
+    db: SupportSQLiteDatabase,
+    tableName: String,
+    columnName: String,
+    columnDefinition: String,
+) {
+    var columnExists = false
+    db.query("PRAGMA table_info('$tableName')").use { cursor ->
+        val nameIndex = cursor.getColumnIndex("name")
+        while (cursor.moveToNext()) {
+            if (nameIndex >= 0 && cursor.getString(nameIndex) == columnName) {
+                columnExists = true
+                break
             }
         }
-
-        if (!hasIsUploaded) {
-            db.execSQL("ALTER TABLE `song` ADD COLUMN `isUploaded` INTEGER NOT NULL DEFAULT 0")
-        }
     }
+
+    if (!columnExists) {
+        db.execSQL("ALTER TABLE `$tableName` ADD COLUMN `$columnName` $columnDefinition")
+    }
+}
+
+private fun addVersion24ColumnsIfMissing(db: SupportSQLiteDatabase) {
+    addColumnIfMissing(db, "song", "libraryAddToken", "TEXT")
+    addColumnIfMissing(db, "song", "libraryRemoveToken", "TEXT")
+    addColumnIfMissing(db, "song", "romanizeLyrics", "INTEGER NOT NULL DEFAULT true")
+    addColumnIfMissing(db, "song", "isDownloaded", "INTEGER NOT NULL DEFAULT 0")
+    addColumnIfMissing(db, "song", "isUploaded", "INTEGER NOT NULL DEFAULT false")
+    addColumnIfMissing(db, "album", "isUploaded", "INTEGER NOT NULL DEFAULT false")
+    addColumnIfMissing(db, "playlist", "thumbnailUrl", "TEXT")
 }
 
 val MIGRATION_24_25 =

@@ -391,6 +391,13 @@ fun NavGraphBuilder.navigationBuilder(
         LoginScreen(navController)
     }
 
+    composable("switch_channel") {
+        LoginScreen(
+            navController = navController,
+            isSwitchingChannel = true,
+        )
+    }
+
     composable("wrapped") {
         WrappedScreen()
     }

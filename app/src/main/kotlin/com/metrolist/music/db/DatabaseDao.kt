@@ -56,6 +56,7 @@ import com.metrolist.music.extensions.toSQLiteQuery
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.ui.utils.resize
+import com.metrolist.music.utils.ArtistNameAliases
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -729,6 +730,10 @@ interface DatabaseDao : AndroidAutoDao {
     }
 
     @Transaction
+    @Query("SELECT * FROM song WHERE dateDownload IS NOT NULL AND isDownloaded = 0")
+    fun cachePlaylistSongs(): Flow<List<Song>>
+
+    @Transaction
     @Query("SELECT * FROM song_artist_map WHERE songId = :songId")
     fun songArtistMap(songId: String): List<SongArtistMap>
 
@@ -1157,7 +1162,7 @@ interface DatabaseDao : AndroidAutoDao {
     ): List<String>
 
     @Transaction
-    fun playlistDuplicates(
+    suspend fun playlistDuplicates(
         playlistId: String,
         songIds: List<String>,
     ): List<String> {
@@ -1179,9 +1184,12 @@ interface DatabaseDao : AndroidAutoDao {
     @Query("UPDATE playlist_song_map SET position = position + :delta WHERE playlistId = :playlistId")
     fun shiftPlaylistSongPositions(playlistId: String, delta: Int)
 
+    @Query("SELECT COALESCE(MAX(position) + 1, 0) FROM playlist_song_map WHERE playlistId = :playlistId")
+    fun nextPlaylistSongPosition(playlistId: String): Int
+
     @Transaction
     fun addSongToPlaylist(playlist: Playlist, songIds: List<String>) {
-        var position = playlist.songCount
+        var position = nextPlaylistSongPosition(playlist.id)
         songIds.forEach { id ->
             val existingSong = getSongByIdBlocking(id)
             if (existingSong != null) {
@@ -1199,7 +1207,7 @@ interface DatabaseDao : AndroidAutoDao {
 
     // This prevents songs from being removed during automatic playlist synchronization
     @Transaction
-    fun addSongsToPlaylist(
+    suspend fun addSongsToPlaylist(
         playlist: Playlist,
         songs: List<Pair<String, String?>>, // Pair of (songId, setVideoId)
         prepend: Boolean = false,
@@ -1229,7 +1237,7 @@ interface DatabaseDao : AndroidAutoDao {
                 )
             }
         } else {
-            var position = playlist.songCount
+            var position = nextPlaylistSongPosition(playlist.id)
             songsToInsert.forEach { (id, setVideoId) ->
                 val existingSong = getSongByIdBlocking(id)!!
                 if (existingSong.song.inLibrary == null) {
@@ -1509,13 +1517,43 @@ interface DatabaseDao : AndroidAutoDao {
         previewSize: Int = Int.MAX_VALUE,
     ): Flow<List<Playlist>>
 
+    // Keep only the latest play per song in each section before Room hydrates song relations.
     @Transaction
-    @Query("SELECT * FROM event ORDER BY rowId DESC")
-    fun events(): Flow<List<EventWithSong>>
+    @Query(
+        """
+        SELECT event.*
+        FROM event
+        JOIN (
+            SELECT MAX(id) AS id
+            FROM event
+            GROUP BY songId,
+                CASE
+                    WHEN timestamp >= :tomorrowStart THEN 'this_week'
+                    WHEN timestamp >= :todayStart THEN 'today'
+                    WHEN timestamp >= :yesterdayStart THEN 'yesterday'
+                    WHEN timestamp >= :thisMondayStart THEN 'this_week'
+                    WHEN timestamp >= :lastMondayStart THEN 'last_week'
+                    ELSE strftime('%Y-%m', timestamp / 1000, 'unixepoch')
+                END
+        ) AS latest_event ON latest_event.id = event.id
+        ORDER BY event.id DESC
+        """,
+    )
+    fun historyEvents(
+        tomorrowStart: LocalDateTime,
+        todayStart: LocalDateTime,
+        yesterdayStart: LocalDateTime,
+        thisMondayStart: LocalDateTime,
+        lastMondayStart: LocalDateTime,
+    ): Flow<List<EventWithSong>>
 
     @Transaction
     @Query("SELECT * FROM event ORDER BY rowId ASC LIMIT 1")
     fun firstEvent(): Flow<EventWithSong?>
+
+    @Transaction
+    @Query("SELECT * FROM event ORDER BY rowId DESC LIMIT 1")
+    fun latestEvent(): Flow<EventWithSong?>
 
     @Query("SELECT COUNT(*) FROM event")
     fun eventCount(): Flow<Int>
@@ -1655,6 +1693,11 @@ interface DatabaseDao : AndroidAutoDao {
     @Query("SELECT * FROM artist WHERE id = :id LIMIT 1")
     fun getArtistById(id: String): ArtistEntity?
 
+    // Writes the one column rather than the whole row: callers reach this holding an artist that
+    // came from a relation, and those do not carry cachedPageJson.
+    @Query("UPDATE artist SET thumbnailUrl = :thumbnailUrl WHERE id = :artistId")
+    fun updateArtistThumbnail(artistId: String, thumbnailUrl: String)
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     fun insert(song: SongEntity): Long
 
@@ -1669,6 +1712,24 @@ interface DatabaseDao : AndroidAutoDao {
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     fun insert(map: SongArtistMap)
+
+    @Transaction
+    fun replaceSongArtists(
+        songId: String,
+        artists: List<ArtistEntity>,
+    ) {
+        songArtistMap(songId).forEach(::delete)
+        artists.distinctBy { it.id }.forEachIndexed { index, artist ->
+            insert(artist)
+            insert(
+                SongArtistMap(
+                    songId = songId,
+                    artistId = artist.id,
+                    position = index,
+                ),
+            )
+        }
+    }
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     fun insert(map: SongAlbumMap)
@@ -1707,7 +1768,7 @@ interface DatabaseDao : AndroidAutoDao {
             insert(
                 ArtistEntity(
                     id = artistId,
-                    name = artist.name,
+                    name = ArtistNameAliases.resolve(artist.id, artist.name),
                     channelId = artist.id,
                 )
             )
@@ -1745,7 +1806,12 @@ interface DatabaseDao : AndroidAutoDao {
             .onEach {
                 val existingSong = getSongByIdBlocking(it.id)
                 if (existingSong != null) {
-                    update(existingSong, it)
+                    update(
+                        song = existingSong,
+                        mediaMetadata = it,
+                        overwriteTitle = false,
+                        overwriteArtists = false,
+                    )
                 }
             }.mapIndexed { index, song ->
                 SongAlbumMap(
@@ -1775,10 +1841,12 @@ interface DatabaseDao : AndroidAutoDao {
     fun update(
         song: Song,
         mediaMetadata: MediaMetadata,
+        overwriteTitle: Boolean = true,
+        overwriteArtists: Boolean = true,
     ) {
         update(
             song.song.copy(
-                title = mediaMetadata.title,
+                title = if (overwriteTitle) mediaMetadata.title else song.song.title,
                 duration = mediaMetadata.duration,
                 thumbnailUrl = mediaMetadata.thumbnailUrl,
                 albumId = mediaMetadata.album?.id,
@@ -1787,6 +1855,7 @@ interface DatabaseDao : AndroidAutoDao {
                 libraryRemoveToken = mediaMetadata.libraryRemoveToken
             ),
         )
+        if (!overwriteArtists || mediaMetadata.artists.isEmpty()) return
         songArtistMap(song.id).forEach(::delete)
         mediaMetadata.artists.forEachIndexed { index, artist ->
             val artistId = artist.id ?: artistByName(artist.name)?.id ?: ArtistEntity.generateArtistId()
@@ -1830,7 +1899,7 @@ interface DatabaseDao : AndroidAutoDao {
     ) {
         update(
             artist.copy(
-                name = artistPage.artist.title,
+                name = ArtistNameAliases.resolve(artist.id, artistPage.artist.title),
                 thumbnailUrl = artistPage.artist.thumbnail?.resize(1080, 1080),
                 lastUpdateTime = LocalDateTime.now()
             )
@@ -1864,7 +1933,12 @@ interface DatabaseDao : AndroidAutoDao {
             .onEach {
                 val existingSong = getSongByIdBlocking(it.id)
                 if (existingSong != null) {
-                    update(existingSong, it)
+                    update(
+                        song = existingSong,
+                        mediaMetadata = it,
+                        overwriteTitle = false,
+                        overwriteArtists = false,
+                    )
                 }
             }.mapIndexed { index, song ->
                 SongAlbumMap(
@@ -1919,6 +1993,9 @@ interface DatabaseDao : AndroidAutoDao {
 
     @Upsert
     fun upsert(format: FormatEntity)
+
+    @Query("DELETE FROM format WHERE id = :id")
+    fun deleteFormat(id: String)
 
     @Upsert
     fun upsert(song: SongEntity)

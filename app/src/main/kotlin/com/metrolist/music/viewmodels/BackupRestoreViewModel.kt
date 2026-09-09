@@ -25,6 +25,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import com.metrolist.music.constants.DataSyncIdKey
+import com.metrolist.music.constants.InnerTubeAuthUserKey
 import com.metrolist.music.constants.InnerTubeCookieKey
 import com.metrolist.music.constants.VisitorDataKey
 import com.metrolist.music.db.InternalDatabase
@@ -40,6 +41,7 @@ import com.metrolist.music.playback.MusicService.Companion.PERSISTENT_AUTOMIX_FI
 import com.metrolist.music.playback.MusicService.Companion.PERSISTENT_PLAYER_STATE_FILE
 import com.metrolist.music.playback.MusicService.Companion.PERSISTENT_QUEUE_FILE
 import com.metrolist.music.utils.reportException
+import com.metrolist.music.utils.ArtistNameAliases
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
@@ -88,9 +90,12 @@ class BackupRestoreViewModel @Inject constructor(
                             ?: error("Database path is unavailable")
                     val settingsFile = appContext.filesDir / "datastore" / SETTINGS_FILENAME
                     val databaseFile = File(dbPath)
+                    val aliasesFile = File(appContext.cacheDir, ArtistNameAliases.BACKUP_FILENAME)
+                    aliasesFile.writeText(ArtistNameAliases.serialize())
                     val entries =
                         buildList {
                             add(BackupArchiveEntry(SETTINGS_FILENAME, settingsFile))
+                            add(BackupArchiveEntry(ArtistNameAliases.BACKUP_FILENAME, aliasesFile))
                             add(BackupArchiveEntry(InternalDatabase.DB_NAME, databaseFile))
                             File("$dbPath-wal")
                                 .takeIf { it.isFile && it.length() > 0L }
@@ -122,6 +127,7 @@ class BackupRestoreViewModel @Inject constructor(
             val restoreDirectory = File(appContext.cacheDir, "backup_restore")
             val restoreDbName = "restored_${InternalDatabase.DB_NAME}"
             val extractedSettings = File(restoreDirectory, SETTINGS_FILENAME)
+            val extractedAliases = File(restoreDirectory, ArtistNameAliases.BACKUP_FILENAME)
             val restoredDatabase = appContext.getDatabasePath(restoreDbName)
             val actualSettings = appContext.filesDir / "datastore" / SETTINGS_FILENAME
             val stagedSettings =
@@ -146,11 +152,13 @@ class BackupRestoreViewModel @Inject constructor(
                             destinations =
                                 mapOf(
                                     SETTINGS_FILENAME to extractedSettings,
+                                    ArtistNameAliases.BACKUP_FILENAME to extractedAliases,
                                     InternalDatabase.DB_NAME to restoredDatabase,
                                 ),
                         )
                     val foundDatabase = InternalDatabase.DB_NAME in extractedEntries
                     val foundSettings = SETTINGS_FILENAME in extractedEntries
+                    val foundAliases = ArtistNameAliases.BACKUP_FILENAME in extractedEntries
                     val currentDbPath =
                         database.openHelper.writableDatabase.path
                             ?: error("Database path is unavailable")
@@ -205,6 +213,12 @@ class BackupRestoreViewModel @Inject constructor(
                     appContext.filesDir.resolve(PERSISTENT_QUEUE_FILE).delete()
                     appContext.filesDir.resolve(PERSISTENT_AUTOMIX_FILE).delete()
                     appContext.filesDir.resolve(PERSISTENT_PLAYER_STATE_FILE).delete()
+                    if (foundAliases) {
+                        ArtistNameAliases.restore(
+                            appContext,
+                            ArtistNameAliases.deserialize(extractedAliases.readText()),
+                        )
+                    }
                 }
 
             restoreDirectory.deleteRecursively()
@@ -273,6 +287,7 @@ class BackupRestoreViewModel @Inject constructor(
                     preferences.remove(InnerTubeCookieKey)
                     preferences.remove(VisitorDataKey)
                     preferences.remove(DataSyncIdKey)
+                    preferences.remove(InnerTubeAuthUserKey)
                 }
             }
         } finally {

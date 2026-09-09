@@ -98,6 +98,7 @@ import com.metrolist.innertube.models.PodcastItem
 import com.metrolist.innertube.models.SongItem
 import com.metrolist.innertube.models.YTItem
 import com.metrolist.music.LocalDatabase
+import com.metrolist.music.LocalArtistNameAliases
 import com.metrolist.music.LocalDownloadUtil
 import com.metrolist.music.LocalNavController
 import com.metrolist.music.LocalPlayerConnection
@@ -123,6 +124,7 @@ import com.metrolist.music.ui.utils.resize
 import com.metrolist.music.utils.joinByBullet
 import com.metrolist.music.utils.joinToArtistString
 import com.metrolist.music.utils.makeTimeString
+import com.metrolist.music.utils.ArtistNameAliases
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.utils.reportException
@@ -155,7 +157,8 @@ fun ClickableArtistText(
 ) {
     val navController = LocalNavController.current
     val andString = stringResource(R.string.and)
-    val annotatedString = remember(artists, andString, color) {
+    val artistNameAliases = LocalArtistNameAliases.current
+    val annotatedString = remember(artists, andString, color, artistNameAliases) {
         buildAnnotatedString {
             artists.forEachIndexed { index, artist ->
                 withLink(
@@ -166,7 +169,7 @@ fun ClickableArtistText(
                         navController.navigate("artist/${artist.id}")
                     }
                 ) {
-                    append(artist.name)
+                    append(ArtistNameAliases.resolve(artistNameAliases, artist.id, artist.name))
                 }
                 if (index != artists.lastIndex) {
                     if (index == artists.lastIndex - 1) {
@@ -199,7 +202,8 @@ fun ClickableArtistText(
 ) {
     val navController = LocalNavController.current
     val andString = stringResource(R.string.and)
-    val annotatedString = remember(artists, andString, color) {
+    val artistNameAliases = LocalArtistNameAliases.current
+    val annotatedString = remember(artists, andString, color, artistNameAliases) {
         buildAnnotatedString {
             artists.forEachIndexed { index, artist ->
                 val artistId = artist.id
@@ -212,10 +216,10 @@ fun ClickableArtistText(
                             navController.navigate("artist/$artistId")
                         }
                     ) {
-                        append(artist.name)
+                        append(ArtistNameAliases.resolve(artistNameAliases, artistId, artist.name))
                     }
                 } else {
-                    append(artist.name)
+                    append(ArtistNameAliases.resolve(artistNameAliases, null, artist.name))
                 }
                 if (index != artists.lastIndex) {
                     if (index == artists.lastIndex - 1) {
@@ -248,7 +252,8 @@ fun ClickableArtistText(
 ) {
     val navController = LocalNavController.current
     val andString = stringResource(R.string.and)
-    val annotatedString = remember(artists, andString, color) {
+    val artistNameAliases = LocalArtistNameAliases.current
+    val annotatedString = remember(artists, andString, color, artistNameAliases) {
         buildAnnotatedString {
             artists.forEachIndexed { index, artist ->
                 val artistId = artist.id
@@ -261,10 +266,10 @@ fun ClickableArtistText(
                             navController.navigate("artist/$artistId")
                         }
                     ) {
-                        append(artist.name)
+                        append(ArtistNameAliases.resolve(artistNameAliases, artistId, artist.name))
                     }
                 } else {
-                    append(artist.name)
+                    append(ArtistNameAliases.resolve(artistNameAliases, null, artist.name))
                 }
                 if (index != artists.lastIndex) {
                     if (index == artists.lastIndex - 1) {
@@ -547,6 +552,7 @@ fun SongListItem(
     isSwipeable: Boolean = true,
     trailingContent: @Composable RowScope.() -> Unit = {},
 ) {
+    val artistNameAliases = LocalArtistNameAliases.current
     val swipeEnabled by rememberPreference(SwipeToSongKey, defaultValue = false)
 
     val content: @Composable () -> Unit = {
@@ -557,7 +563,9 @@ fun SongListItem(
                   if (subtitleOverride == null) {
                       Text(
                           text = joinByBullet(
-                              song.orderedArtists.joinToArtistString(" ${stringResource(R.string.and)} ") { it.name },
+                              song.orderedArtists.joinToArtistString(" ${stringResource(R.string.and)} ") {
+                                  ArtistNameAliases.resolve(artistNameAliases, it.id, it.name)
+                              },
                               makeTimeString(song.song.duration * 1000L)
                           ),
                           style = MaterialTheme.typography.bodySmall,

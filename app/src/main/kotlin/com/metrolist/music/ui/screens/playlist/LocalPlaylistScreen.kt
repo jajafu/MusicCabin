@@ -1394,12 +1394,13 @@ fun LocalPlaylistHeader(
                                             .playlist(playlist.playlist.browseId!!)
                                             .completed()
                                             .getOrNull() ?: return@launch
-                                    database.transaction {
+                                    database.withTransaction {
                                         clearPlaylist(playlist.id)
-                                        val songIds = playlistPage.songs
-                                            .map(SongItem::toMediaMetadata)
-                                            .onEach(::insert)
-                                            .map { it.id to it.setVideoId }
+                                        val songIds =
+                                            playlistPage.songs
+                                                .map(SongItem::toMediaMetadata)
+                                                .onEach(::insert)
+                                                .map { it.id to it.setVideoId }
                                         addSongsToPlaylist(playlist, songIds)
                                     }
                                     withContext(Dispatchers.Main) {

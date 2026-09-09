@@ -25,6 +25,8 @@ import com.metrolist.innertube.models.TasteProfile
 import com.metrolist.innertube.models.WatchEndpoint
 import com.metrolist.innertube.models.WatchEndpoint.WatchEndpointMusicSupportedConfigs.WatchEndpointMusicConfig.Companion.MUSIC_VIDEO_TYPE_ATV
 import com.metrolist.innertube.models.YTItem
+import com.metrolist.innertube.models.YouTubeAccount
+import com.metrolist.innertube.models.extractYouTubeAccounts
 import com.metrolist.innertube.models.YouTubeClient
 import com.metrolist.innertube.models.YouTubeClient.Companion.WEB
 import com.metrolist.innertube.models.YouTubeClient.Companion.WEB_REMIX
@@ -83,6 +85,8 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
 import timber.log.Timber
+import java.io.FilterInputStream
+import java.io.InputStream
 import java.net.Proxy
 import kotlin.random.Random
 
@@ -108,6 +112,11 @@ object YouTube {
         get() = innerTube.dataSyncId
         set(value) {
             innerTube.dataSyncId = value
+        }
+    var authUser: String
+        get() = innerTube.authUser
+        set(value) {
+            innerTube.authUser = value
         }
     var cookie: String?
         get() = innerTube.cookie
@@ -3353,6 +3362,13 @@ object YouTube {
                 ?.toAccountInfo()!!
         }
 
+    suspend fun accountsList(): Result<List<YouTubeAccount>> =
+        runCatching {
+            Json
+                .parseToJsonElement(innerTube.accountsList().bodyAsText())
+                .extractYouTubeAccounts()
+        }
+
     suspend fun feedback(tokens: List<String>): Result<Boolean> =
         runCatching {
             innerTube
@@ -3579,6 +3595,43 @@ object YouTube {
 
             val status = uploadResponse.headers["X-Goog-Upload-Status"]
             status == "final"
+        }
+
+    /**
+     * Upload a song to YouTube Music without buffering the file in memory.
+     * @param filename The name of the file
+     * @param contentLength The file size in bytes
+     * @param content Opens the file for streaming
+     * @param onProgress Callback for upload progress (0.0 to 1.0)
+     * @return true if upload succeeded
+     */
+    suspend fun uploadSong(
+        filename: String,
+        contentLength: Long,
+        content: () -> InputStream,
+        onProgress: ((Float) -> Unit)? = null,
+    ): Result<Boolean> =
+        runCatching {
+            require(contentLength in 1 until MAX_UPLOAD_SIZE)
+            onProgress?.invoke(0f)
+            onProgress?.invoke(0.05f)
+            val initResponse = innerTube.initSongUpload(filename, contentLength)
+            val uploadUrl =
+                initResponse.headers["X-Goog-Upload-URL"]
+                    ?: throw Exception("Failed to get upload URL")
+            val uploadResponse =
+                innerTube.uploadSongStream(
+                    uploadUrl = uploadUrl,
+                    content = {
+                        UploadProgressInputStream(content(), contentLength) { progress ->
+                            onProgress?.invoke(0.05f + progress * 0.95f)
+                        }
+                    },
+                )
+
+            val uploaded = uploadResponse.headers["X-Goog-Upload-Status"] == "final"
+            if (uploaded) onProgress?.invoke(1f)
+            uploaded
         }
 
     /**

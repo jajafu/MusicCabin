@@ -9,8 +9,8 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 /**
  * Simple NetworkConnectivityObserver based on OuterTune's implementation
@@ -20,8 +20,8 @@ class NetworkConnectivityObserver(context: Context) {
     private val connectivityManager =
         context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
-    private val _networkStatus = Channel<Boolean>(Channel.CONFLATED)
-    val networkStatus = _networkStatus.receiveAsFlow()
+    private val _networkStatus = MutableStateFlow(isCurrentlyConnected())
+    val networkStatus = _networkStatus.asStateFlow()
 
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
@@ -41,10 +41,9 @@ class NetworkConnectivityObserver(context: Context) {
         try {
             connectivityManager.registerDefaultNetworkCallback(networkCallback)
         } catch (_: Exception) {
-            publishCurrentStatus()
+            // Fallback: assume connected if registration fails
+            _networkStatus.value = true
         }
-
-        publishCurrentStatus()
     }
 
     fun unregister() {
@@ -54,7 +53,7 @@ class NetworkConnectivityObserver(context: Context) {
     }
 
     private fun publishCurrentStatus() {
-        _networkStatus.trySend(isCurrentlyConnected())
+        _networkStatus.value = isCurrentlyConnected()
     }
 
     /**
