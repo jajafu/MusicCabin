@@ -4,6 +4,72 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.10
+
+### 中文
+
+- 主選單在相框 2 可用時僅顯示相框 2，從五項回到四項；相框 1 的畫面、路由、設定與照片資料完整保留。不提供相框 2 的建置仍顯示原相框。
+- 整理相框 2 齒輪設定：等寬照片來源卡片、統一圓角與間距、固定標題／完成按鈕、整齊的相簿及已選照片列表、附圖示的顯示開關及醒目的間隔數值。連線權限與圖片格式／快取說明可展開閱讀，首次連接前仍顯示唯讀授權範圍；照片與音樂播放流程維持不變。版本 code 240。
+- 本機 Release 簽章可改由已忽略版控的根目錄 `keystore.properties` 提供 keystore 路徑、store 密碼、key alias 與 key 密碼；CI 環境變數仍具優先權，GitHub Foss workflow 的簽章方式不變。
+
+### English
+
+- When Photo frame 2 is available, the main menu shows only that frame, returning from five items to four. Photo frame 1 retains its screen, route, settings, and photo data; builds without Photo frame 2 keep the original menu entry.
+- Refine the Photo frame 2 gear panel with equal-width source cards, consistent rounded groups and spacing, a fixed header and Done button, aligned folder and selected-photo lists, display icons, and a highlighted interval value. Connection permissions and image format/cache details can expand on demand, while the read-only scope remains visible before connecting. Photo and music playback behavior is unchanged. Version code 240.
+- Local Release signing can now read the keystore path, store password, key alias, and key password from a root `keystore.properties` file that is ignored by version control. CI environment variables still take precedence, so the GitHub Foss workflow signing path is unchanged.
+
+## 13.7.9
+
+### 中文
+
+- 修復通知欄與其他以 `Uri` 載入封面的位置仍顯示空白：縮圖降級重試同時支援字串與 `Uri` 請求，404 時自動逐級改用低解析度縮圖。
+
+### English
+
+- Fix blank covers on the notification shade and other surfaces that load artwork as a `Uri`: the thumbnail downgrade retry now handles both string and `Uri` requests, stepping down resolutions on 404.
+
+## 13.7.8
+
+### 中文
+
+- 「數位相框 2」入口移至主選單原有相框旁；進入後立即以最後選取的本機照片或 Google Drive 資料夾開始全螢幕隨機輪播。有效的保存 Drive 授權會靜默使用，過期授權改由齒輪手動重新連接，不自動重複同意流程；來源選擇只在齒輪內提供。
+- 新頁面沿用原相框的時間／歌曲／歌手半透明第一列，以及音樂上一首／播放／下一首與照片上一張／下一張、齒輪、退出第二列；支援 5／10／15／30／60 秒（預設 10 秒）、第一張立即顯示及目前輪次接下來最多三張壓縮照片預載。使用獨立 v2 preference keys、index 與 ViewModel，本機 MediaStore／USB／SD／direct USB／多選行為沿用既有程式，但不遷移舊選取。
+- 本機與 Drive 照片輪播在齒輪及背景時暫停，Drive 快取與預載仍沿用共用 Coil DiskCache；獨立離線相簿／索引、舊資料承接與完整 v2 仍未完成。13.7.7 的資料夾列出與播放已確認，13.7.8 介面／車機驗證待完成；版本 code 238，無資料庫 schema 變更。
+- 「數位相框 2」旋轉螢幕不再重新載入：Drive 沿用已連接的工作階段與目前照片、不重列清單；本機沿用播放順序與目前照片位置，只重排版並將新尺寸套用到之後的照片。
+
+### English
+
+- Photo frame 2 (test) now sits beside the original frame in the main menu and opens directly into a full-screen randomized slideshow using the last selected local-photo source or Google Drive folder. A valid saved Drive authorization is reused silently; expired authorization requires an explicit reconnect from the gear without an automatic consent loop, and source selection is available only from the gear.
+- The new screen keeps the original frame’s semitransparent time/song/artist first row and separate music previous/play-pause/next, photo previous/next, gear, and exit controls in the second row. It supports 5/10/15/30/60-second intervals (10 seconds by default), immediate first-image display, and prefetching up to three compressed photos ahead in the current randomized round. Independent v2 preference keys, index, and ViewModel are used; existing MediaStore, USB/SD, direct USB, and multiselect behavior is reused without migrating old selections.
+- Local and Drive photo playback suspends from the gear and in the background, while Drive cache and prefetch continue using the shared Coil DiskCache. Standalone offline gallery/catalog, legacy selection migration, and the complete v2 scope remain unfinished. Version 13.7.7 folder listing and playback are confirmed; 13.7.8 UI and head-unit validation are pending. Version code 238; no database schema change.
+- Photo frame 2 no longer reloads on rotation: Drive keeps its connected session and current photo without re-listing, while local playback keeps its order and position with only a layout pass and the new size applied to later photos.
+
+## 13.7.7
+
+### 中文
+
+- 「數位相框 2」的 Google Drive 流程改為選取資料夾後按「使用此資料夾播放」：完整讀取所有直屬照片 metadata 分頁，再開始自動隨機全螢幕輪播。第一張先顯示，再預載最多三張壓縮照片，預載不解碼，顯示解碼長邊不超過 1920px；雲端可從齒輪暫停／繼續。歌曲上一首／播放暫停／下一首與照片上一張／下一張分開控制；本機來源保留原有自動輪播，不使用雲端預載。
+- 使用共用 Coil DiskCache 與既有容量／清除設定，key 包含帳戶、檔案 ID、版本／modifiedTime／size；命中不下載，新增、缺失或變更才下載。損壞／不可用檔案略過，下一張載入時保留目前畫面；網路失敗時，工作階段內已有快取的照片仍可播放。容量為 0 時只用單一暫存檔、不預載且不保留；進背景會釋放播放資源但保留選取與快取，返回須手動重新連接。
+- 本次只涵蓋 Drive 播放增量，未完成獨立離線相簿／gallery、本機資料承接或整體 v2 規畫；將原先「開始前先準備三張」調整為第一張先顯示、再向前預載最多三張以縮短首次等待。版本 code 237。實際目標車機驗證尚未完成，無資料庫 schema 變更。
+
+### English
+
+- Photo frame 2 now offers Use this folder to play after selecting a Google Drive folder: it consumes all direct-child photo metadata pages before starting automatic randomized full-screen playback. The first image displays first, followed by prefetching up to three compressed photos without decoding them; display decoding has a 1920px maximum long edge, and cloud pause/resume is available from the gear. Song previous/play-pause/next and photo previous/next controls are separate; local sources retain their original automatic rotation without cloud prefetch.
+- The shared Coil DiskCache and existing capacity/clear settings are used, with keys containing account, file ID, and version/modifiedTime/size. Cache hits avoid downloads; new, missing, or changed versions download on demand. Corrupt or unavailable files are skipped while the current frame remains during the next load; session-cached photos can continue during network failure. Capacity 0 uses one temporary file with no prefetch or retention; background closes playback and releases resources while retaining selection and cache, and return requires an explicit reconnect.
+- This increment covers Drive playback only. Standalone offline gallery, local migration, and the complete v2 plan remain future work; the original prepare-three-before-start goal is adjusted to first-image-first plus up to three ahead for faster start. Version code 237. Actual target head-unit validation is still pending, with no database schema change.
+
+## 13.7.6
+
+### 中文
+
+- GMS 建置新增選用的「設定 → 相框 2（測試）」入口，進行第 0 階段 Google Drive 唯讀 OAuth 驗證；Drive 帳戶與 YouTube Music 登入分離，會讀完資料夾所有分頁後顯示完整的直屬照片 metadata 清單，只有明確預覽單張不超過 20 MiB 的 JPEG、PNG、WebP 照片時才下載，解碼長邊上限 1920px。token SDK 呼叫集中於 Drive provider；帳戶檢查、取消、停用與本機解除連接則由 Drive 專用模組處理，不接觸音樂登入。Foss／Izzy 不顯示入口。
+- 圖片只使用暫存檔，載入完成後清理，不提供離線快取；三張預載、共用圖片快取、v2 本機資料承接與離線相簿仍屬後續規畫。建置開關 `-PphotoFrameV2Enabled=false` 與 `-PphotoFrameDriveEnabled=false` 可分別隱藏入口及停用 Drive；停用 Drive 時 GMS 授權依賴仍會編入。無資料庫 schema 變更，也不進行舊相框資料遷移升級。原有數位相框、本機／USB 來源、音樂登入與播放維持不變。第 0 階段實際車機 OAuth 測試尚未完成。
+
+### English
+
+- GMS builds add an opt-in Settings → Photo frame 2 (test) entry for phase 0 Google Drive read-only OAuth validation. Drive accounts are separate from YouTube Music login; the app consumes every folder page before showing the complete direct-photo metadata list, and downloads an individual JPEG, PNG, or WebP only for explicit preview, up to 20 MiB with a 1920px maximum long edge. Token SDK calls are confined to the Drive provider; account verification, cancellation, disabling, and local disconnect are handled by the Drive-only module without touching music login. Foss and Izzy do not expose the entry.
+- Image binaries use temporary files that are cleaned after loading, with no offline cache. Three-image preloading, shared image cache, v2 local migration, and offline gallery remain planned. Build flags `-PphotoFrameV2Enabled=false` and `-PphotoFrameDriveEnabled=false` independently hide the entry and disable Drive; the GMS authorization dependency remains compiled when Drive is disabled. There is no database schema change or legacy photo-frame data migration upgrade. The original photo frame, local/USB sources, music login, and playback are unchanged. The actual phase 0 head-unit OAuth test is still pending.
+
 ## 13.7.5
 
 ### 中文

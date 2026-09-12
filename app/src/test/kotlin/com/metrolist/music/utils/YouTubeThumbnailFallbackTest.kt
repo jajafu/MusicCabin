@@ -7,6 +7,7 @@ package com.metrolist.music.utils
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.net.Uri
 import androidx.test.core.app.ApplicationProvider
 import coil3.BitmapImage
 import coil3.asImage
@@ -91,6 +92,36 @@ class YouTubeThumbnailFallbackTest {
     }
 
     @Test
+    fun `interceptor retries a 404 uri with the downgraded url`() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val requested = mutableListOf<String>()
+        val chain = recordingChain(
+            context = context,
+            requested = requested,
+            initialData = Uri.parse("https://i.ytimg.com/vi/abc123/maxresdefault.jpg"),
+        ) { data ->
+            if (data.endsWith("maxresdefault.jpg")) {
+                errorResult(context, data, 404)
+            } else {
+                successResult(context, data)
+            }
+        }
+
+        val result = runBlocking {
+            YouTubeThumbnailFallbackInterceptor().intercept(chain)
+        }
+
+        assertTrue(result is SuccessResult)
+        assertEquals(
+            listOf(
+                "https://i.ytimg.com/vi/abc123/maxresdefault.jpg",
+                "https://i.ytimg.com/vi/abc123/sddefault.jpg",
+            ),
+            requested,
+        )
+    }
+
+    @Test
     fun `interceptor does not retry non 404 failures`() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val requested = mutableListOf<String>()
@@ -109,19 +140,20 @@ class YouTubeThumbnailFallbackTest {
     private fun recordingChain(
         context: Context,
         requested: MutableList<String>,
+        initialData: Any = "https://i.ytimg.com/vi/abc123/maxresdefault.jpg",
         respond: (String) -> ImageResult,
     ): Interceptor.Chain {
         val initial =
             ImageRequest
                 .Builder(context)
-                .data("https://i.ytimg.com/vi/abc123/maxresdefault.jpg")
+                .data(initialData)
                 .build()
         return object : Interceptor.Chain {
             private var current: ImageRequest = initial
             override val request: ImageRequest get() = current
             override val size: Size = Size.ORIGINAL
             override suspend fun proceed(): ImageResult {
-                val data = current.data as String
+                val data = current.data.toString()
                 requested += data
                 return respond(data)
             }

@@ -5,6 +5,7 @@
 
 package com.metrolist.music.utils
 
+import android.net.Uri
 import coil3.intercept.Interceptor
 import coil3.network.HttpException
 import coil3.request.ErrorResult
@@ -25,7 +26,13 @@ class YouTubeThumbnailFallbackInterceptor : Interceptor {
         var result = current.proceed()
         var attempts = 0
         while (result is ErrorResult && attempts < MAX_DOWNGRADE_ATTEMPTS) {
-            val url = current.request.data as? String ?: break
+            // Notification/car artwork arrives as Uri, lists usually pass Strings.
+            val url =
+                when (val data = current.request.data) {
+                    is String -> data
+                    is Uri -> data.toString()
+                    else -> break
+                }
             if (!isMissingThumbnail(result.throwable)) break
             val fallback = downgradeYouTubeThumbnail(url) ?: break
             current = current.withRequest(current.request.newBuilder().data(fallback).build())

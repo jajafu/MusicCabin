@@ -31,6 +31,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import com.metrolist.music.ui.screens.Screens
+import com.metrolist.music.photo.v2.FrameV2Text
+import com.metrolist.music.photo.v2.frameV2String
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 
@@ -123,7 +125,7 @@ fun AppNavigationRail(
                 icon = {
                     Icon(
                         painter = painterResource(id = iconRes),
-                        contentDescription = stringResource(screen.titleId)
+                        contentDescription = if (screen == Screens.PhotoFrameV2) frameV2String(FrameV2Text.Title) else stringResource(screen.titleId)
                     )
                 }
             )
@@ -203,13 +205,13 @@ fun AppNavigationBar(
                 icon = {
                     Icon(
                         painter = painterResource(id = iconRes),
-                        contentDescription = stringResource(screen.titleId)
+                        contentDescription = if (screen == Screens.PhotoFrameV2) frameV2String(FrameV2Text.Title) else stringResource(screen.titleId)
                     )
                 },
                 label = if (!slimNav) {
                     {
                         Text(
-                            text = stringResource(screen.titleId),
+                            text = if (screen == Screens.PhotoFrameV2) frameV2String(FrameV2Text.Title) else stringResource(screen.titleId),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )

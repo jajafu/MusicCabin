@@ -24,6 +24,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.dialog
 import androidx.navigation.navArgument
 import com.metrolist.music.MainActivity
+import com.metrolist.music.BuildConfig
+import com.metrolist.music.photo.v2.PHOTO_FRAME_V2_ROUTE
+import com.metrolist.music.photo.v2.PhotoFrameV2Screen
 import com.metrolist.music.constants.DarkModeKey
 import com.metrolist.music.constants.PureBlackKey
 import com.metrolist.music.ui.screens.artist.ArtistAlbumsScreen
@@ -102,6 +105,10 @@ fun NavGraphBuilder.navigationBuilder(
 
     composable(Screens.PhotoFrame.route) {
         PhotoFrameScreen(navController)
+    }
+
+    if (BuildConfig.PHOTO_FRAME_V2_AVAILABLE) {
+        composable(PHOTO_FRAME_V2_ROUTE) { PhotoFrameV2Screen(navController) }
     }
 
     composable(Screens.ListenTogether.route) {

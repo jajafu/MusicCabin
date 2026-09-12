@@ -14,9 +14,16 @@ import java.util.Properties
 import javax.inject.Inject
 
 val localProperties = Properties()
+val releaseSigningProperties = Properties()
+val photoFrameV2Enabled = providers.gradleProperty("photoFrameV2Enabled").orElse("true").get().toBooleanStrict()
+val photoFrameDriveEnabled = providers.gradleProperty("photoFrameDriveEnabled").orElse("true").get().toBooleanStrict()
 val localPropertiesFile = rootProject.file("local.properties")
 if (localPropertiesFile.exists()) {
     localProperties.load(localPropertiesFile.inputStream())
+}
+val releaseSigningPropertiesFile = rootProject.file("keystore.properties")
+if (releaseSigningPropertiesFile.exists()) {
+    releaseSigningPropertiesFile.inputStream().use(releaseSigningProperties::load)
 }
 
 val baseApplicationId = "com.jajafu.musiccabin"
@@ -25,10 +32,17 @@ val debugKeystorePathOverride = System.getenv("METROLIST_DEBUG_KEYSTORE_PATH")?.
 val debugKeystorePassword = System.getenv("METROLIST_DEBUG_KEYSTORE_PASSWORD")?.takeIf { it.isNotBlank() } ?: "android"
 val debugKeyAlias = System.getenv("METROLIST_DEBUG_KEY_ALIAS")?.takeIf { it.isNotBlank() } ?: "androiddebugkey"
 val debugKeyPassword = System.getenv("METROLIST_DEBUG_KEY_PASSWORD")?.takeIf { it.isNotBlank() } ?: "android"
-val releaseKeystorePathOverride = System.getenv("METROLIST_RELEASE_KEYSTORE_PATH")?.takeIf { it.isNotBlank() }
-val releaseStorePassword = System.getenv("STORE_PASSWORD").orEmpty()
-val releaseKeyAlias = System.getenv("KEY_ALIAS").orEmpty()
-val releaseKeyPassword = System.getenv("KEY_PASSWORD").orEmpty()
+val releaseKeystorePathFromEnvironment = System.getenv("METROLIST_RELEASE_KEYSTORE_PATH")?.takeIf { it.isNotBlank() }
+val releaseKeystorePathFromProperties = releaseSigningProperties.getProperty("storeFile")?.takeIf { it.isNotBlank() }
+val releaseStorePassword =
+    System.getenv("STORE_PASSWORD")?.takeIf { it.isNotBlank() }
+        ?: releaseSigningProperties.getProperty("storePassword").orEmpty()
+val releaseKeyAlias =
+    System.getenv("KEY_ALIAS")?.takeIf { it.isNotBlank() }
+        ?: releaseSigningProperties.getProperty("keyAlias").orEmpty()
+val releaseKeyPassword =
+    System.getenv("KEY_PASSWORD")?.takeIf { it.isNotBlank() }
+        ?: releaseSigningProperties.getProperty("keyPassword").orEmpty()
 val persistentDebugKeystoreFile = file("persistent-debug.keystore")
 val workflowDebugKeystoreFile = debugKeystorePathOverride?.let(::file)
 
@@ -104,8 +118,10 @@ android {
         applicationId = applicationIdOverride ?: baseApplicationId
         minSdk = 26
         targetSdk = 36
-        versionCode = 235
-        versionName = "13.7.5"
+        versionCode = 240
+        versionName = "13.7.10"
+        buildConfigField("boolean", "PHOTO_FRAME_V2_AVAILABLE", "false")
+        buildConfigField("boolean", "DRIVE_OAUTH_AVAILABLE", "false")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
@@ -137,6 +153,8 @@ android {
         // GMS - Updater and gcast
         create("gms") {
             dimension = "variant"
+            buildConfigField("boolean", "PHOTO_FRAME_V2_AVAILABLE", photoFrameV2Enabled.toString())
+            buildConfigField("boolean", "DRIVE_OAUTH_AVAILABLE", photoFrameDriveEnabled.toString())
             buildConfigField("Boolean", "CAST_AVAILABLE", "true")
             buildConfigField("Boolean", "UPDATER_AVAILABLE", "true")
         }
@@ -163,7 +181,10 @@ android {
             keyPassword = debugKeyPassword
         }
         create("release") {
-            storeFile = releaseKeystorePathOverride?.let(::file) ?: file("keystore/release.keystore")
+            storeFile =
+                releaseKeystorePathFromEnvironment?.let(::file)
+                    ?: releaseKeystorePathFromProperties?.let(rootProject::file)
+                    ?: file("keystore/release.keystore")
             storePassword = releaseStorePassword
             keyAlias = releaseKeyAlias
             keyPassword = releaseKeyPassword
@@ -378,6 +399,7 @@ dependencies {
     "gmsImplementation"(libs.media3.cast)
     "gmsImplementation"(libs.mediarouter)
     "gmsImplementation"(libs.cast.framework)
+    "gmsImplementation"(libs.drive.authorization)
 
     implementation(libs.room.runtime)
     ksp(libs.room.compiler)

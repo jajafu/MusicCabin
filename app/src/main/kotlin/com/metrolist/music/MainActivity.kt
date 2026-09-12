@@ -800,7 +800,7 @@ class MainActivity : ComponentActivity() {
 
                 val shouldShowNavigationBar =
                     remember(currentRoute, navigationItemRoutes) {
-                        currentRoute != Screens.PhotoFrame.route && (currentRoute == null ||
+                        !Screens.isPhotoFrameRoute(currentRoute) && (currentRoute == null ||
                             navigationItemRoutes.contains(currentRoute) ||
                             currentRoute!!.startsWith("search/"))
                     }
@@ -1036,7 +1036,7 @@ class MainActivity : ComponentActivity() {
                         snackbarHost = { SnackbarHost(snackbarHostState) },
                         topBar = {
                             AnimatedVisibility(
-                                visible = shouldShowTopBar && currentRoute != Screens.PhotoFrame.route,
+                                visible = shouldShowTopBar && !Screens.isPhotoFrameRoute(currentRoute),
                                 enter = fadeIn(animationSpec = tween(durationMillis = 300)),
                                 exit = fadeOut(animationSpec = tween(durationMillis = 200)),
                             ) {
@@ -1122,7 +1122,7 @@ class MainActivity : ComponentActivity() {
                             }
                         },
                         bottomBar = bottomBarContent@{
-                            if (currentRoute == Screens.PhotoFrame.route) return@bottomBarContent
+                            if (Screens.isPhotoFrameRoute(currentRoute)) return@bottomBarContent
                             val currentBackStackEntry = navController.currentBackStackEntry // reads reactively outside remember
 
                             val onNavItemClick: (Screens, Boolean) -> Unit =
@@ -1137,7 +1137,7 @@ class MainActivity : ComponentActivity() {
                                         if (playerBottomSheetState.isExpanded) {
                                             playerBottomSheetState.collapseSoft()
                                         }
-                                        if (screen == Screens.PhotoFrame) {
+                                        if (screen.isPhotoFrame) {
                                             navController.navigate(screen.route) { launchSingleTop = true }
                                         } else if (isSelected) {
                                             val targetEntry =
@@ -1289,7 +1289,7 @@ class MainActivity : ComponentActivity() {
                                             playerBottomSheetState.collapseSoft()
                                         }
 
-                                        if (screen == Screens.PhotoFrame) {
+                                        if (screen.isPhotoFrame) {
                                             navController.navigate(screen.route) { launchSingleTop = true }
                                         } else if (isSelected) {
                                             navController.currentBackStackEntry?.savedStateHandle?.set("scrollToTop", true)
@@ -1317,7 +1317,7 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
 
-                            if (showRail && currentRoute != "wrapped" && currentRoute != Screens.PhotoFrame.route) {
+                            if (showRail && currentRoute != "wrapped" && !Screens.isPhotoFrameRoute(currentRoute)) {
                                 AppNavigationRail(
                                     navigationItems = navigationItems,
                                     currentRoute = currentRoute,

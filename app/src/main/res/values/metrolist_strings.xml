@@ -1107,4 +1107,158 @@
     <string name="musiccabin_upstream_telegram">Upstream Metrolist Telegram channel</string>
     <string name="musiccabin_buy_me_a_coffee">Buy me a coffee</string>
     <string name="musiccabin_support_contributor">Support %1$s</string>
+
+    <!-- Photo frame 2 uses paired resources here to keep the experiment self-contained. -->
+    <string name="photo_frame_v2_title" translatable="false">Photo frame 2</string>
+    <string name="photo_frame_v2_title_zh_tw" translatable="false">數位相框 2</string>
+    <string name="photo_frame_v2_entry_description" translatable="false">Play a Google Drive folder with image caching</string>
+    <string name="photo_frame_v2_entry_description_zh_tw" translatable="false">Google Drive 資料夾輪播與圖片快取</string>
+    <string name="photo_frame_v2_scope" translatable="false">Choose a Drive folder to play its photos randomly. Downloads are automatic and reuse the app’s image cache. Use only while parked.</string>
+    <string name="photo_frame_v2_scope_zh_tw" translatable="false">指定 Drive 資料夾即可隨機輪播照片。自動下載需要的照片，並優先使用 App 的圖片快取。請僅在停車時使用。</string>
+    <string name="photo_frame_v2_enable" translatable="false">Enable Google Drive</string>
+    <string name="photo_frame_v2_enable_zh_tw" translatable="false">啟用 Google Drive</string>
+    <string name="photo_frame_v2_permission" translatable="false">Requests read-only access to your entire Drive. Reads the folders you browse and photos directly inside the folder you choose for playback. YouTube Music sign-in is separate.</string>
+    <string name="photo_frame_v2_permission_zh_tw" translatable="false">授權範圍為整個 Drive 唯讀存取。實際只讀取你瀏覽的資料夾，以及指定播放資料夾內的直屬照片；與 YouTube Music 登入分開。</string>
+    <string name="photo_frame_v2_build_disabled" translatable="false">Drive is disabled in this build.</string>
+    <string name="photo_frame_v2_build_disabled_zh_tw" translatable="false">此建置已停用 Drive。</string>
+    <string name="photo_frame_v2_disabled" translatable="false">Drive is off. Enable it before connecting.</string>
+    <string name="photo_frame_v2_disabled_zh_tw" translatable="false">Drive 已停用。啟用後即可連接。</string>
+    <string name="photo_frame_v2_account" translatable="false">Connected account: %1$s</string>
+    <string name="photo_frame_v2_account_zh_tw" translatable="false">已連接帳戶：%1$s</string>
+    <string name="photo_frame_v2_saved_account" translatable="false">Saved account: %1$s. Connect to start this session.</string>
+    <string name="photo_frame_v2_saved_account_zh_tw" translatable="false">已儲存帳戶：%1$s。請按連接開始本次測試。</string>
+    <string name="photo_frame_v2_connect" translatable="false">Connect Google Drive</string>
+    <string name="photo_frame_v2_connect_zh_tw" translatable="false">連接 Google Drive</string>
+    <string name="photo_frame_v2_disconnect" translatable="false">Disconnect locally</string>
+    <string name="photo_frame_v2_disconnect_zh_tw" translatable="false">本機解除連接</string>
+    <string name="photo_frame_v2_disconnect_hint" translatable="false">Disconnect before choosing another account. This removes the saved Drive account and folder selection from this device without revoking Google authorization.</string>
+    <string name="photo_frame_v2_disconnect_hint_zh_tw" translatable="false">更換帳戶前請先解除連接。這會移除此裝置保存的 Drive 帳戶與資料夾選擇，不會撤銷 Google 端授權。</string>
+    <string name="photo_frame_v2_cancel" translatable="false">Cancel</string>
+    <string name="photo_frame_v2_cancel_zh_tw" translatable="false">取消</string>
+    <string name="photo_frame_v2_refresh_token" translatable="false">Test token renewal</string>
+    <string name="photo_frame_v2_refresh_token_zh_tw" translatable="false">測試重新取得 token</string>
+    <string name="photo_frame_v2_ready" translatable="false">Ready to test</string>
+    <string name="photo_frame_v2_ready_zh_tw" translatable="false">準備開始測試</string>
+    <string name="photo_frame_v2_authorizing" translatable="false">Waiting for Google authorization…</string>
+    <string name="photo_frame_v2_authorizing_zh_tw" translatable="false">等待 Google 授權…</string>
+    <string name="photo_frame_v2_connected" translatable="false">Connected</string>
+    <string name="photo_frame_v2_connected_zh_tw" translatable="false">已連線</string>
+    <string name="photo_frame_v2_listing" translatable="false">Loading all pages: %1$d items found…</string>
+    <string name="photo_frame_v2_listing_zh_tw" translatable="false">正在載入所有分頁：已找到 %1$d 個項目…</string>
+    <string name="photo_frame_v2_listed" translatable="false">All photo pages loaded.</string>
+    <string name="photo_frame_v2_listed_zh_tw" translatable="false">照片清單分頁已全部載入。</string>
+    <string name="photo_frame_v2_downloading" translatable="false">Downloading and decoding the selected photo…</string>
+    <string name="photo_frame_v2_downloading_zh_tw" translatable="false">正在下載並解碼選取的照片…</string>
+    <string name="photo_frame_v2_previewed" translatable="false">Photo download and decode succeeded. The temporary file has been removed.</string>
+    <string name="photo_frame_v2_previewed_zh_tw" translatable="false">照片下載與解碼成功，暫存檔已移除。</string>
+    <string name="photo_frame_v2_refreshed" translatable="false">Token renewal and account verification succeeded.</string>
+    <string name="photo_frame_v2_refreshed_zh_tw" translatable="false">重新取得 token 與帳戶驗證成功。</string>
+    <string name="photo_frame_v2_stopped" translatable="false">Session stopped. Connect again to continue.</string>
+    <string name="photo_frame_v2_stopped_zh_tw" translatable="false">本次工作已停止。請重新連接以繼續。</string>
+    <string name="photo_frame_v2_root" translatable="false">My Drive</string>
+    <string name="photo_frame_v2_root_zh_tw" translatable="false">我的雲端硬碟</string>
+    <string name="photo_frame_v2_parent" translatable="false">Parent folder</string>
+    <string name="photo_frame_v2_parent_zh_tw" translatable="false">上一層資料夾</string>
+    <string name="photo_frame_v2_refresh_folders" translatable="false">Refresh folders</string>
+    <string name="photo_frame_v2_refresh_folders_zh_tw" translatable="false">重新整理資料夾</string>
+    <string name="photo_frame_v2_list_photos" translatable="false">Use this folder to play</string>
+    <string name="photo_frame_v2_list_photos_zh_tw" translatable="false">使用此資料夾播放</string>
+    <string name="photo_frame_v2_no_folders" translatable="false">No subfolders here.</string>
+    <string name="photo_frame_v2_no_folders_zh_tw" translatable="false">這裡沒有子資料夾。</string>
+    <string name="photo_frame_v2_photo_count" translatable="false">Direct photos: %1$d</string>
+    <string name="photo_frame_v2_photo_count_zh_tw" translatable="false">直屬照片：%1$d 張</string>
+    <string name="photo_frame_v2_preview_limit" translatable="false">Plays direct JPEG, PNG and WebP photos up to 20 MiB each; subfolders are excluded. Image cache capacity and clearing follow Storage settings. A zero cache capacity keeps no photos.</string>
+    <string name="photo_frame_v2_preview_limit_zh_tw" translatable="false">播放直屬 JPEG、PNG 與 WebP 照片，每張上限 20 MiB，不含子資料夾。圖片快取容量與清除沿用儲存空間設定；容量為 0 時不保留照片。</string>
+    <string name="photo_frame_v2_cannot_preview" translatable="false">Preview unavailable: download permission, format or size limit.</string>
+    <string name="photo_frame_v2_cannot_preview_zh_tw" translatable="false">無法預覽：下載權限、格式或檔案大小不符合限制。</string>
+    <string name="photo_frame_v2_preview" translatable="false">Download and preview</string>
+    <string name="photo_frame_v2_preview_zh_tw" translatable="false">下載並預覽</string>
+    <string name="photo_frame_v2_back" translatable="false">Back</string>
+    <string name="photo_frame_v2_back_zh_tw" translatable="false">返回</string>
+    <string name="photo_frame_v2_unavailable" translatable="false">This device cannot currently connect to Google Drive. Check Google services or disable Drive testing.</string>
+    <string name="photo_frame_v2_unavailable_zh_tw" translatable="false">這部裝置目前無法連接 Google Drive。請檢查 Google 服務，或停用 Drive 測試。</string>
+    <string name="photo_frame_v2_cancelled" translatable="false">Authorization was cancelled. You can retry manually.</string>
+    <string name="photo_frame_v2_cancelled_zh_tw" translatable="false">授權已取消，可手動重試。</string>
+    <string name="photo_frame_v2_timeout" translatable="false">Google services timed out. Check the connection and retry.</string>
+    <string name="photo_frame_v2_timeout_zh_tw" translatable="false">Google 服務回應逾時，請檢查連線後重試。</string>
+    <string name="photo_frame_v2_reauthorize" translatable="false">Authorization needs renewal. Connect again.</string>
+    <string name="photo_frame_v2_reauthorize_zh_tw" translatable="false">授權需要更新，請重新連接。</string>
+    <string name="photo_frame_v2_configuration" translatable="false">Check the Cloud project, enabled Drive API, Android package ID and signing SHA-1.</string>
+    <string name="photo_frame_v2_configuration_zh_tw" translatable="false">請檢查 Cloud 專案、Drive API 是否啟用、Android 套件識別碼與簽章 SHA-1。</string>
+    <string name="photo_frame_v2_network" translatable="false">Network request failed. Check the connection and retry.</string>
+    <string name="photo_frame_v2_network_zh_tw" translatable="false">網路請求失敗，請檢查連線後重試。</string>
+    <string name="photo_frame_v2_permission_denied" translatable="false">Access was denied. Check the account and folder permission, then reconnect.</string>
+    <string name="photo_frame_v2_permission_denied_zh_tw" translatable="false">存取被拒絕。請檢查帳戶與資料夾權限，再重新連接。</string>
+    <string name="photo_frame_v2_not_found" translatable="false">The file or folder is missing or no longer accessible.</string>
+    <string name="photo_frame_v2_not_found_zh_tw" translatable="false">找不到檔案或資料夾，或已無法存取。</string>
+    <string name="photo_frame_v2_download_forbidden" translatable="false">The owner does not allow this photo to be downloaded.</string>
+    <string name="photo_frame_v2_download_forbidden_zh_tw" translatable="false">擁有者不允許下載此照片。</string>
+    <string name="photo_frame_v2_rate_limited" translatable="false">Drive is limiting requests. Retry later.</string>
+    <string name="photo_frame_v2_rate_limited_zh_tw" translatable="false">Drive 已限制請求頻率，請稍後重試。</string>
+    <string name="photo_frame_v2_server" translatable="false">Drive is temporarily unavailable. Retry later.</string>
+    <string name="photo_frame_v2_server_zh_tw" translatable="false">Drive 暫時無法使用，請稍後重試。</string>
+    <string name="photo_frame_v2_too_large" translatable="false">The file or response exceeds this test’s size limit.</string>
+    <string name="photo_frame_v2_too_large_zh_tw" translatable="false">檔案或回應超過此測試的大小限制。</string>
+    <string name="photo_frame_v2_invalid_image" translatable="false">This device could not decode the photo.</string>
+    <string name="photo_frame_v2_invalid_image_zh_tw" translatable="false">這部裝置無法解碼此照片。</string>
+    <string name="photo_frame_v2_storage" translatable="false">Could not save the change or temporary file. Check free storage and retry.</string>
+    <string name="photo_frame_v2_storage_zh_tw" translatable="false">無法儲存變更或暫存檔，請檢查可用空間後重試。</string>
+    <string name="photo_frame_v2_invalid_response" translatable="false">Drive returned an incomplete or unsupported response. Refresh and retry.</string>
+    <string name="photo_frame_v2_invalid_response_zh_tw" translatable="false">Drive 回傳不完整或不支援的回應，請重新整理後重試。</string>
+    <string name="photo_frame_v2_unknown" translatable="false">The test failed. Retry, or check the numeric error code in the test guide.</string>
+    <string name="photo_frame_v2_unknown_zh_tw" translatable="false">測試失敗，請重試，或依測試指南檢查數字錯誤碼。</string>
+    <string name="photo_frame_v2_toggle_controls" translatable="false">Show or hide controls</string>
+    <string name="photo_frame_v2_toggle_controls_zh_tw" translatable="false">顯示或隱藏控制列</string>
+    <string name="photo_frame_v2_preparing" translatable="false">Preparing photos…</string>
+    <string name="photo_frame_v2_preparing_zh_tw" translatable="false">正在準備照片…</string>
+    <string name="photo_frame_v2_no_playable_photos" translatable="false">No playable photos. Try another folder or reconnect.</string>
+    <string name="photo_frame_v2_no_playable_photos_zh_tw" translatable="false">沒有可播放的照片，請更換資料夾或重新連接。</string>
+    <string name="photo_frame_v2_from_cache" translatable="false">Loaded from image cache</string>
+    <string name="photo_frame_v2_from_cache_zh_tw" translatable="false">已從圖片快取載入</string>
+    <string name="photo_frame_v2_loaded_from_drive" translatable="false">Loaded from Google Drive</string>
+    <string name="photo_frame_v2_loaded_from_drive_zh_tw" translatable="false">已從 Google Drive 載入</string>
+    <string name="photo_frame_v2_slideshow_count" translatable="false">Supported photos: %1$d · Skipped: %2$d</string>
+    <string name="photo_frame_v2_slideshow_count_zh_tw" translatable="false">可支援照片：%1$d 張 · 已略過：%2$d 張</string>
+    <string name="photo_frame_v2_pause_slideshow" translatable="false">Pause slideshow</string>
+    <string name="photo_frame_v2_pause_slideshow_zh_tw" translatable="false">暫停輪播</string>
+    <string name="photo_frame_v2_resume_slideshow" translatable="false">Play slideshow</string>
+    <string name="photo_frame_v2_resume_slideshow_zh_tw" translatable="false">播放輪播</string>
+    <string name="photo_frame_v2_next_photo" translatable="false">Next photo</string>
+    <string name="photo_frame_v2_next_photo_zh_tw" translatable="false">下一張</string>
+    <string name="photo_frame_v2_change_folder" translatable="false">Back to folders</string>
+    <string name="photo_frame_v2_change_folder_zh_tw" translatable="false">返回資料夾</string>
+    <string name="photo_frame_v2_interval" translatable="false">Change photo every %1$d seconds</string>
+    <string name="photo_frame_v2_interval_zh_tw" translatable="false">每 %1$d 秒換一張</string>
+    <string name="photo_frame_v2_seconds" translatable="false">%1$d s</string>
+    <string name="photo_frame_v2_seconds_zh_tw" translatable="false">%1$d 秒</string>
+    <string name="photo_frame_v2_source" translatable="false">Photo source</string>
+    <string name="photo_frame_v2_source_zh_tw" translatable="false">照片來源</string>
+    <string name="photo_frame_v2_local_photos" translatable="false">Local photos</string>
+    <string name="photo_frame_v2_local_photos_zh_tw" translatable="false">本地照片</string>
+    <string name="photo_frame_v2_cloud_folder" translatable="false">Google Drive folder</string>
+    <string name="photo_frame_v2_cloud_folder_zh_tw" translatable="false">Google Drive 雲端資料夾</string>
+    <string name="photo_frame_v2_choose_source" translatable="false">Open the gear to choose local photos or a cloud folder.</string>
+    <string name="photo_frame_v2_choose_source_zh_tw" translatable="false">請點齒輪，選擇本地照片或雲端資料夾。</string>
+    <string name="photo_frame_v2_settings_subtitle" translatable="false">Photo sources and display</string>
+    <string name="photo_frame_v2_settings_subtitle_zh_tw" translatable="false">照片來源與顯示</string>
+    <string name="photo_frame_v2_drive_source" translatable="false">Google Drive</string>
+    <string name="photo_frame_v2_drive_source_zh_tw" translatable="false">Google Drive</string>
+    <string name="photo_frame_v2_local_source_detail" translatable="false">Device · USB · SD</string>
+    <string name="photo_frame_v2_local_source_detail_zh_tw" translatable="false">本機 · USB · SD</string>
+    <string name="photo_frame_v2_cloud_source_detail" translatable="false">Folder slideshow</string>
+    <string name="photo_frame_v2_cloud_source_detail_zh_tw" translatable="false">雲端資料夾輪播</string>
+    <string name="photo_frame_v2_selected_photos" translatable="false">Selected photos</string>
+    <string name="photo_frame_v2_selected_photos_zh_tw" translatable="false">已選照片</string>
+    <string name="photo_frame_v2_folder_selection" translatable="false">Playback folder</string>
+    <string name="photo_frame_v2_folder_selection_zh_tw" translatable="false">播放相簿</string>
+    <string name="photo_frame_v2_drive_details" translatable="false">Connection and permissions</string>
+    <string name="photo_frame_v2_drive_details_zh_tw" translatable="false">連線與權限說明</string>
+    <string name="photo_frame_v2_format_and_cache" translatable="false">Formats and image cache</string>
+    <string name="photo_frame_v2_format_and_cache_zh_tw" translatable="false">格式與圖片快取</string>
+    <string name="photo_frame_v2_expanded" translatable="false">Expanded</string>
+    <string name="photo_frame_v2_expanded_zh_tw" translatable="false">已展開</string>
+    <string name="photo_frame_v2_collapsed" translatable="false">Collapsed</string>
+    <string name="photo_frame_v2_collapsed_zh_tw" translatable="false">已收合</string>
+    <string name="photo_frame_v2_not_connected" translatable="false">Not connected</string>
+    <string name="photo_frame_v2_not_connected_zh_tw" translatable="false">尚未連線</string>
 </resources>

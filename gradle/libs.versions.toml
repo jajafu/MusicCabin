@@ -12,6 +12,7 @@ appcompat = "1.7.1"
 media3 = "1.10.1"
 mediarouter = "1.8.1"
 castFramework = "22.3.1"
+driveAuthorization = "22.0.0"
 room = "2.8.4"
 hilt = "2.59.2"
 ktor = "3.5.0"
@@ -83,6 +84,7 @@ media3-cast = { module = "androidx.media3:media3-cast", version.ref = "media3" }
 
 mediarouter = { module = "androidx.mediarouter:mediarouter", version.ref = "mediarouter" }
 cast-framework = { module = "com.google.android.gms:play-services-cast-framework", version.ref = "castFramework" }
+drive-authorization = { module = "com.google.android.gms:play-services-auth", version.ref = "driveAuthorization" }
 
 room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
 room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
