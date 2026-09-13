@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name" translatable="false">MusicCabin</string>
+    <string name="shortcut_target_package" translatable="false">com.jajafu.musiccabin</string>
     <string name="musiccabin_about">About MusicCabin</string>
     <string name="local_history">Local</string>
     <string name="remote_history">Remote</string>

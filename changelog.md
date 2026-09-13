@@ -4,6 +4,18 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.11
+
+### 中文
+
+- FOSS 維持套件識別碼 `com.jajafu.musiccabin`，GMS 改為 `com.jajafu.musiccabin.gms` 並顯示為「MusicCabin GMS」，使兩個 Release 版可同時安裝；Debug 分別使用 `.debug` 與 `.gms.debug`。靜態搜尋／音樂庫捷徑及依 application ID 產生的 Provider、辨識 action 會正確指向各自 variant。
+- GMS 關閉只提供 FOSS APK 的 GitHub updater，維持本機手動安裝；GitHub Foss workflow 仍為手動觸發且建置流程不變。既有 GMS 安裝不會自動移轉設定、登入、下載或資料庫；Google Drive 必須以新 GMS package 與實際簽章 SHA-1 另建 Android OAuth client。兩版共用的網頁連結及 Discord callback 仍可能顯示 App 選擇器。版本 code 241，無資料庫 schema 變更。
+
+### English
+
+- FOSS keeps the `com.jajafu.musiccabin` package ID, while GMS moves to `com.jajafu.musiccabin.gms` and is labeled `MusicCabin GMS`, allowing both Release variants to be installed together; Debug uses `.debug` and `.gms.debug`, respectively. Static search/library shortcuts and application-ID-derived providers and recognition actions now target the correct variant.
+- GMS disables the GitHub updater because the repository publishes only a FOSS APK and remains manually installed; the manually triggered GitHub Foss workflow is unchanged. Existing GMS settings, login, downloads, and database do not migrate automatically, and Google Drive requires a separate Android OAuth client for the new GMS package plus its actual signing SHA-1. Shared web links and the Discord callback may still show an app chooser. Version code 241; no database schema change.
+
 ## 13.7.10
 
 ### 中文

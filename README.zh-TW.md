@@ -19,7 +19,7 @@ MusicCabin 是 [Metrolist](https://github.com/MetrolistGroup/Metrolist) 的 Andr
 - 首頁精簡為分類按鈕、12 個本機快速存取項目、帳號播放列表，以及最多 3 個 YouTube 官方推薦區塊，並排除「再聽一次」與「翻唱與重混」；不再載入重複且耗費資源的每日探索、社區、相似內容、情境與類型、隨機排序及無限分頁區塊，且同步期間歌曲遭移除時，快速存取項目仍可安全顯示。
 - 排行榜與探索頁載入失敗時會顯示重試操作，不再無限顯示載入動畫；首頁遇到錯誤時也一定會結束載入與下拉重新整理指示。
 - 在啟動器、關於頁面、播放通知與商店素材統一使用 `MusicCabin` 名稱與黑色音樂車 Logo。關於頁將 jajafu 列為專案維護者並加入 [Buy me a coffee](https://buymeacoffee.com/clifchi) 按鈕，Mo Agamy 則列於合作者；頁面聚焦專案致謝，不再顯示社區與資訊區塊或巴勒斯坦頁尾文字。
-- 使用專屬 Android 套件識別碼 `com.jajafu.musiccabin`，可與原始 Metrolist App 同時安裝。
+- 公開 FOSS App（`com.jajafu.musiccabin`）與自用 GMS App（`com.jajafu.musiccabin.gms`）使用不同 Android 套件識別碼，因此兩個 MusicCabin 版本及原始 Metrolist App 可同時安裝。
 - 帳號已登入且同步功能開啟時，新播放列表預設同步至 YouTube Music。播放列表建立、歌曲加入或移除失敗時，待處理操作會儲存在 App 資料庫以外、自動重試，並在播放列表音樂庫顯示待同步數量；移除重複歌曲時會保留正確的 YouTube 項目識別碼，新建立的遠端播放列表也有同步寬限時間，重複遠端播放列表會整併為一個受保護的本機記錄且不遺失已下載歌曲，大量歌曲 ID 操作則會分批執行以低於 SQLite 限制。
 - 歌曲按讚與取消按讚會使用單一、有順序且可持久保存的同步佇列。快速反向操作只保留最後狀態，YouTube 更新失敗時會跨 App 重啟保留待處理項目，並避免重複網路請求。遠端核對會保留最新的本機待處理選擇，沒有本機操作時則接受遠端變更；裝置本機歌曲的按讚不會送往 YouTube。
 - 自動完整同步只有在所有必要項目、待處理歌曲按讚與播放列表操作都成功後，才會開始計算冷卻時間。部分失敗會保留錯誤狀態，並可立即重試。
@@ -62,13 +62,17 @@ MusicCabin 是 [Metrolist](https://github.com/MetrolistGroup/Metrolist) 的 Andr
 ./gradlew :app:assembleFossRelease
 ```
 
+本機可用 `./gradlew :app:assembleGmsRelease` 建置能與 FOSS 並存的 GMS Release；其啟動器名稱為「MusicCabin GMS」。
+
 GitHub Actions workflow 均為手動執行。發版 workflow 只會建置 FOSS Release APK，並將 `MusicCabin-v<version>-car.apk` 發布到本專案的 GitHub Releases。Release notes 使用 `changelog.md` 的對應版本內容；重新執行既有版本時也會更新日誌。Workflow 需要固定的 Android 簽章 Secrets：`RELEASE_KEYSTORE_BASE64`、`RELEASE_STORE_PASSWORD`、`RELEASE_KEY_ALIAS` 與 `RELEASE_KEY_PASSWORD`；請勿提交 keystore 或密碼。播放器設定同步也改為手動執行。
 
-App 內更新器會檢查[本專案的 Releases](https://github.com/jajafu/MusicCabin/releases)，並開啟符合版本的 APK 下載頁供確認。Android 仍會要求使用者核准安裝。
+只有 FOSS 建置啟用 App 內更新器，會檢查[本專案的 Releases](https://github.com/jajafu/MusicCabin/releases)，並開啟符合版本的 APK 下載頁供確認；Android 仍會要求使用者核准安裝。自用 GMS 建置一律手動更新。
 
 Release 名稱可能包含 `-car` 後綴；更新器會比較版本中的數字部分，因此目前版本不會被誤判為有新更新。
 
-從 `13.6.77` 起，MusicCabin 使用套件識別碼 `com.jajafu.musiccabin`（Debug：`com.jajafu.musiccabin.debug`）；`13.6.52`–`13.6.76` 使用的是 `com.jajafu.metrolist.androidcar`。即使沿用相同簽章金鑰，Android 仍會將新套件另行安裝為新的 App，無法覆蓋更新舊套件。本機設定、登入、下載、資料庫、權限與已釘選的小工具／捷徑不會自動移轉。請在新安裝中重新登入與設定、授予權限，並依需要重新加入小工具／捷徑；確認需要保留的內容後，再移除舊 App。資料庫結構維持不變。之後使用新套件識別碼與相同固定簽章金鑰的版本，可以直接覆蓋更新。
+從 `13.7.11` 起，FOSS 維持 `com.jajafu.musiccabin`（Debug：`com.jajafu.musiccabin.debug`），GMS 改用 `com.jajafu.musiccabin.gms`（Debug：`com.jajafu.musiccabin.gms.debug`）。兩個 Release 版可同時安裝，但設定、登入、下載、資料庫、權限、小工具與捷徑完全分開。先前使用 `com.jajafu.musiccabin` 的 GMS 安裝不會原地升級或自動移轉資料；請重新設定新安裝，並以新套件識別碼及實際簽章 SHA-1 另建 Android OAuth client 後再連接 Drive。兩版仍會宣告部分相同網頁連結及 Discord callback scheme，因此 Android 可能詢問要用哪個 App 開啟。
+
+`13.6.77`–`13.7.10` 的兩個 Release variant 都使用 `com.jajafu.musiccabin`，`13.6.52`–`13.6.76` 則使用 `com.jajafu.metrolist.androidcar`。即使簽章金鑰相同，只要套件識別碼改變，Android 就會另行安裝。資料庫結構維持不變；後續只要同一 variant 沿用相同套件識別碼與簽章金鑰，即可直接覆蓋更新。
 
 `13.6.76` 統一了 MusicCabin 的可見品牌，`13.6.77` 再依上述說明更名套件識別碼。更新器同時支援 MusicCabin 與舊版 APK 檔名。新的播放清單匯出與儲存圖片分別使用 `MusicCabinExports` 和 `Pictures/MusicCabin`，既有檔案仍保留於原位置。品牌相關文字改用新的英文資源，避免既有翻譯帶回舊名稱。
 

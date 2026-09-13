@@ -9,7 +9,7 @@
         <intent
             android:action="com.metrolist.music.action.SEARCH"
             android:targetClass="com.metrolist.music.MainActivity"
-            android:targetPackage="com.jajafu.musiccabin.debug" />
+            android:targetPackage="@string/shortcut_target_package" />
     </shortcut>
     <shortcut
         android:enabled="true"
@@ -19,6 +19,6 @@
         <intent
             android:action="com.metrolist.music.action.LIBRARY"
             android:targetClass="com.metrolist.music.MainActivity"
-            android:targetPackage="com.jajafu.musiccabin.debug" />
+            android:targetPackage="@string/shortcut_target_package" />
     </shortcut>
 </shortcuts>

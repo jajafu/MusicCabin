@@ -1,6 +1,6 @@
 # 「數位相框 2」Google Drive 第 0 階段測試指南
 
-本文件只涵蓋 [Google Drive 相框規畫](photo-frame-google-drive-plan.zh-TW.md) 第 0 階段的 OAuth／讀取、資料夾播放與相框 2 介面驗證。2026-09-12 使用者確認目前經修正後可在手機運作；13.7.10 的主選單／設定介面調整待重新檢查，車機尚未驗證，舊相框選取資料的自動遷移與獨立離線相簿／gallery 也尚未實作。
+本文件只涵蓋 [Google Drive 相框規畫](photo-frame-google-drive-plan.zh-TW.md) 第 0 階段的 OAuth／讀取、資料夾播放與相框 2 介面驗證。2026-09-12 使用者確認目前經修正後可在手機運作；13.7.11 將 GMS 改為可與 FOSS 並存的獨立套件，主選單／設定介面仍待重新檢查，車機尚未驗證，舊相框選取資料的自動遷移與獨立離線相簿／gallery 也尚未實作。
 
 ## Google Cloud 設定
 
@@ -13,7 +13,7 @@
    ./gradlew :app:signingReport
    ```
 
-   Debug 預設套件為 `com.jajafu.musiccabin.debug`；個人簽署版本需使用該版本實際套件與 SHA-1。
+   GMS Debug 預設套件為 `com.jajafu.musiccabin.gms.debug`；個人簽署的 GMS Release 為 `com.jajafu.musiccabin.gms`。兩者都必須搭配該安裝版本的實際簽章 SHA-1。
 3. Testing 狀態要測試同意後七日到期；長期自用可改為 `In production`，仍只供個人安裝。兩種狀態都不需要 web client secret，也不使用 YouTube Music cookie。
 
 ### 從 Testing 轉 In production（個人自用）
@@ -26,7 +26,7 @@
 4. 回到「目標對象」按「發布應用程式」，狀態顯示為正式版（`In production`）即完成。發佈自用不需送驗證，授權時出現「未驗證應用程式」警告屬正常，未驗證的人數上限只影響上百人的公開用途，個人使用不受影響。
 3. 不新增、不更換 scope（維持 `drive.readonly`）；不建立新的 Android OAuth client；不把任何 secret 放入 APK。
 4. 轉完後在 App 內做一次「本機解除連接 → 連接 Google Drive」，選擇同一帳戶重新同意。Testing 期間核發的舊授權仍受七日到期限制，重連一次即取得正式效期的授權。
-5. 只有下列情況才需要動 client 或重裝：安裝的 APK 變體改變（例如從 `com.jajafu.musiccabin.debug` 換成個人簽署版）、簽署憑證更換、新增 scope。此時用 `./gradlew :app:signingReport` 核對實際套件與 SHA-1，補上對應的 Android OAuth client 後再安裝與授權。
+5. 只有下列情況才需要動 client 或重裝：安裝的 APK 變體改變（例如從 `com.jajafu.musiccabin.gms.debug` 換成 `com.jajafu.musiccabin.gms`）、簽署憑證更換、新增 scope。此時用 `./gradlew :app:signingReport` 核對實際套件與 SHA-1，補上對應的 Android OAuth client 後再安裝與授權。
 6. 自用可不申請公開驗證，授權時出現「未驗證應用程式」警告屬正常，按繼續即可。此設定只是 OAuth 狀態，並非 Play 商店發行；也不要把同一個個人專案分享給公眾使用，公開用途需另案申請驗證。
 
 ### 公私分流：公開 Foss 與自用 GMS 簽名
@@ -35,14 +35,16 @@
 
 1. 本機建私人 keystore（密碼只打在自己的 shell，不要貼進對話或文件）；
 2. 用 `keytool -list -v` 讀出該 keystore 的 SHA-1，只拿 SHA-1 去 Cloud 註冊；
-3. 在 Cloud `Credentials` 新增一條 Android OAuth client：package `com.jajafu.musiccabin`（無 `.debug` 後綴）＋私人 SHA-1。共用的 repo debug key（`com.jajafu.musiccabin.debug`）不要綁進私人專案；
+3. 在 Cloud `Credentials` 新增一條 Android OAuth client：package `com.jajafu.musiccabin.gms`（無 `.debug` 後綴）＋私人 SHA-1。共用的 repo debug key（`com.jajafu.musiccabin.gms.debug`）不要綁進私人專案；
 4. 自用編譯時帶環境變數編 GMS release：`METROLIST_RELEASE_KEYSTORE_PATH`、`STORE_PASSWORD`、`KEY_ALIAS`、`KEY_PASSWORD`，裝上後在 App 內做一次「本機解除連接 → 連接 Google Drive」。若不想每個視窗重設，可用 `setx` 把四個變數寫入使用者環境變數（在自己的 shell 跑一次即可，密碼不要貼進對話或文件），之後新開視窗直接跑 `./gradlew :app:assembleGmsRelease` 就好。
 
 別人 clone 原始碼自己編（debug 共用 key 或自己的簽名）時，簽名與私人專案綁定的 SHA-1 不同，授權會直接失敗，不會用到你的專案，也看不到你的資料。
 
-### 自用也可以用 GMS debug（與 Foss 公開版並存）
+### GMS Release／Debug 都可與 Foss 公開版並存
 
-若想在同一支手機同時保留公開 Foss 版與自用 GMS 版，可改用 GMS debug 自用：套件名有 `.debug` 後綴（`com.jajafu.musiccabin.debug`），與 Foss release 不衝突、可並存。7 天到期是 Testing 狀態的限制，與 debug／release 簽名無關，因此 debug 版只要專案已轉 `In production`，一樣沒有 7 天到期的問題，且不需自備 keystore。代價：repo 內建的共用 debug key 人人都有，若把它綁進私人專案，別人編 debug 就能蹭用你的專案（用量與警告都算你的）；debug 版另有效能較差、耗電較高的取捨，車機長期使用仍以自簽 release 為佳。注意自用版（無論 debug 或自簽 release）都不會走 App 內建的 GitHub 更新通道，更新一律手動安裝 APK。
+GMS Release 使用 `com.jajafu.musiccabin.gms`，GMS Debug 使用 `com.jajafu.musiccabin.gms.debug`，兩者都不會與公開 Foss Release 的 `com.jajafu.musiccabin` 衝突。7 天到期是 Testing 狀態的限制，與 debug／release 簽名無關，因此 debug 版只要專案已轉 `In production`，一樣沒有 7 天到期的問題，且不需自備 keystore。代價：repo 內建的共用 debug key 人人都有，若把它綁進私人專案，別人編 debug 就能蹭用你的專案（用量與警告都算你的）；debug 版另有效能較差、耗電較高的取捨，車機長期使用仍以自簽 release 為佳。自用 GMS 不啟用 GitHub updater，更新一律手動安裝 APK。
+
+Foss 與 GMS 可並存不代表所有外部連結都能自動分流。兩版仍共用 YouTube／Listen Together 連結宣告與 `metrolistdiscord://oauth2/callback`；同時安裝時 Android 可能顯示 App 選擇器，Discord OAuth 若回到另一個 variant 會因 state 不符而失敗，請重新操作並選擇原先發起登入的 App。
 
 不要把 OAuth client secret 放入 APK，也不要把 YouTube Music 登入帳戶或 Cookie 當成 Drive 授權。
 

@@ -1,5 +1,6 @@
 package com.metrolist.music.utils
 
+import com.metrolist.music.BuildConfig
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
@@ -14,7 +15,7 @@ import org.robolectric.annotation.Config
 @Config(manifest = Config.NONE, sdk = [28])
 class UpdaterBrandingTest {
     @Test
-    fun `new and historical release assets remain downloadable`() {
+    fun `branded and historical release assets remain recognized`() {
         val names = listOf(
             "MusicCabin-v13.6.75-car.apk",
             "Metrolist-AndroidCar-v13.6.73-car.apk",
@@ -37,8 +38,21 @@ class UpdaterBrandingTest {
         assertEquals(names.take(5), assets.map { it.name })
         assertEquals(listOf("foss", "foss", "foss", "gms", "foss"), assets.map { it.variant })
         assertEquals(listOf("universal", "universal", "universal", "universal", "arm64-v8a"), assets.map { it.architecture })
+    }
+
+    @Test
+    fun `current MusicCabin release only updates updater-enabled builds`() {
+        val name = "MusicCabin-v13.6.75-car.apk"
+        val assets = Updater.parseAssets(JSONArray().put(JSONObject().apply {
+            put("name", name)
+            put("browser_download_url", "https://github.com/jajafu/MusicCabin/releases/download/v13.6.75-car/$name")
+            put("size", 123L)
+        }))
         val release = ReleaseInfo("v13.6.75-car", "MusicCabin v13.6.75-car", "", "", assets)
-        assertEquals(assets.first().downloadUrl, Updater.getDownloadUrlForCurrentVariant(release))
+        assertEquals(
+            if (BuildConfig.UPDATER_AVAILABLE) assets.single().downloadUrl else null,
+            Updater.getDownloadUrlForCurrentVariant(release),
+        )
     }
 
     @Test

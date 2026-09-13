@@ -118,8 +118,8 @@ android {
         applicationId = applicationIdOverride ?: baseApplicationId
         minSdk = 26
         targetSdk = 36
-        versionCode = 240
-        versionName = "13.7.10"
+        versionCode = 241
+        versionName = "13.7.11"
         buildConfigField("boolean", "PHOTO_FRAME_V2_AVAILABLE", "false")
         buildConfigField("boolean", "DRIVE_OAUTH_AVAILABLE", "false")
 
@@ -150,13 +150,16 @@ android {
             buildConfigField("Boolean", "UPDATER_AVAILABLE", "true")
         }
 
-        // GMS - Updater and gcast
+        // GMS - separate self-installed app with gcast and Drive, no GitHub updater
         create("gms") {
             dimension = "variant"
+            if (applicationIdOverride == null) {
+                applicationIdSuffix = ".gms"
+            }
             buildConfigField("boolean", "PHOTO_FRAME_V2_AVAILABLE", photoFrameV2Enabled.toString())
             buildConfigField("boolean", "DRIVE_OAUTH_AVAILABLE", photoFrameDriveEnabled.toString())
             buildConfigField("Boolean", "CAST_AVAILABLE", "true")
-            buildConfigField("Boolean", "UPDATER_AVAILABLE", "true")
+            buildConfigField("Boolean", "UPDATER_AVAILABLE", "false")
         }
 
         // IzzyOnDroid - no gcast, no updater - the ONLY F-droid compliant build
