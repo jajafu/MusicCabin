@@ -3,6 +3,8 @@ package com.metrolist.music.photo.v2.drive
 import coil3.disk.DiskCache
 import coil3.disk.directory
 import java.io.File
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
@@ -147,6 +149,86 @@ class DriveImageCacheTest {
             assertEquals(2, api.downloads)
         } finally {
             release.complete(Unit)
+            disk.shutdown()
+        }
+    }
+
+    @Test fun `persistent index lists intact cached photos without Drive access`() = runBlocking {
+        val disk = newDisk()
+        val index = files.newFile()
+        index.delete()
+        try {
+            val api = Api()
+            val cached = (1..3).map { photo.copy(id = "photo-$it", name = "$it.jpg") }
+            val loader = DriveImageCache({ disk }, files.newFolder(), index) { it.readText() == "image" }
+            cached.forEach { loader.prefetch(account, it, api) }
+
+            val reopened = DriveImageCache({ disk }, files.newFolder(), index) { it.readText() == "image" }
+            assertEquals(2, reopened.cachedPhotos(account, maximumCount = 2).size)
+            assertEquals(cached.map { it.id }.toSet(), reopened.cachedPhotos(account).map { it.id }.toSet())
+            assertTrue(reopened.cachedPhotos(account.copy(permissionId = "other-account")).isEmpty())
+            assertEquals(3, api.downloads)
+
+            disk.remove(DriveImageCache.key(account, cached.first()))
+            assertEquals(cached.drop(1).map { it.id }.toSet(), reopened.cachedPhotos(account).map { it.id }.toSet())
+        } finally { disk.shutdown() }
+    }
+
+    @Test fun `refreshed metadata indexes cache entries created before the offline catalog`() = runBlocking {
+        val disk = newDisk()
+        val index = files.newFile()
+        index.delete()
+        try {
+            val api = Api()
+            val oldLoader = loader(disk)
+            oldLoader.prefetch(account, photo, api)
+            val upgraded = DriveImageCache({ disk }, files.newFolder(), index) { it.readText() == "image" }
+
+            assertTrue(upgraded.cachedPhotos(account).isEmpty())
+            upgraded.indexAvailable(account, listOf(photo))
+
+            assertEquals(listOf(photo), upgraded.cachedPhotos(account))
+            assertEquals(1, api.downloads)
+        } finally { disk.shutdown() }
+    }
+
+    @Test fun `cancelled full scan promptly releases the index for foreground reentry`() = runBlocking {
+        val disk = newDisk()
+        val index = files.newFile()
+        index.delete()
+        val release = CountDownLatch(1)
+        try {
+            val api = Api()
+            val cached = (1..20).map { photo.copy(id = "cancel-$it", name = "$it.jpg") }
+            val indexed = DriveImageCache({ disk }, files.newFolder(), index) { true }
+            cached.forEach { indexed.prefetch(account, it, api) }
+            val started = CompletableDeferred<Unit>()
+            var first = true
+            val scanning = DriveImageCache({ disk }, files.newFolder(), index) {
+                if (first) {
+                    first = false
+                    started.complete(Unit)
+                    release.await(2, TimeUnit.SECONDS)
+                } else {
+                    Thread.sleep(100)
+                }
+                true
+            }
+
+            val scan = async { scanning.cachedPhotos(account) }
+            started.await()
+            scan.cancel()
+            release.countDown()
+            try {
+                scan.await()
+                fail("Expected scan cancellation")
+            } catch (_: CancellationException) { }
+
+            withTimeout(1_000) {
+                assertEquals(1, scanning.cachedPhotos(account, maximumCount = 1).size)
+            }
+        } finally {
+            release.countDown()
             disk.shutdown()
         }
     }

@@ -141,8 +141,10 @@ fun PhotoFrameV2Screen(
     FrameImmersiveMode(foreground)
     LaunchedEffect(foreground, source, drive.initialized, showSettings, showMediaBrowser) {
         driveViewModel.slideshow.setSuspended(!foreground || showSettings || showMediaBrowser)
-        if (foreground && source == FrameV2Source.DRIVE && drive.initialized && !showSettings && !showMediaBrowser &&
-            !cloudSlides.active && !drive.busy) controller.resumeSavedFolder()
+        if (foreground && source == FrameV2Source.DRIVE && drive.initialized && !showSettings && !showMediaBrowser && !drive.busy) {
+            driveViewModel.startCachedSlideshow()
+            controller.resumeSavedFolder()
+        }
         if (foreground && showSettings && source == FrameV2Source.DRIVE && drive.connected && !drive.busy) controller.refreshFolders()
     }
     LaunchedEffect(state.settings.intervalSeconds) { driveViewModel.slideshow.setInterval(state.settings.intervalSeconds) }
@@ -271,7 +273,11 @@ fun PhotoFrameV2Screen(
                     else if (state.initialized && uris.isEmpty()) Text(frameV2String(FrameV2Text.ChooseSource), color = Color.White)
                 } else if (source == FrameV2Source.DRIVE) {
                     val error = drive.error ?: cloudSlides.error
-                    if (error != null) Text(frameV2String(error.failure.text()), color = Color.White.copy(alpha = 0.85f), modifier = Modifier.frameStatus())
+                    if (error != null) {
+                        Text(frameV2String(error.failure.text()), color = Color.White.copy(alpha = 0.85f), modifier = Modifier.frameStatus())
+                        val code = error.code?.let { "${error.failure.name}-$it" } ?: error.failure.name
+                        Text(frameV2String(FrameV2Text.ErrorCode, code), color = Color.White.copy(alpha = 0.85f), modifier = Modifier.frameStatus())
+                    }
                     else if (!drive.busy && !cloudSlides.loading && empty) Text(
                         frameV2String(if (cloudSlides.active) FrameV2Text.NoPlayablePhotos else FrameV2Text.ChooseSource), color = Color.White.copy(alpha = 0.85f),
                     )

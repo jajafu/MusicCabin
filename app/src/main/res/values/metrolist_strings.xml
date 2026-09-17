@@ -1208,6 +1208,8 @@
     <string name="photo_frame_v2_invalid_response_zh_tw" translatable="false">Drive 回傳不完整或不支援的回應，請重新整理後重試。</string>
     <string name="photo_frame_v2_unknown" translatable="false">The test failed. Retry, or check the numeric error code in the test guide.</string>
     <string name="photo_frame_v2_unknown_zh_tw" translatable="false">測試失敗，請重試，或依測試指南檢查數字錯誤碼。</string>
+    <string name="photo_frame_v2_error_code" translatable="false">Error code: %1$s</string>
+    <string name="photo_frame_v2_error_code_zh_tw" translatable="false">錯誤碼：%1$s</string>
     <string name="photo_frame_v2_toggle_controls" translatable="false">Show or hide controls</string>
     <string name="photo_frame_v2_toggle_controls_zh_tw" translatable="false">顯示或隱藏控制列</string>
     <string name="photo_frame_v2_preparing" translatable="false">Preparing photos…</string>

@@ -85,6 +85,7 @@ enum class FrameV2Text(@StringRes val english: Int, @StringRes val traditionalCh
     Storage(R.string.photo_frame_v2_storage, R.string.photo_frame_v2_storage_zh_tw),
     InvalidResponse(R.string.photo_frame_v2_invalid_response, R.string.photo_frame_v2_invalid_response_zh_tw),
     Unknown(R.string.photo_frame_v2_unknown, R.string.photo_frame_v2_unknown_zh_tw),
+    ErrorCode(R.string.photo_frame_v2_error_code, R.string.photo_frame_v2_error_code_zh_tw),
 }
 
 @Composable

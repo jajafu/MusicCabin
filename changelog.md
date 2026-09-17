@@ -4,6 +4,20 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.12
+
+### 中文
+
+- GMS「數位相框 2」進入 Drive 來源時，先由持久化快取索引隨機檢查最多 5 張仍存在且可解碼的圖片並立即播放，再於背景擴充為全部有效快取，同時進行 OAuth、帳戶確認與雲端資料夾清單更新；有已建立索引的快取時，不再因地下室斷網或驗證等待而只顯示黑畫面。
+- 雲端更新成功時保留目前畫面並無縫換成最新清單，先準備目前照片與接下來 4 張隨機照片，所有讀取都先查共用磁碟快取，只下載缺少或版本已變更的圖片。OAuth、授權或網路失敗會在操作列下方顯示穩定錯誤碼，離線隨機輪播仍持續涵蓋全部有效快取；快取容量為 0 或尚無快取時才等待網路。版本 code 242，無資料庫 schema 變更。
+- 從舊版升級後，既有圖片二進位快取因舊格式沒有可離線反查的檔案 metadata，需至少成功更新一次保存的 Drive 資料夾；更新會在背景比對最新 metadata、建立離線索引且不重複下載已有圖片。此後才能在完全離線啟動時列出這些舊快取。
+
+### English
+
+- When Photo frame 2 opens a saved Drive source, it validates up to five randomized images from a persistent cache index and starts them immediately, expands to the complete intact cache in the background, and runs OAuth, account checks, and cloud-folder metadata refresh concurrently. With indexed cached photos available, entering a basement or waiting on authorization no longer leaves only a black frame.
+- A successful cloud refresh preserves the visible frame while adopting the latest list, seeds the current photo plus four randomized upcoming photos, and checks the shared disk cache before downloading only missing or changed images. OAuth, authorization, and network failures show a stable error code below the controls while the complete valid cache keeps rotating offline; only a disabled or empty cache waits for the network. Version code 242; no database schema change.
+- After upgrading, existing image binaries from older versions require one successful refresh of the saved Drive folder because the old cache format has no file metadata that can be enumerated offline. The refresh matches current metadata and builds the offline index in the background without redownloading existing images; those older entries can then be listed on a fully offline launch.
+
 ## 13.7.11
 
 ### 中文

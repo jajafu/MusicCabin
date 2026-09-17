@@ -55,17 +55,68 @@ class DriveSlideshowController<P>(
     private var suspended = false
     private var pendingPhoto: DriveFile? = null
 
-    fun start(account: DriveAccount, api: DrivePhotoAccess, folderName: String?, photos: List<DriveFile>) {
+    fun start(
+        account: DriveAccount,
+        api: DrivePhotoAccess,
+        folderName: String?,
+        photos: List<DriveFile>,
+        allowDownloads: Boolean = true,
+    ) {
         stop()
         this.account = account
         this.api = api
         this.photos = photos.filter { it.canPreview }.distinctBy { it.id }
         unsupportedCount = photos.size - this.photos.size
+        downloadAllowed = allowDownloads
         mutableState.value = state.value.copy(
             active = true, playing = true, folderName = folderName, photoCount = this.photos.size,
             skippedCount = unsupportedCount,
         )
         next()
+    }
+
+    /** Switches a cache-only session to refreshed Drive metadata without clearing the visible frame. */
+    fun updateSource(
+        account: DriveAccount,
+        api: DrivePhotoAccess,
+        folderName: String?,
+        photos: List<DriveFile>,
+        allowDownloads: Boolean = true,
+    ) {
+        if (!state.value.active || this.account?.permissionId != account.permissionId) {
+            start(account, api, folderName, photos, allowDownloads)
+            return
+        }
+        generation++
+        worker?.cancel()
+        timer?.cancel()
+        preloader?.cancel()
+        worker = null
+        timer = null
+        preloader = null
+        pendingPhoto = null
+        this.account = account
+        this.api = api
+        this.photos = photos.filter { it.canPreview }.distinctBy { it.id }
+        unsupportedCount = photos.size - this.photos.size
+        downloadAllowed = allowDownloads
+        failed.clear()
+        queue.clear()
+        val currentPhoto = state.value.photo?.id?.let { id -> this.photos.firstOrNull { it.id == id } }
+        history.clear()
+        historyIndex = if (currentPhoto == null) -1 else 0
+        if (currentPhoto != null) history += currentPhoto
+        mutableState.value = state.value.copy(
+            active = true,
+            loading = false,
+            folderName = folderName,
+            photo = currentPhoto,
+            photoCount = this.photos.size,
+            skippedCount = unsupportedCount,
+            canPrevious = false,
+            error = null,
+        )
+        if (currentPhoto == null) next() else schedule()
     }
 
     fun next() = advance(previous = false)
@@ -215,7 +266,8 @@ class DriveSlideshowController<P>(
         val selectedAccount = account ?: return
         val selectedApi = api ?: return
         replenish()
-        val upcoming = if (downloadAllowed) queue.filter { it.id != state.value.photo?.id }.take(3) else emptyList()
+        // The visible photo plus four random upcoming photos seeds five offline-ready frames.
+        val upcoming = if (downloadAllowed) queue.filter { it.id != state.value.photo?.id }.take(4) else emptyList()
         if (!downloadAllowed) preloader?.cancel()
         if (preloader?.isActive != true) {
             preloader = scope.launch {

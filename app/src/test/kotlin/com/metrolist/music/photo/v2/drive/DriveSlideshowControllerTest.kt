@@ -45,6 +45,17 @@ class DriveSlideshowControllerTest {
         fixture.controller.stop()
     }
 
+    @Test fun `first random group seeds five offline ready photos`() = runBlocking {
+        val fixture = Fixture(this)
+        val many = (1..8).map { DriveFile("many-$it", "$it.jpg", "image/jpeg", capabilities = DriveFile.Capabilities(true)) }
+        fixture.start(many)
+        fixture.loaded()
+        yield()
+        assertEquals(5, (fixture.loads + fixture.prefetches).distinct().size)
+        assertEquals(4, fixture.prefetches.distinct().size)
+        fixture.controller.stop()
+    }
+
     @Test fun `timer advances with selected interval while pause prevents automatic work`() = runBlocking {
         val ticks = Channel<Unit>(Channel.UNLIMITED)
         val waits = mutableListOf<Long>()
@@ -141,6 +152,37 @@ class DriveSlideshowControllerTest {
         assertTrue(fixture.state.active)
         assertTrue(fixture.state.current!!.fromCache)
         assertEquals(DriveFailure.REAUTHORIZE, fixture.state.error?.failure)
+        fixture.controller.stop()
+    }
+
+    @Test fun `online metadata replaces cache only source without clearing visible frame`() = runBlocking {
+        val fixture = Fixture(this)
+        fixture.controller.start(account, api, "Cached", photos, allowDownloads = false)
+        fixture.loaded()
+        val current = fixture.state.current
+        assertTrue(fixture.downloadPermissions.all { !it })
+
+        val refreshed = photos + DriveFile("photo-5", "5.jpg", "image/jpeg", capabilities = DriveFile.Capabilities(true))
+        fixture.controller.updateSource(account, api, "Drive", refreshed)
+        assertSame(current, fixture.state.current)
+        assertEquals("Drive", fixture.state.folderName)
+        assertEquals(5, fixture.state.photoCount)
+        fixture.controller.stop()
+    }
+
+    @Test fun `online single photo absent from cache replaces the visible offline frame`() = runBlocking {
+        val fixture = Fixture(this)
+        fixture.controller.start(account, api, "Cached", listOf(photos.first()), allowDownloads = false)
+        fixture.loaded()
+        val cached = fixture.state.current
+        val replacement = DriveFile("replacement", "new.jpg", "image/jpeg", capabilities = DriveFile.Capabilities(true))
+
+        fixture.controller.updateSource(account, api, "Drive", listOf(replacement))
+        fixture.loaded()
+
+        assertNotEquals(cached, fixture.state.current)
+        assertEquals("replacement", fixture.state.photo?.id)
+        assertTrue(fixture.downloadPermissions.last())
         fixture.controller.stop()
     }
 

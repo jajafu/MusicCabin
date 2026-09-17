@@ -22,7 +22,9 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.io.IOException
 import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -53,6 +55,7 @@ class PhotoFrameV2ViewModel @Inject constructor(
             BitmapFactory.decodeFile(file.absolutePath, bounds)
             bounds.outWidth > 0 && bounds.outHeight > 0
         },
+        indexFile = File(context.filesDir, "photo_frame_v2/drive-cache-index-v1.json"),
     )
     private suspend fun loadImage(
         context: Context,
@@ -81,6 +84,9 @@ class PhotoFrameV2ViewModel @Inject constructor(
         prefetch = imageCache::prefetch,
         onAuthorizationFailure = ::requireReconnect,
     )
+    private var cacheScan: Job? = null
+    private var cacheIndexing: Job? = null
+    private var cacheOnlySession = false
     val controller: DriveProbeController<Image> = DriveProbeController(
         scope = viewModelScope,
         available = BuildConfig.DRIVE_OAUTH_AVAILABLE,
@@ -89,9 +95,21 @@ class PhotoFrameV2ViewModel @Inject constructor(
         repositoryFactory = { DrivePhotoRepository(it) },
         loadPreview = { repository, account, photo -> loadImage(context, repository, account, photo).image },
         onFolderSelected = { api, account, path, photos ->
-            slideshow.start(account, api, path.lastOrNull()?.name, photos)
+            cacheOnlySession = false
+            cacheScan?.cancel()
+            slideshow.updateSource(account, api, path.lastOrNull()?.name, photos)
+            cacheIndexing?.cancel()
+            cacheIndexing = viewModelScope.launch {
+                try {
+                    imageCache.indexAvailable(account, photos)
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) {
+                    return@launch
+                }
+            }
         },
-        onStop = slideshow::stop,
+        onStop = ::stopSlideshow,
     )
     val state = controller.state
 
@@ -118,6 +136,58 @@ class PhotoFrameV2ViewModel @Inject constructor(
         }
     }
 
+    suspend fun startCachedSlideshow(): Boolean {
+        if (slideshow.state.value.active) return true
+        val saved = state.value
+        val account = saved.account ?: return false
+        val cached = try {
+            imageCache.cachedPhotos(account, maximumCount = 5)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            controller.reportStorageError()
+            return false
+        }
+        if (cached.isEmpty()) return false
+        slideshow.start(
+            account = account,
+            api = CacheOnlyDrivePhotoAccess,
+            folderName = saved.selectedPath?.lastOrNull()?.name,
+            photos = cached,
+            allowDownloads = false,
+        )
+        cacheOnlySession = true
+        cacheScan?.cancel()
+        cacheScan = viewModelScope.launch {
+            try {
+                val allCached = imageCache.cachedPhotos(account)
+                if (cacheOnlySession && allCached.isNotEmpty()) {
+                    slideshow.updateSource(
+                        account = account,
+                        api = CacheOnlyDrivePhotoAccess,
+                        folderName = saved.selectedPath?.lastOrNull()?.name,
+                        photos = allCached,
+                        allowDownloads = false,
+                    )
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                if (cacheOnlySession) controller.reportStorageError()
+            }
+        }
+        return true
+    }
+
+    private fun stopSlideshow() {
+        cacheOnlySession = false
+        cacheScan?.cancel()
+        cacheScan = null
+        cacheIndexing?.cancel()
+        cacheIndexing = null
+        slideshow.stop()
+    }
+
     private fun requireReconnect() {
         controller.requireReconnect()
     }
@@ -130,6 +200,14 @@ class PhotoFrameV2ViewModel @Inject constructor(
 }
 
 enum class FrameV2Source { LOCAL, DRIVE }
+
+private object CacheOnlyDrivePhotoAccess : DrivePhotoAccess {
+    override suspend fun account(): DriveAccount = throw DriveCacheMissException()
+    override suspend fun folders(parentId: String, progress: (Int) -> Unit): List<DriveFile> = throw DriveCacheMissException()
+    override suspend fun photos(parentId: String, progress: (Int) -> Unit): List<DriveFile> = throw DriveCacheMissException()
+    override suspend fun download(photo: DriveFile, target: File): Long = throw DriveCacheMissException()
+    override fun close() = Unit
+}
 
 private class AndroidDriveProbeSettings(private val context: Context) : DriveProbeSettings {
     private val writes = Mutex()
