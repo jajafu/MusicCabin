@@ -65,6 +65,7 @@ class OnlinePlaylistViewModel @Inject constructor(
         private set
 
     private var proactiveLoadJob: Job? = null
+    private val loadedContinuationTokens = mutableSetOf<String>()
 
     init {
         fetchInitialPlaylistData()
@@ -75,6 +76,7 @@ class OnlinePlaylistViewModel @Inject constructor(
             _isLoading.value = true
             _error.value = null
             continuation = null
+            loadedContinuationTokens.clear()
             proactiveLoadJob?.cancel() // Cancel any ongoing proactive load
 
             if (isPodcastPlaylist) {
@@ -146,9 +148,10 @@ class OnlinePlaylistViewModel @Inject constructor(
     private suspend fun fetchRegularPlaylist() {
         YouTube.playlist(playlistId)
             .onSuccess { playlistPage ->
+                val filteredSongs = applySongFilters(playlistPage.songs)
                 playlist.value = playlistPage.playlist
-                playlistSongs.value = applySongFilters(playlistPage.songs)
                 continuation = playlistPage.songsContinuation
+                playlistSongs.value = filteredSongs
                 _isLoading.value = false
                 if (continuation != null) {
                     startProactiveBackgroundLoading()
@@ -208,7 +211,12 @@ class OnlinePlaylistViewModel @Inject constructor(
         proactiveLoadJob?.cancel() // Cancel previous job if any
         proactiveLoadJob = viewModelScope.launch(Dispatchers.IO) {
             var currentProactiveToken = continuation
-            while (currentProactiveToken != null && isActive) {
+            while (isActive) {
+                val requestToken = currentProactiveToken ?: break
+                if (requestToken in loadedContinuationTokens) {
+                    continuation = null
+                    break
+                }
                 // If a manual loadMore is happening, pause proactive loading
                 if (_isLoadingMore.value) {
                     // Wait until manual load is finished, then re-evaluate
@@ -216,14 +224,16 @@ class OnlinePlaylistViewModel @Inject constructor(
                     break 
                 }
 
-                YouTube.playlistContinuation(currentProactiveToken)
+                YouTube.playlistContinuation(requestToken)
                     .onSuccess { playlistContinuationPage ->
                         val currentSongs = playlistSongs.value.toMutableList()
                         currentSongs.addAll(playlistContinuationPage.songs)
-                        playlistSongs.value = applySongFilters(currentSongs)
-                        currentProactiveToken = playlistContinuationPage.continuation
-                        // Update the class-level continuation for manual loadMore if needed
-                        this@OnlinePlaylistViewModel.continuation = currentProactiveToken 
+                        val filteredSongs = applySongFilters(currentSongs)
+                        loadedContinuationTokens += requestToken
+                        currentProactiveToken =
+                            playlistContinuationPage.continuation?.takeUnless { it in loadedContinuationTokens }
+                        this@OnlinePlaylistViewModel.continuation = currentProactiveToken
+                        playlistSongs.value = filteredSongs
                     }.onFailure { throwable ->
                         reportException(throwable)
                         currentProactiveToken = null // Stop proactive loading on error
@@ -237,6 +247,10 @@ class OnlinePlaylistViewModel @Inject constructor(
         if (_isLoadingMore.value) return // Already loading more (manually)
         
         val tokenForManualLoad = continuation ?: return // No more songs to load
+        if (tokenForManualLoad in loadedContinuationTokens) {
+            continuation = null
+            return
+        }
 
         proactiveLoadJob?.cancel() // Cancel proactive loading to prioritize manual scroll
         _isLoadingMore.value = true
@@ -246,8 +260,11 @@ class OnlinePlaylistViewModel @Inject constructor(
                 .onSuccess { playlistContinuationPage ->
                     val currentSongs = playlistSongs.value.toMutableList()
                     currentSongs.addAll(playlistContinuationPage.songs)
-                    playlistSongs.value = applySongFilters(currentSongs)
-                    continuation = playlistContinuationPage.continuation
+                    val filteredSongs = applySongFilters(currentSongs)
+                    loadedContinuationTokens += tokenForManualLoad
+                    continuation =
+                        playlistContinuationPage.continuation?.takeUnless { it in loadedContinuationTokens }
+                    playlistSongs.value = filteredSongs
                 }.onFailure { throwable ->
                     reportException(throwable)
                 }.also {

@@ -10,6 +10,7 @@ import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.models.SongItem
 import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.models.MediaMetadata
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.withContext
 
@@ -22,6 +23,7 @@ class YouTubePlaylistQueue(
     override val preloadItem: MediaMetadata? = null,
 ) : Queue {
     private var continuation: String? = initialContinuation
+    private val seenContinuations = mutableSetOf<String>()
 
     override suspend fun getInitialStatus(): Queue.Status {
         return withContext(IO) {
@@ -48,13 +50,20 @@ class YouTubePlaylistQueue(
     override suspend fun nextPage(): List<MediaItem> {
         return withContext(IO) {
             val currentContinuation = continuation ?: return@withContext emptyList()
+            if (currentContinuation in seenContinuations) {
+                continuation = null
+                return@withContext emptyList()
+            }
             var lastException: Throwable? = null
             
             repeat(MAX_ATTEMPTS) {
                 try {
                     val continuationPage = YouTube.playlistContinuation(currentContinuation).getOrThrow()
-                    continuation = continuationPage.continuation
+                    seenContinuations += currentContinuation
+                    continuation = continuationPage.continuation?.takeUnless { it in seenContinuations }
                     return@withContext continuationPage.songs.map { it.toMediaItem() }
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     lastException = e
                 }

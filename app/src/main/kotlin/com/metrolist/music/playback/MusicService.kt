@@ -348,6 +348,7 @@ class MusicService :
     private val playbackRequestTracker = PlaybackRequestTracker()
     private var playbackRequestJob: Job? = null
     private var loadMoreJob: Job? = null
+    private val usedRadioSeedIds = mutableSetOf<String>()
     private val loadMoreRetryTracker = AutoLoadMoreRetryTracker()
     private val _autoLoadMoreState = MutableStateFlow<AutoLoadMoreState>(AutoLoadMoreState.Idle)
     val autoLoadMoreState = _autoLoadMoreState.asStateFlow()
@@ -1992,6 +1993,7 @@ class MusicService :
         resetPlaybackRecoveryForUserAction()
 
         resetLoadMoreRecovery()
+        usedRadioSeedIds.clear()
         manualQueueTracker.reset()
         currentQueue = queue
         queueTitle = null
@@ -2711,6 +2713,8 @@ class MusicService :
     private data class LoadedQueuePage(
         val mediaItems: List<MediaItem>,
         val replacementQueue: Queue? = null,
+        val radioSeedIds: List<String> = emptyList(),
+        val isRadio: Boolean = false,
     )
 
     private fun loadMoreIfNeeded(
@@ -2735,8 +2739,18 @@ class MusicService :
         }
 
         val queue = currentQueue
-        val fallbackSeed = player.currentMetadata
-        if (!canLoadMore(queue, fallbackSeed)) {
+        val existingItems = player.mediaItems.toList()
+        val radioSeeds =
+            if (cachedSimilarContent) {
+                selectRadioSeeds(
+                    songs = existingItems.mapNotNull { it.metadata },
+                    usedIds = usedRadioSeedIds,
+                    limit = MAX_RADIO_SEED_ATTEMPTS,
+                )
+            } else {
+                emptyList()
+            }
+        if (!canLoadMore(queue, radioSeeds.isNotEmpty())) {
             finishLoadMoreRecovery()
             return
         }
@@ -2747,7 +2761,7 @@ class MusicService :
                 try {
                     while (isAutoLoadMoreAllowed() &&
                         queue === currentQueue &&
-                        canLoadMore(queue, fallbackSeed) &&
+                        canLoadMore(queue, radioSeeds.isNotEmpty()) &&
                         isNearQueueEnd()
                     ) {
                         if (!isNetworkConnected.value) {
@@ -2775,44 +2789,71 @@ class MusicService :
                         _autoLoadMoreState.value =
                             AutoLoadMoreState.Loading(loadMoreRetryTracker.nextAttempt)
 
-                        val existingMediaIds =
-                            buildSet {
-                                repeat(player.mediaItemCount) { index ->
-                                    add(player.getMediaItemAt(index).mediaId)
-                                }
-                            }
                         val loadedPage =
                             try {
                                 withContext(Dispatchers.IO) {
+                                    val noveltyFilter = QueueNoveltyFilter(existingItems)
                                     var playableItems = emptyList<MediaItem>()
                                     var checkedPageCount = 0
-                                    var pageQueue = queue
                                     var replacementQueue: Queue? = null
-                                    while (playableItems.isEmpty() &&
-                                        canLoadMore(pageQueue, fallbackSeed) &&
+                                    val attemptedRadioSeedIds = mutableListOf<String>()
+                                    var isRadio = queue is YouTubeQueue && queue.isRadioQueue
+                                    while (playableItems.isEmpty() && queue.hasNextPage() &&
                                         checkedPageCount < MAX_EMPTY_LOAD_MORE_PAGES
                                     ) {
                                         val pageItems =
-                                            if (pageQueue.hasNextPage()) {
-                                                pageQueue.nextPage()
-                                            } else {
-                                                val radioQueue =
-                                                    fallbackSeed?.let(YouTubeQueue::radio)
-                                                        ?: break
-                                                pageQueue = radioQueue
-                                                replacementQueue = radioQueue
-                                                radioQueue.getInitialStatus().items
-                                            }
-                                        playableItems =
-                                            pageItems
+                                            queue.nextPage()
                                                 .filterExplicit(cachedHideExplicit)
                                                 .filterVideoSongs(cachedHideVideoSongs)
-                                                .filterNot { item -> item.mediaId in existingMediaIds }
+                                        isRadio = isRadio || (queue is YouTubeQueue && queue.isRadioQueue)
+                                        playableItems =
+                                            noveltyFilter.select(pageItems)
                                         checkedPageCount++
+                                    }
+                                    if (playableItems.isEmpty() && cachedSimilarContent) {
+                                        var failedRadioRequests = 0
+                                        var lastRadioError: Exception? = null
+                                        for (seed in radioSeeds) {
+                                            attemptedRadioSeedIds += seed.id
+                                            val radioQueue = YouTubeQueue.radio(seed)
+                                            try {
+                                                var radioItems = radioQueue.getInitialStatus().items
+                                                var pageCount = 1
+                                                while (true) {
+                                                    playableItems =
+                                                        noveltyFilter.select(
+                                                            radioItems
+                                                                .filterExplicit(cachedHideExplicit)
+                                                                .filterVideoSongs(cachedHideVideoSongs),
+                                                        )
+                                                    if (playableItems.isNotEmpty() ||
+                                                        !radioQueue.hasNextPage() ||
+                                                        pageCount >= MAX_RADIO_PAGES_PER_SEED
+                                                    ) break
+                                                    radioItems = radioQueue.nextPage()
+                                                    pageCount++
+                                                }
+                                                if (playableItems.isNotEmpty()) {
+                                                    replacementQueue = radioQueue
+                                                    isRadio = true
+                                                    break
+                                                }
+                                            } catch (error: CancellationException) {
+                                                throw error
+                                            } catch (error: Exception) {
+                                                failedRadioRequests++
+                                                lastRadioError = error
+                                            }
+                                        }
+                                        if (playableItems.isEmpty() && failedRadioRequests == radioSeeds.size &&
+                                            lastRadioError != null
+                                        ) throw lastRadioError
                                     }
                                     LoadedQueuePage(
                                         mediaItems = playableItems,
                                         replacementQueue = replacementQueue,
+                                        radioSeedIds = attemptedRadioSeedIds,
+                                        isRadio = isRadio,
                                     )
                                 }
                             } catch (error: CancellationException) {
@@ -2841,10 +2882,13 @@ class MusicService :
                             return@launch
                         }
 
-                        val mediaItems = loadedPage.mediaItems
+                        usedRadioSeedIds += loadedPage.radioSeedIds
+                        val mediaItems =
+                            QueueNoveltyFilter(player.mediaItems.toList())
+                                .select(loadedPage.mediaItems)
+                                .let { if (loadedPage.isRadio) it.shuffled() else it }
                         if (mediaItems.isEmpty()) {
-                            val effectiveQueue = loadedPage.replacementQueue ?: queue
-                            if (canLoadMore(effectiveQueue, fallbackSeed)) {
+                            if (queue.hasNextPage() || radioSeeds.isNotEmpty()) {
                                 _autoLoadMoreState.value =
                                     AutoLoadMoreState.Failed(loadMoreRetryTracker.failedAttempts + 1)
                             } else {
@@ -2891,6 +2935,7 @@ class MusicService :
         loadMoreJob?.cancel()
         loadMoreJob = null
         loadMoreRetryTracker.reset()
+        usedRadioSeedIds.clear()
         _autoLoadMoreState.value = AutoLoadMoreState.Idle
         loadMoreIfNeeded(resumePlaybackWhenAdded = player.playbackState == Player.STATE_ENDED)
     }
@@ -2901,12 +2946,12 @@ class MusicService :
 
     private fun canLoadMore(
         queue: Queue,
-        fallbackSeed: MediaMetadata?,
+        hasRadioSeeds: Boolean,
     ): Boolean =
         canRequestMoreQueueItems(
             hasNextPage = queue.hasNextPage(),
             similarContentEnabled = cachedSimilarContent,
-            hasFallbackSeed = fallbackSeed != null,
+            hasFallbackSeed = hasRadioSeeds,
         )
 
     private fun isNearQueueEnd(): Boolean {
@@ -5461,6 +5506,8 @@ class MusicService :
         const val PREFETCH_READ_BUFFER_SIZE = 64 * 1024
         const val LOAD_MORE_THRESHOLD = 5
         const val MAX_EMPTY_LOAD_MORE_PAGES = 3
+        const val MAX_RADIO_SEED_ATTEMPTS = 3
+        const val MAX_RADIO_PAGES_PER_SEED = 2
         const val PERSISTENT_QUEUE_FILE = "persistent_queue.data"
         const val PERSISTENT_AUTOMIX_FILE = "persistent_automix.data"
         const val PERSISTENT_PLAYER_STATE_FILE = "persistent_player_state.data"

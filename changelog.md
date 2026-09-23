@@ -4,6 +4,18 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.13
+
+### 中文
+
+- 修正歌單播到盡頭後推薦佇列可能重複舊歌曲與順序的問題：隨機挑選尚未使用的 YouTube 歌曲作為新電台來源，最多嘗試三個來源，並排除既有佇列、不同影片 ID 的同名同歌手歌曲，以及同一批回應中的重複歌曲；新推薦歌曲會打散順序。原歌單分頁維持既有順序。
+- 歌單畫面與播放器遇到重複的續頁代碼時會停止該分頁，避免反覆載入同一頁。找不到新推薦時不會接上舊清單，可在播放佇列手動重試。版本 code 243，無資料庫 schema 變更；升級後原有歌單與設定不需轉換。
+
+### English
+
+- Fix repeated songs and ordering after a playlist ends: choose unused YouTube song seeds at random, try up to three radio seeds, and exclude songs already queued, matching title and artist under a different video ID, and duplicates within one response. Shuffle fresh radio additions while preserving the original playlist page order.
+- Stop repeated continuation tokens on the playlist screen and in playback so the same page is not fetched indefinitely. When no fresh recommendations are available, the old list is not appended; manual retry remains available in the queue. Version code 243; no database schema change or migration of existing playlists or settings is needed.
+
 ## 13.7.12
 
 ### 中文

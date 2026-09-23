@@ -11,6 +11,7 @@ import com.metrolist.innertube.models.WatchEndpoint
 import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.models.QueueData
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.withContext
 
@@ -21,6 +22,11 @@ class YouTubeQueue(
     private var restoredStatus: Queue.Status? = null,
 ) : Queue {
     private class EmptyRadioQueueException : IllegalStateException()
+    private val seenContinuations = mutableSetOf<String>()
+    private var radioQueueRequested = endpoint.playlistId?.startsWith("RDAMVM") == true
+
+    val isRadioQueue: Boolean
+        get() = radioQueueRequested
 
     override suspend fun getInitialStatus(): Queue.Status {
         return withContext(IO) {
@@ -36,6 +42,7 @@ class YouTubeQueue(
                     videoId = endpoint.videoId,
                     playlistId = "RDAMVM${endpoint.videoId}"
                 )
+                radioQueueRequested = true
             }
 
             val isRadioRequest =
@@ -62,12 +69,16 @@ class YouTubeQueue(
                     }
 
                     endpoint = nextResult.endpoint
+                    radioQueueRequested =
+                        radioQueueRequested || endpoint.playlistId?.startsWith("RDAMVM") == true
                     continuation = nextResult.continuation
                     return@withContext Queue.Status(
                         title = nextResult.title,
                         items = items.map { it.toMediaItem() },
                         mediaItemIndex = nextResult.currentIndex ?: 0,
                     )
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     lastException = e
                     if (
@@ -89,14 +100,23 @@ class YouTubeQueue(
     override suspend fun nextPage(): List<MediaItem> {
         return withContext(IO) {
             val currentContinuation = continuation ?: return@withContext emptyList()
+            if (currentContinuation in seenContinuations) {
+                continuation = null
+                return@withContext emptyList()
+            }
             var lastException: Throwable? = null
 
             repeat(MAX_ATTEMPTS) {
                 try {
                     val nextResult = YouTube.next(endpoint, currentContinuation).getOrThrow()
                     endpoint = nextResult.endpoint
-                    continuation = nextResult.continuation
+                    radioQueueRequested =
+                        radioQueueRequested || endpoint.playlistId?.startsWith("RDAMVM") == true
+                    seenContinuations += currentContinuation
+                    continuation = nextResult.continuation?.takeUnless { it in seenContinuations }
                     return@withContext nextResult.items.map { it.toMediaItem() }
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     lastException = e
                 }
