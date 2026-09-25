@@ -92,6 +92,10 @@ private data class TvSongSection(val title: String, val label: String?, val song
 fun TvScreen(database: MusicDatabase, playerConnection: PlayerConnection?, onExitApp: () -> Unit) {
     val context = LocalContext.current
     val isChinese = LocalConfiguration.current.locales[0].language == "zh"
+    val recommendationTitle = stringResource(
+        if (isChinese) R.string.tv_recommendations_zh_tw else R.string.tv_recommendations
+    )
+    val quickPicksTitle = stringResource(R.string.tv_quick_picks)
     val quickPicksFlow = remember(database) { database.quickPicks() }
     val quickPicks by quickPicksFlow.collectAsStateWithLifecycle(initialValue = emptyList())
     val localSongs = remember(quickPicks) { quickPicks.take(6) }
@@ -154,12 +158,7 @@ fun TvScreen(database: MusicDatabase, playerConnection: PlayerConnection?, onExi
                         if (songs.isEmpty()) continue
                         seen.addAll(songs.map { it.id })
                         add(TvSongSection(
-                            section.title.ifBlank {
-                                context.getString(
-                                    if (isChinese)
-                                        R.string.tv_recommendations_zh_tw else R.string.tv_recommendations
-                                )
-                            },
+                            section.title.ifBlank { recommendationTitle },
                             section.label,
                             songs,
                         ))
@@ -286,7 +285,7 @@ fun TvScreen(database: MusicDatabase, playerConnection: PlayerConnection?, onExi
                             ) {
                                 playerConnection?.playQueue(
                                     ListQueue(
-                                        title = context.getString(R.string.tv_quick_picks),
+                                        title = quickPicksTitle,
                                         items = localSongs.map { it.toMediaItem() },
                                         startIndex = localSongs.indexOfFirst { it.id == song.id },
                                     )
