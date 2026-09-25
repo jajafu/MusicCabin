@@ -91,6 +91,7 @@ private data class TvSongSection(val title: String, val label: String?, val song
 @Composable
 fun TvScreen(database: MusicDatabase, playerConnection: PlayerConnection?, onExitApp: () -> Unit) {
     val context = LocalContext.current
+    val isChinese = LocalConfiguration.current.locales[0].language == "zh"
     val quickPicksFlow = remember(database) { database.quickPicks() }
     val quickPicks by quickPicksFlow.collectAsStateWithLifecycle(initialValue = emptyList())
     val localSongs = remember(quickPicks) { quickPicks.take(6) }
@@ -155,7 +156,7 @@ fun TvScreen(database: MusicDatabase, playerConnection: PlayerConnection?, onExi
                         add(TvSongSection(
                             section.title.ifBlank {
                                 context.getString(
-                                    if (context.resources.configuration.locales[0].language == "zh")
+                                    if (isChinese)
                                         R.string.tv_recommendations_zh_tw else R.string.tv_recommendations
                                 )
                             },
