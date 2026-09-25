@@ -61,6 +61,22 @@ class PhotoCatalogTest {
     }
 
     @Test
+    fun `TV migration adds prior frame sources without replacing frame one selections`() = runBlocking {
+        val catalog = catalog()
+        catalog.addPhotos(listOf(image))
+        val importedUri = "content://test/photo/from-old-tv-frame"
+        val previous = FrameSource(importedUri, "received", FrameSelectionType.PICKED_PHOTO)
+
+        catalog.importSources(listOf(previous, previous))
+        catalog.importSources(listOf(previous))
+
+        assertEquals(setOf(image.toString(), importedUri), catalog.state.value.sources.map { it.uri }.toSet())
+        assertEquals(2, catalog.state.value.photos.size)
+        catalog.removeSources(setOf(importedUri))
+        assertEquals(listOf(image.toString()), catalog.state.value.sources.map { it.uri })
+    }
+
+    @Test
     fun `revoked folder grant retains source choice and avoids scan`() = runBlocking {
         val catalog = catalogWithLegacyFolder()
         documents.granted.clear()

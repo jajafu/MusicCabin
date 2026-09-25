@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.metrolist.music.utils.dataStore
+import com.metrolist.music.tv.isAndroidTv
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.io.IOException
@@ -38,7 +39,7 @@ class PhotoCatalog internal constructor(
     @Inject
     constructor(@ApplicationContext context: Context) : this(
         { context.dataStore },
-        { AndroidFrameDocumentAccess(context) },
+        { AndroidFrameDocumentAccess(context, allowTvImports = isAndroidTv(context)) },
         { PhotoFrameManifest(File(context.filesDir, "photo_frame/index-v1.json")) },
     )
 
@@ -83,6 +84,17 @@ class PhotoCatalog internal constructor(
     suspend fun removeSource(uri: String) = operation {
         saveSources(state.value.sources.filterNot { it.uri == uri })
         pruneIndex()
+    }
+
+    suspend fun removeSources(uris: Set<String>) = operation {
+        saveSources(state.value.sources.filterNot { it.uri in uris })
+        pruneIndex()
+    }
+
+    suspend fun importSources(sources: List<FrameSource>) = operation {
+        val existing = state.value.sources.mapTo(hashSetOf()) { it.uri }
+        val additions = sources.distinctBy { it.uri }.filter { it.uri !in existing }.map { validate(it) }
+        if (additions.isNotEmpty()) saveSources(state.value.sources + additions)
     }
 
     suspend fun clear() = operation {

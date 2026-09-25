@@ -69,7 +69,6 @@
                 <action android:name="android.intent.action.VIEW" />
                 <action android:name="android.intent.action.MUSIC_PLAYER" />
 
-                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
                 <category android:name="android.intent.category.APP_MUSIC" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
@@ -160,6 +159,19 @@
             <meta-data
                 android:name="android.app.shortcuts"
                 android:resource="@xml/shortcuts" />
+        </activity>
+
+        <activity
+            android:name=".tv.TvActivity"
+            android:banner="@mipmap/tv_banner"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher"
+            android:label="@string/app_name"
+            android:theme="@style/Theme.Metrolist">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
         </activity>
 
         <!-- Legacy launcher alias kept for upgrade compatibility.

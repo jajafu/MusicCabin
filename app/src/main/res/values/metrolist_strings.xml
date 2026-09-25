@@ -1,5 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
+    <string name="tv_photo_frame_title" translatable="false">Photo frame 1</string>
+    <string name="tv_photo_frame_title_zh_tw" translatable="false">數位相框 1</string>
+    <string name="tv_photo_local_title" translatable="false">Local photos</string>
+    <string name="tv_photo_local_title_zh_tw" translatable="false">本地照片</string>
+    <string name="tv_photo_play_local" translatable="false">Play local photos</string>
+    <string name="tv_photo_play_local_zh_tw" translatable="false">播放本地照片</string>
+    <string name="tv_quick_picks">Quick picks</string>
+    <string name="tv_recommendations">Recommended songs</string>
+    <string name="tv_recommendations_zh_tw" translatable="false">推薦歌曲</string>
+    <string name="tv_listening_history" translatable="false">Based on your listening history</string>
+    <string name="tv_listening_history_zh_tw" translatable="false">依照你的聆聽紀錄</string>
+    <string name="tv_frame_hide_controls" translatable="false">Hide controls (D-pad to show)</string>
+    <string name="tv_frame_hide_controls_zh_tw" translatable="false">隱藏操作列（方向鍵顯示）</string>
+    <string name="tv_stop_and_exit" translatable="false">Stop and exit</string>
+    <string name="tv_stop_and_exit_zh_tw" translatable="false">停止並退出</string>
+    <string name="tv_search_hint">Search songs</string>
+    <string name="tv_loading">Loading…</string>
+    <string name="tv_empty_home">No songs available. Try searching for a song.</string>
+    <string name="tv_empty_queue">The queue is empty.</string>
+    <string name="tv_no_results">No songs found.</string>
+    <string name="tv_nothing_playing">Nothing playing</string>
     <string name="app_name" translatable="false">MusicCabin</string>
     <string name="shortcut_target_package" translatable="false">com.jajafu.musiccabin</string>
     <string name="musiccabin_about">About MusicCabin</string>
@@ -1264,4 +1285,32 @@
     <string name="photo_frame_v2_collapsed_zh_tw" translatable="false">已收合</string>
     <string name="photo_frame_v2_not_connected" translatable="false">Not connected</string>
     <string name="photo_frame_v2_not_connected_zh_tw" translatable="false">尚未連線</string>
+    <string name="tv_photo_pair_title" translatable="false">Send photos from phone</string>
+    <string name="tv_photo_pair_title_zh_tw" translatable="false">從手機傳送照片</string>
+    <string name="tv_photo_pair_source_detail" translatable="false">Phone or cloud files · same Wi-Fi</string>
+    <string name="tv_photo_pair_source_detail_zh_tw" translatable="false">手機或雲端檔案 · 同一 Wi-Fi</string>
+    <string name="tv_photo_pair_hint" translatable="false">On a phone using the same Wi-Fi, scan the QR code or open the TV address. Select photos from your phone or a cloud source shown in the system file picker. The phone compresses and sends photos directly to this TV.</string>
+    <string name="tv_photo_pair_hint_zh_tw" translatable="false">手機連上同一 Wi-Fi 後，掃描 QR code 或開啟電視網址，從手機或系統檔案選擇器可見的雲端來源選照片。手機會壓縮後直接傳到這台電視。</string>
+    <string name="tv_photo_pair_address" translatable="false">Open on phone: %1$s</string>
+    <string name="tv_photo_pair_address_zh_tw" translatable="false">手機開啟：%1$s</string>
+    <string name="tv_photo_pair_qr_hint" translatable="false">Scan on your phone to open the TV photo sender</string>
+    <string name="tv_photo_pair_qr_hint_zh_tw" translatable="false">用手機掃描，開啟電視照片傳送網頁</string>
+    <string name="tv_photo_pair_waiting" translatable="false">Starting local receiver…</string>
+    <string name="tv_photo_pair_waiting_zh_tw" translatable="false">正在啟動區域網路接收服務…</string>
+    <string name="tv_photo_pair_error" translatable="false">Cannot start local receiver. Check that this TV is connected to the network, then reopen this screen.</string>
+    <string name="tv_photo_pair_error_zh_tw" translatable="false">無法啟動區域網路接收服務。請檢查電視網路，然後重新開啟此畫面。</string>
+    <string name="tv_photo_pair_received" translatable="false">Received this session: %1$d</string>
+    <string name="tv_photo_pair_received_zh_tw" translatable="false">本次已接收：%1$d 張</string>
+    <string name="tv_photo_pair_stored" translatable="false">Stored on TV: %1$d photos</string>
+    <string name="tv_photo_pair_stored_zh_tw" translatable="false">電視已儲存：%1$d 張</string>
+    <string name="tv_photo_pair_play" translatable="false">Play received photos</string>
+    <string name="tv_photo_pair_play_zh_tw" translatable="false">播放已傳送照片</string>
+    <string name="tv_photo_pair_clear" translatable="false">Clear photos sent from phone</string>
+    <string name="tv_photo_pair_clear_zh_tw" translatable="false">清空手機傳入照片</string>
+    <string name="tv_photo_pair_clear_confirm" translatable="false">Delete all photos sent from the phone on this TV? Local and USB originals will stay untouched.</string>
+    <string name="tv_photo_pair_clear_confirm_zh_tw" translatable="false">要刪除這台電視內所有由手機傳入的照片嗎？手機、隨身碟與雲端原檔不會受影響。</string>
+    <string name="tv_photo_pair_open_settings" translatable="false">Open the gear to send photos from your phone.</string>
+    <string name="tv_photo_pair_open_settings_zh_tw" translatable="false">請開啟齒輪設定，從手機傳送照片。</string>
+    <string name="tv_photo_local_empty" translatable="false">Internal storage is available, but no accessible indexed photos were found. If photos are already on the TV, allow full photo access and wait for media scanning. You can also send photos from a phone.</string>
+    <string name="tv_photo_local_empty_zh_tw" translatable="false">已偵測到內部儲存空間，但目前沒有可讀取且已建立索引的照片。若電視內已有照片，請允許完整照片存取權並等候媒體掃描；也可以從手機傳送照片。</string>
 </resources>

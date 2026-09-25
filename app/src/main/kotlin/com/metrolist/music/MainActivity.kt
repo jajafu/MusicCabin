@@ -169,6 +169,8 @@ import com.metrolist.music.playback.MusicService
 import com.metrolist.music.playback.MusicService.MusicBinder
 import com.metrolist.music.playback.PlayerConnection
 import com.metrolist.music.playback.queues.YouTubeQueue
+import com.metrolist.music.tv.TvActivity
+import com.metrolist.music.tv.isAndroidTv
 import com.metrolist.music.ui.component.AccountSettingsDialog
 import com.metrolist.music.ui.component.AppNavigationBar
 import com.metrolist.music.ui.component.AppNavigationRail
@@ -400,6 +402,11 @@ class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (isAndroidTv(this) && intent.action == Intent.ACTION_MAIN) {
+            startActivity(Intent(this, TvActivity::class.java))
+            finish()
+            return
+        }
         window.decorView.layoutDirection = View.LAYOUT_DIRECTION_LTR
         WindowCompat.setDecorFitsSystemWindows(window, false)
 

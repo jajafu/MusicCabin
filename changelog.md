@@ -4,6 +4,128 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.21
+
+### 中文
+
+- TV 選單改用「數位相框 1」，包含遙控器操作、本地／USB 照片、固定設定視窗與同 Wi-Fi 手機傳照。FOSS 與 GMS TV 均可使用，不需要 TV Google OAuth。
+- TV 首次開啟相框 1 時，會將先前 TV 相框 2 已選的本地照片與手機傳入副本匯入相框 1；來源與照片原檔保留。相框 2 恢復為手機／車機原有的本地與 Google Drive OAuth 流程。
+- 版本 code 251；無資料庫 schema 變更。升級後如曾在 TV 相框 2 選照，請開啟 TV 相框 1 完成一次匯入；FOSS 與 GMS 仍是分開安裝的 App，資料不跨版本複製。
+
+### English
+
+- Move the TV frame to Photo frame 1, including remote controls, local/USB photos, a fixed settings dialog, and direct same-Wi-Fi transfer from a phone. Both FOSS and GMS TV builds include it without TV Google OAuth.
+- On first launch of TV Photo frame 1, import previously selected local photos and phone-sent copies from the TV's Photo frame 2 catalog while preserving original sources and files. Restore Photo frame 2 to its phone/head-unit local and Google Drive OAuth flow.
+- Version code 251; no database schema change. Open TV Photo frame 1 once after upgrading to import prior TV selections. FOSS and GMS remain separate installations and do not transfer data between variants.
+
+## 13.7.20
+
+### 中文
+
+- TV 本地照片頁在內部儲存空間沒有可讀取的已索引照片時，清楚說明儲存空間已偵測到，並提示檢查完整照片授權或等候媒體掃描；不再錯誤要求重插 USB。
+- 版本 code 250；無資料庫 schema 變更，升級不需遷移資料或設定。
+
+### English
+
+- Clarify that the TV's internal storage is detected when its local photo gallery has no accessible indexed images; suggest checking full photo access or waiting for media scanning instead of incorrectly asking to reconnect a USB drive.
+- Version code 250; no database schema change or upgrade migration is required.
+
+## 13.7.19
+
+### 中文
+
+- TV 左側選單將「停止並退出」固定在底部，避免小尺寸電視上被壓縮到看不見。
+- TV 數位相框傳送設定在網址上方顯示可掃描的 QR code；手機網頁不再要求六位數配對碼。接收服務仍只在設定開啟時監聽區域網路，並限制同源請求與照片大小。
+- TV 相框設定改用位置固定的視窗，來源選單與可捲動內容分開，避免遙控器操作時整個浮窗上下移動；手機與車機的底部設定頁維持原樣。
+- 版本 code 249；無資料庫 schema 變更，升級不需遷移資料或設定。
+
+### English
+
+- Keep Stop and exit fully visible at the bottom of the TV sidebar on shorter displays.
+- Show a scannable QR code above the TV photo sender address and remove the six-digit code from the phone page. The receiver still runs only while the settings are open and restricts requests to the same origin and small images.
+- Use a fixed TV photo settings dialog with separate source navigation and scrollable content so remote navigation does not move the whole panel. Phone and head-unit bottom sheets are unchanged.
+- Version code 249; no database schema change or upgrade migration is required.
+
+## 13.7.18
+
+### 中文
+
+- TV 數位相框改由電視在區域網路提供選檔網頁；手機開啟電視網址、輸入六位數配對碼，從本機或系統檔案選擇器可見的雲端來源選照片，縮至最長邊 1920 像素並壓縮後直接傳到電視。照片會累加，TV 可播放或清空手機傳入的副本，原檔不受影響。
+- TV 配對接收服務僅在相框配對設定開啟時運作，不需 TV Google OAuth、外部網站或照片雲端中轉；原有手機與車機的 Google Drive 資料夾授權和輪播維持原流程。
+- TV 相框操作列的隱藏控制改為與其他操作一致的全螢幕圖示按鈕，保留遙控器焦點外框與方向鍵叫回控制列的操作。
+- 版本 code 248；無資料庫 schema 變更，升級不需遷移資料或設定。
+
+### English
+
+- The TV photo frame now serves a local picker page. A phone opens the TV address, enters a six-digit pairing code, and selects photos from local storage or a cloud provider available in the system file picker. It resizes them to at most 1920 pixels on the longest edge and compresses them before direct transfer. Photos accumulate; the TV can play or clear received copies without changing originals.
+- The TV receiver runs only while pairing settings are open and needs no TV Google OAuth, external website, or photo cloud relay. Existing phone and head-unit Drive folder authorization and slideshow remain unchanged.
+- The TV frame's Hide controls action now uses a fullscreen icon button consistent with the other controls, retaining remote focus styling and D-pad reveal behavior.
+- Version code 248; no database schema change or data/settings migration is required.
+
+## 13.7.17
+
+### 中文
+
+- 修正 Google TV／Android TV 本地照片瀏覽器在尚未授權時沒有初始遙控器焦點、無法明確選擇「允許存取」的問題；授權後焦點會移到瀏覽器工具列。
+- 相框設定與本地照片瀏覽器的授權、導覽、相簿與照片相關按鈕增加清楚的 TV 焦點外框；手機與車機觸控外觀維持不變。
+- 版本 code 247；無資料庫 schema 變更，升級不需遷移資料或設定。
+
+### English
+
+- Fix missing initial remote focus on Allow access in the Google TV and Android TV local photo browser; move focus to the browser toolbar after permission is granted.
+- Add clear TV focus outlines to frame settings, permission, navigation, album, and photo browser controls while leaving phone and head-unit touch styling unchanged.
+- Version code 247; no database schema change or data/settings migration is required.
+
+## 13.7.16
+
+### 中文
+
+- 修正 Google TV／Android TV 首頁分類標題在部分電視的動態色盤上與背景近乎同色的問題，改用 TV 專用高對比深色主題。
+- TV 左側導覽改為等寬、靠左對齊的選項，提供一致的圖示、選取與遙控器焦點狀態，退出選項置於底部。
+- 首頁歌曲快選與線上推薦每類顯示最多 6 首，線上最多呈現 4 個分類，讓分類標題更快出現；標題缺漏時顯示「推薦歌曲」。
+- 版本 code 246；無資料庫 schema 變更，升級不需遷移資料或設定。
+
+### English
+
+- Fix TV Home section headings blending into the background on some TVs by using a dedicated high contrast dark theme for Google TV and Android TV.
+- Replace the TV side menu with equal width, left aligned rows and consistent icons, selection, and remote focus states; place Exit at the bottom.
+- Show up to six quick picks and six songs per online section, with up to four online sections, so category headings appear sooner; use Recommended songs when a section has no title.
+- Version code 246; no database schema change or data/settings migration is required.
+
+## 13.7.15
+
+### 中文
+
+- 修正 Android TV 首次從一般啟動圖示進入時可能開啟觸控版的問題；僅在 TV 裝置導向專用畫面，手機與 Android 車機的觸控流程維持不變。
+- 修正 TV 播放佇列使用不支援儲存的列表鍵而造成的崩潰。
+- GMS TV 左側選單新增「數位相框 2」，沿用既有本機照片、Google Drive 來源與快取，並提供遙控器焦點提示以操作相框控制、來源及設定。
+- TV 相框保留半透明時鐘、歌曲資訊與控制列；可用遙控器隱藏及叫回控制列，返回鍵依序關閉設定、恢復控制列與返回首頁。
+- TV 首頁依 YouTube Music 原本的區塊標題分類顯示線上歌曲，歌曲快選標示資料來源；首頁、搜尋、播放佇列與底部目前播放資訊增加封面。
+- TV 左側選單新增「停止播放並退出」，會停止本機與投放播放並結束播放服務；一般返回仍可保留背景播放。
+- 版本 code 245；沒有資料庫 schema 變更，升級不需遷移資料或設定。
+
+### English
+
+- Route the standard launcher entry to the dedicated interface on Android TV from the first launch. The phone and Android head-unit touch flow stays unchanged.
+- Fix the TV queue crash caused by a list key that Compose cannot save.
+- Add Photo frame 2 to the GMS TV menu, reusing saved local photos, Google Drive sources, and cache, with remote focus indicators for frame controls, sources, and settings.
+- Retain the translucent clock, song information, and controls in the TV frame; use the remote to hide or reveal controls, and Back to close settings, reveal controls, then return Home.
+- Group online TV Home songs by their original YouTube Music section titles and label the quick picks source; add cover art to Home, search, queue, and the bottom now-playing area.
+- Add Stop and exit to the TV menu to end local or Cast playback and stop the playback service; ordinary Back still allows background playback.
+- Version code 245; no database schema change or data/settings migration is required.
+
+## 13.7.14
+
+### 中文
+
+- 新增 Android TV 專用啟動入口與遙控器介面，可用方向鍵、確認鍵與返回鍵瀏覽首頁歌曲、搜尋歌曲、控制上一首／播放暫停／下一首，以及查看與選播佇列。電視版會沿用既有播放服務與資料，初版不包含設定頁面。
+- 原有 MainActivity 與 Android 車機觸控流程維持不變。版本 code 244；沒有資料庫 schema 變更，升級不需遷移資料或設定。
+
+### English
+
+- Add a dedicated Android TV launcher and remote interface for browsing Home songs, searching songs, controlling previous/play-pause/next, and viewing or playing the queue with the D-pad, Select, and Back. The TV interface shares the existing playback service and data; settings are outside this first version.
+- Keep the existing MainActivity and Android head-unit touch flow unchanged. Version code 244; there is no database schema change or data/settings migration.
+
 ## 13.7.13
 
 ### 中文

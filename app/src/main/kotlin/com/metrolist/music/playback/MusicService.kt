@@ -4833,6 +4833,26 @@ class MusicService :
         }
     }
 
+    fun stopPlaybackAndService() {
+        if (!::player.isInitialized) {
+            stopSelf()
+            return
+        }
+        runCatching {
+            if (castConnectionHandler?.isCasting?.value == true) {
+                castConnectionHandler?.disconnect()
+            }
+            player.stop()
+            ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+            controllerFuture?.let { MediaController.releaseFuture(it) }
+            controllerFuture = null
+            pauseAllPlayersAndStopSelf()
+        }.onFailure { error ->
+            Timber.tag(TAG).e(error, "Failed to stop playback on explicit TV exit")
+            stopSelf()
+        }
+    }
+
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo) = mediaSession
 
     override fun onUpdateNotification(

@@ -118,8 +118,8 @@ android {
         applicationId = applicationIdOverride ?: baseApplicationId
         minSdk = 26
         targetSdk = 36
-        versionCode = 243
-        versionName = "13.7.13"
+        versionCode = 251
+        versionName = "13.7.21"
         buildConfigField("boolean", "PHOTO_FRAME_V2_AVAILABLE", "false")
         buildConfigField("boolean", "DRIVE_OAUTH_AVAILABLE", "false")
 
@@ -360,6 +360,7 @@ configurations.configureEach {
 }
 
 dependencies {
+    implementation(libs.zxing.core)
     implementation(libs.guava)
     implementation(libs.coroutines.guava)
     implementation(libs.concurrent.futures)
