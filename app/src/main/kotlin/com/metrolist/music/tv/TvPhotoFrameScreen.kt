@@ -80,6 +80,7 @@ import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.listentogether.RoomRole
 import com.metrolist.music.photo.FramePlaybackCommand
+import com.metrolist.music.photo.FramePhotoReceiver
 import com.metrolist.music.photo.FramePlaybackState
 import com.metrolist.music.photo.FramePlaybackSession
 import com.metrolist.music.photo.PhotoFramePlayback
@@ -151,7 +152,7 @@ fun TvPhotoFrameScreen(onExit: () -> Unit, viewModel: TvPhotoFrameViewModel = hi
         val height = (constraints.maxHeight * factor).toInt().coerceAtLeast(1)
         val uris = remember(state.photos, source) {
             state.photos.filter { photo ->
-                val imported = TvPhotoReceiver.isImportedUri(context, photo.uri)
+                val imported = FramePhotoReceiver.isImportedUri(context, photo.uri)
                 if (source == TvPhotoFrameViewModel.Source.TRANSFER) imported else !imported
             }.map { it.uri }
         }

@@ -85,6 +85,7 @@ fun PhotoFrameScreen(navController: NavHostController, viewModel: PhotoFrameView
     val state by viewModel.state.collectAsStateWithLifecycle()
     val busy by viewModel.busy.collectAsStateWithLifecycle()
     val actionError by viewModel.error.collectAsStateWithLifecycle()
+    val transfer by viewModel.transfer.collectAsStateWithLifecycle()
     val generation by viewModel.generation.collectAsStateWithLifecycle()
     var foreground by remember(lifecycle) { mutableStateOf(lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) }
     var showSettings by rememberSaveable { mutableStateOf(false) }
@@ -214,11 +215,15 @@ fun PhotoFrameScreen(navController: NavHostController, viewModel: PhotoFrameView
             state = state,
             busy = busy,
             error = actionError ?: state.error,
+            transfer = transfer,
             onDismiss = { showSettings = false; viewModel.dismissError() },
             onBrowsePhotos = { showMediaBrowser = true },
             onRescan = viewModel::rescan,
             onRemove = viewModel::removeSource,
             onClear = viewModel::clear,
+            onClearReceived = viewModel::clearReceived,
+            onStartReceiver = viewModel::startReceiver,
+            onStopReceiver = viewModel::stopReceiver,
             onCancelScan = viewModel::cancelOperation,
             onSettings = viewModel::updateSettings,
         )

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MusicCabin · 傳送照片到電視</title>
+  <title>MusicCabin · 傳送照片到相框</title>
   <style>
     :root { color-scheme: dark; font-family: system-ui, sans-serif; background: #101827; color: #f2f6ff; }
     * { box-sizing: border-box; }
@@ -23,8 +23,8 @@
 </head>
 <body>
 <main>
-  <h1>傳送照片到 MusicCabin TV</h1>
-  <p>手機與電視連上同一個 Wi-Fi，並保持電視的傳送設定畫面開啟。照片只會經區域網路傳到這台電視。</p>
+  <h1>傳送照片到 MusicCabin 相框</h1>
+  <p>手機與接收裝置連上同一區域網路（也可使用手機熱點），並保持接收裝置的傳送設定畫面開啟。照片只會經區域網路直接傳到這台裝置。</p>
   <div class="card">
     <label for="photos">選擇手機或雲端硬碟中的照片</label>
     <input id="photos" type="file" accept="image/*" multiple>
@@ -32,7 +32,7 @@
     <button id="send" type="button">壓縮並傳送照片</button>
     <p id="status" role="status" aria-live="polite"></p>
   </div>
-  <p class="hint">每張照片會在手機縮至最長邊 1920 像素並壓縮至 2 MB 以下。再次傳送會累加；可在電視清空手機傳入的照片。</p>
+  <p class="hint">每張照片會在手機縮至最長邊 1920 像素並壓縮至 2 MB 以下。再次傳送會累加；可在接收裝置清空手機傳入的照片。</p>
 </main>
 <script>
 (() => {
@@ -91,10 +91,10 @@
           },
           body: image
         });
-        if (!response.ok) throw new Error(`電視未接收「${file.name}」（${response.status}）：${await response.text()}`);
+        if (!response.ok) throw new Error(`接收裝置未收到「${file.name}」（${response.status}）：${await response.text()}`);
         complete++;
       }
-      setStatus(`完成：已傳送 ${complete} 張。回到電視，選「播放已傳送照片」。`);
+      setStatus(`完成：已傳送 ${complete} 張。回到接收裝置即可檢視相框照片。`);
       photosField.value = '';
     } catch (error) {
       setStatus(`已傳送 ${complete} 張；${error.message}`);

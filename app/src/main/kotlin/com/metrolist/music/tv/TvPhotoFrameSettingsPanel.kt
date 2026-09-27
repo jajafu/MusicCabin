@@ -49,6 +49,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.metrolist.music.R
+import com.metrolist.music.photo.FramePhotoQrCode
+import com.metrolist.music.photo.FramePhotoReceiver
 import com.metrolist.music.ui.screens.frameErrorMessage
 
 private enum class TvFrameSettingsPage { LOCAL, TRANSFER, DISPLAY }
@@ -66,10 +68,10 @@ internal fun TvPhotoFrameSettingsPanel(
     val transfer by viewModel.transfer.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val localSources = remember(state.sources) {
-        state.sources.filterNot { TvPhotoReceiver.isImportedUri(context, it.uri) }
+        state.sources.filterNot { FramePhotoReceiver.isImportedUri(context, it.uri) }
     }
     val importedCount = remember(state.sources) {
-        state.sources.count { TvPhotoReceiver.isImportedUri(context, it.uri) }
+        state.sources.count { FramePhotoReceiver.isImportedUri(context, it.uri) }
     }
     var page by rememberSaveable { mutableStateOf(TvFrameSettingsPage.LOCAL) }
     var confirmClearLocal by rememberSaveable { mutableStateOf(false) }
@@ -141,7 +143,7 @@ internal fun TvPhotoFrameSettingsPanel(
                                 item {
                                     Text(stringResource(R.string.photo_browser_browse_device), style = MaterialTheme.typography.titleLarge)
                                     Text(stringResource(R.string.photo_frame_sources, state.photos.count {
-                                        !TvPhotoReceiver.isImportedUri(context, it.uri)
+                                        !FramePhotoReceiver.isImportedUri(context, it.uri)
                                     }))
                                 }
                                 item {
@@ -187,7 +189,10 @@ internal fun TvPhotoFrameSettingsPanel(
                                 }
                                 item {
                                     if (transfer.url != null) {
-                                        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { TvPhotoQrCode(transfer.url!!) }
+                                        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                            FramePhotoQrCode(transfer.url!!,
+                                                tvLocalizedString(R.string.tv_photo_pair_qr_hint, R.string.tv_photo_pair_qr_hint_zh_tw))
+                                        }
                                         Text(tvLocalizedString(R.string.tv_photo_pair_address, R.string.tv_photo_pair_address_zh_tw,
                                             transfer.url!!), style = MaterialTheme.typography.titleMedium,
                                             color = MaterialTheme.colorScheme.primary)

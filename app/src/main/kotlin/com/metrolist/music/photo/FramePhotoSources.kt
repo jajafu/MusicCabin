@@ -36,7 +36,7 @@ internal interface FrameDocumentAccess {
 
 internal class AndroidFrameDocumentAccess(
     private val context: Context,
-    private val allowTvImports: Boolean = false,
+    private val allowReceivedImports: Boolean = false,
 ) : FrameDocumentAccess {
     private val resolver = context.contentResolver
     private var directRoots = emptyList<File>()
@@ -118,7 +118,7 @@ internal class AndroidFrameDocumentAccess(
 
     private fun pickedDirectFile(uri: Uri): FrameDocument {
         val file = uri.path?.let(::File)?.canonicalFile ?: throw InvalidFrameImageException()
-        val roots = if (allowTvImports) currentDirectRoots() + tvPhotoImportsDirectory(context) else currentDirectRoots()
+        val roots = if (allowReceivedImports) currentDirectRoots() + framePhotoImportsDirectory(context) else currentDirectRoots()
         val allowed = roots.any { root -> isFileWithinRoot(file, root) }
         if (!allowed || !file.isFile || !file.canRead() || !isSupportedDirectImage(file)) {
             throw FileNotFoundException()
@@ -160,7 +160,7 @@ internal fun isFileWithinRoot(file: File, root: File): Boolean {
 }
 
 // Keep the existing directory so TV upgrades can reuse received photos without copying them.
-internal fun tvPhotoImportsDirectory(context: Context) = File(context.filesDir, "photo_frame_v2/tv_imports")
+internal fun framePhotoImportsDirectory(context: Context) = File(context.filesDir, "photo_frame_v2/tv_imports")
 
 internal suspend fun scanFrameFolder(
     sourceUri: String,

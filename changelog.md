@@ -4,6 +4,18 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.22
+
+### 中文
+
+- 手機與車機的數位相框 1 設定新增 QR code 與區網傳照；車機可連上傳送手機的熱點，不需 USB、配對碼或雲端中轉。手機先壓縮照片，接收副本會累加並可獨立清除，不影響本機、USB 或手機原檔；接收服務僅在傳送設定開啟且 App 位於前景時運作。
+- 版本 code 252；無資料庫 schema 變更，升級不需遷移資料。TV 相框 1 與手機／車機相框 2 的原有來源及 Google Drive 授權流程維持不變。
+
+### English
+
+- Add QR code and direct local-network photo transfer to phone and head-unit Photo frame 1 settings. A head unit may join the sending phone's hotspot; no USB drive, pairing code, or cloud relay is needed. The phone compresses photos before transfer. Received copies accumulate and can be cleared separately without changing local, USB, or phone originals. The receiver runs only while transfer settings are open and the app is in the foreground.
+- Version code 252; no database schema change or data migration. Existing TV Photo frame 1 sources and phone/head-unit Photo frame 2 Google Drive authorization remain unchanged.
+
 ## 13.7.21
 
 ### 中文

@@ -11,6 +11,7 @@ import androidx.lifecycle.viewModelScope
 import com.metrolist.music.photo.FrameError
 import com.metrolist.music.photo.FrameSettings
 import com.metrolist.music.photo.PhotoCatalog
+import com.metrolist.music.photo.FramePhotoReceiver
 import com.metrolist.music.photo.v2.LocalPhotoCatalog
 import com.metrolist.music.utils.dataStore
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -51,7 +52,7 @@ class TvPhotoFrameViewModel @Inject constructor(
     private var operation: Job? = null
     private var settingsOperation: Job? = null
     private var receiverJob: Job? = null
-    private var receiver: TvPhotoReceiver? = null
+    private var receiver: FramePhotoReceiver? = null
     private var receiverGeneration = 0
     private var receiving = false
     private var receiverRequested = false
@@ -66,8 +67,8 @@ class TvPhotoFrameViewModel @Inject constructor(
                 mutableSource.value = Source.entries.firstOrNull { it.name == saved[SourceKey] }
                     ?: when {
                         saved[PreviousSourceKey] == "DRIVE" -> Source.TRANSFER
-                        state.value.sources.none { !TvPhotoReceiver.isImportedUri(context, it.uri) } &&
-                            state.value.sources.any { TvPhotoReceiver.isImportedUri(context, it.uri) } -> Source.TRANSFER
+                        state.value.sources.none { !FramePhotoReceiver.isImportedUri(context, it.uri) } &&
+                            state.value.sources.any { FramePhotoReceiver.isImportedUri(context, it.uri) } -> Source.TRANSFER
                         else -> Source.LOCAL
                     }
                 sourceLoaded = true
@@ -90,7 +91,7 @@ class TvPhotoFrameViewModel @Inject constructor(
         if (!legacy.initialized) return
         val empty = state.value.sources.isEmpty()
         catalog.importSources(legacy.sources)
-        val received = TvPhotoReceiver.importsDirectory(context).listFiles().orEmpty()
+        val received = FramePhotoReceiver.importsDirectory(context).listFiles().orEmpty()
             .filter { it.isFile && it.extension.equals("jpg", ignoreCase = true) }
             .map { it.toUri() }
         if (received.isNotEmpty()) catalog.addPhotos(received)
@@ -111,7 +112,7 @@ class TvPhotoFrameViewModel @Inject constructor(
     }
     fun clearLocal() = runOperation {
         val selected = state.value.sources.map { it.uri }
-            .filterNot { TvPhotoReceiver.isImportedUri(context, it) }.toSet()
+            .filterNot { FramePhotoReceiver.isImportedUri(context, it) }.toSet()
         catalog.removeSources(selected)
         mutableGeneration.value++
     }
@@ -119,10 +120,10 @@ class TvPhotoFrameViewModel @Inject constructor(
         closeReceiver()
         try {
             val selected = state.value.sources.map { it.uri }
-                .filter { TvPhotoReceiver.isImportedUri(context, it) }.toSet()
+                .filter { FramePhotoReceiver.isImportedUri(context, it) }.toSet()
             catalog.removeSources(selected)
             if (state.value.sources.any { it.uri in selected }) throw IOException("Cannot clear imported photos")
-            TvPhotoReceiver.importsDirectory(context).listFiles()?.forEach { file ->
+            FramePhotoReceiver.importsDirectory(context).listFiles()?.forEach { file ->
                 if (file.isFile && !file.delete()) throw IOException("Cannot delete imported photo")
             }
             mutableGeneration.value++
@@ -132,7 +133,7 @@ class TvPhotoFrameViewModel @Inject constructor(
     }
 
     private fun deleteImportedCopy(uri: String) {
-        if (!TvPhotoReceiver.isImportedUri(context, uri)) return
+        if (!FramePhotoReceiver.isImportedUri(context, uri)) return
         uri.toUri().path?.let { java.io.File(it).delete() }
     }
 
@@ -152,7 +153,7 @@ class TvPhotoFrameViewModel @Inject constructor(
         val current = ++receiverGeneration
         mutableTransfer.value = TransferState()
         receiverJob = viewModelScope.launch {
-            val server = TvPhotoReceiver(context) { file ->
+            val server = FramePhotoReceiver(context) { file ->
                 runBlocking { catalog.addPhotos(listOf(file.toUri())) }
                 if (state.value.sources.none { it.uri == file.toUri().toString() }) {
                     throw IOException("Cannot add TV photo")

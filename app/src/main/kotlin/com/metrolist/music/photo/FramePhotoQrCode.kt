@@ -1,4 +1,4 @@
-package com.metrolist.music.tv
+package com.metrolist.music.photo
 
 import android.graphics.Bitmap
 import androidx.compose.foundation.Image
@@ -14,10 +14,9 @@ import androidx.compose.ui.unit.dp
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
-import com.metrolist.music.R
 
 @Composable
-internal fun TvPhotoQrCode(url: String) {
+internal fun FramePhotoQrCode(url: String, description: String) {
     val qr = remember(url) {
         val size = 256
         val bits = QRCodeWriter().encode(url, BarcodeFormat.QR_CODE, size, size,
@@ -27,6 +26,6 @@ internal fun TvPhotoQrCode(url: String) {
         }
         Bitmap.createBitmap(pixels, size, size, Bitmap.Config.ARGB_8888).asImageBitmap()
     }
-    Image(qr, tvLocalizedString(R.string.tv_photo_pair_qr_hint, R.string.tv_photo_pair_qr_hint_zh_tw),
+    Image(qr, description,
         Modifier.size(196.dp).background(Color.White).padding(8.dp))
 }

@@ -8,7 +8,6 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.metrolist.music.utils.dataStore
-import com.metrolist.music.tv.isAndroidTv
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.io.IOException
@@ -39,7 +38,7 @@ class PhotoCatalog internal constructor(
     @Inject
     constructor(@ApplicationContext context: Context) : this(
         { context.dataStore },
-        { AndroidFrameDocumentAccess(context, allowTvImports = isAndroidTv(context)) },
+        { AndroidFrameDocumentAccess(context, allowReceivedImports = true) },
         { PhotoFrameManifest(File(context.filesDir, "photo_frame/index-v1.json")) },
     )
 

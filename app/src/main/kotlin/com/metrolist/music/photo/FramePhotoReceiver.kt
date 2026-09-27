@@ -1,12 +1,10 @@
-package com.metrolist.music.tv
+package com.metrolist.music.photo
 
 import android.content.Context
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
-import com.metrolist.music.photo.isFileWithinRoot
-import com.metrolist.music.photo.tvPhotoImportsDirectory
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.io.File
@@ -19,8 +17,8 @@ import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.Executors
 
-/** Serves the phone picker and accepts photos only while the TV send settings are open. */
-internal class TvPhotoReceiver(
+/** Serves the phone picker while the receiving device's transfer settings are open. */
+internal class FramePhotoReceiver(
     private val context: Context,
     private val onPhoto: (File) -> Unit,
 ) : AutoCloseable {
@@ -164,7 +162,7 @@ internal class TvPhotoReceiver(
         const val PORT = 38747
         const val MAX_BYTES = 2 * 1024 * 1024
         const val MAX_EDGE = 4096
-        fun importsDirectory(context: Context) = tvPhotoImportsDirectory(context)
+        fun importsDirectory(context: Context) = framePhotoImportsDirectory(context)
         fun isImportedUri(context: Context, uri: String): Boolean {
             val parsed = Uri.parse(uri)
             val file = parsed.path?.let(::File) ?: return false

@@ -1,6 +1,7 @@
 package com.metrolist.music.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -24,12 +25,15 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -37,13 +41,20 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.metrolist.music.R
 import com.metrolist.music.photo.FrameCatalogState
 import com.metrolist.music.photo.FrameError
 import com.metrolist.music.photo.FrameSelectionType
 import com.metrolist.music.photo.FrameSettings
+import com.metrolist.music.photo.FramePhotoQrCode
+import com.metrolist.music.photo.FramePhotoReceiver
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
+import com.metrolist.music.viewmodels.PhotoFrameViewModel
+import androidx.compose.ui.platform.LocalContext
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -52,15 +63,41 @@ internal fun PhotoFrameSettingsPanel(
     state: FrameCatalogState,
     busy: Boolean,
     error: FrameError?,
+    transfer: PhotoFrameViewModel.TransferState,
     onDismiss: () -> Unit,
     onBrowsePhotos: () -> Unit,
     onRescan: () -> Unit,
     onRemove: (String) -> Unit,
     onClear: () -> Unit,
+    onClearReceived: () -> Unit,
+    onStartReceiver: () -> Unit,
+    onStopReceiver: () -> Unit,
     onCancelScan: () -> Unit,
     onSettings: (FrameSettings) -> Unit,
 ) {
     var confirmClear by rememberSaveable { mutableStateOf(false) }
+    var confirmClearReceived by rememberSaveable { mutableStateOf(false) }
+    var transferOpen by rememberSaveable { mutableStateOf(false) }
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val context = LocalContext.current
+    val receivedCount = state.sources.count { FramePhotoReceiver.isImportedUri(context, it.uri) }
+    DisposableEffect(transferOpen, lifecycle) {
+        if (transferOpen) {
+            if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) onStartReceiver()
+            val observer = LifecycleEventObserver { _, event ->
+                when (event) {
+                    Lifecycle.Event.ON_START -> onStartReceiver()
+                    Lifecycle.Event.ON_STOP -> onStopReceiver()
+                    else -> Unit
+                }
+            }
+            lifecycle.addObserver(observer)
+            onDispose {
+                lifecycle.removeObserver(observer)
+                onStopReceiver()
+            }
+        } else onDispose { onStopReceiver() }
+    }
     val enabled = state.initialized && !busy
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -72,13 +109,44 @@ internal fun PhotoFrameSettingsPanel(
         ) {
             item {
                 Text(stringResource(R.string.photo_frame), style = MaterialTheme.typography.headlineSmall)
-                Text(stringResource(R.string.photo_frame_local_only), style = MaterialTheme.typography.bodyMedium)
+                Text(frameTransferString(R.string.frame_transfer_intro, R.string.frame_transfer_intro_zh_tw),
+                    style = MaterialTheme.typography.bodyMedium)
             }
             item {
                 Button(onClick = onBrowsePhotos, enabled = enabled, modifier = Modifier.fillMaxWidth()) {
                     Text(stringResource(R.string.photo_browser_browse_device))
                 }
                 if (state.sources.isEmpty()) Text(stringResource(R.string.photo_frame_empty))
+            }
+            item {
+                Button(onClick = { transferOpen = !transferOpen }, enabled = enabled, modifier = Modifier.fillMaxWidth()) {
+                    Text(frameTransferString(R.string.tv_photo_pair_title, R.string.tv_photo_pair_title_zh_tw))
+                }
+            }
+            if (transferOpen) {
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text(frameTransferString(R.string.frame_transfer_hint, R.string.frame_transfer_hint_zh_tw))
+                        if (transfer.url != null) {
+                            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                FramePhotoQrCode(transfer.url,
+                                    frameTransferString(R.string.frame_transfer_qr_hint, R.string.frame_transfer_qr_hint_zh_tw))
+                            }
+                            Text(frameTransferString(R.string.tv_photo_pair_address, R.string.tv_photo_pair_address_zh_tw,
+                                transfer.url), color = MaterialTheme.colorScheme.primary)
+                        } else Text(frameTransferString(
+                            if (transfer.error) R.string.frame_transfer_error else R.string.tv_photo_pair_waiting,
+                            if (transfer.error) R.string.frame_transfer_error_zh_tw else R.string.tv_photo_pair_waiting_zh_tw,
+                        ))
+                        Text(frameTransferString(R.string.tv_photo_pair_received, R.string.tv_photo_pair_received_zh_tw,
+                            transfer.count))
+                        Text(frameTransferString(R.string.frame_transfer_stored, R.string.frame_transfer_stored_zh_tw,
+                            receivedCount))
+                        TextButton(onClick = { confirmClearReceived = true }, enabled = enabled && receivedCount > 0) {
+                            Text(frameTransferString(R.string.tv_photo_pair_clear, R.string.tv_photo_pair_clear_zh_tw))
+                        }
+                    }
+                }
             }
             if (busy) item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -176,7 +244,8 @@ internal fun PhotoFrameSettingsPanel(
         AlertDialog(
             onDismissRequest = { confirmClear = false },
             title = { Text(stringResource(R.string.photo_frame_clear)) },
-            text = { Text(stringResource(R.string.photo_frame_clear_confirm)) },
+            text = { Text(frameTransferString(R.string.frame_transfer_clear_all_confirm,
+                R.string.frame_transfer_clear_all_confirm_zh_tw)) },
             confirmButton = {
                 TextButton(onClick = { confirmClear = false; onClear() }, enabled = enabled) {
                     Text(stringResource(R.string.photo_frame_clear))
@@ -187,6 +256,27 @@ internal fun PhotoFrameSettingsPanel(
             },
         )
     }
+    if (confirmClearReceived) {
+        AlertDialog(
+            onDismissRequest = { confirmClearReceived = false },
+            title = { Text(frameTransferString(R.string.tv_photo_pair_clear, R.string.tv_photo_pair_clear_zh_tw)) },
+            text = { Text(frameTransferString(R.string.frame_transfer_clear_confirm, R.string.frame_transfer_clear_confirm_zh_tw)) },
+            confirmButton = {
+                TextButton(onClick = { confirmClearReceived = false; onClearReceived() }, enabled = enabled) {
+                    Text(stringResource(R.string.photo_frame_clear))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmClearReceived = false }) { Text(stringResource(R.string.photo_frame_cancel)) }
+            },
+        )
+    }
+}
+
+@Composable
+private fun frameTransferString(english: Int, chinese: Int, vararg args: Any): String {
+    val locale = LocalConfiguration.current.locales[0].language
+    return stringResource(if (locale == "zh") chinese else english, *args)
 }
 
 @Composable
