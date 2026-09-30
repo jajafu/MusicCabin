@@ -122,12 +122,10 @@ internal fun TvPhotoFrameSettingsPanel(
                     ) {
                         SettingsPageButton(tvLocalizedString(R.string.tv_photo_local_title, R.string.tv_photo_local_title_zh_tw),
                             R.drawable.insert_photo, page == TvFrameSettingsPage.LOCAL) {
-                            viewModel.selectSource(TvPhotoFrameViewModel.Source.LOCAL)
                             page = TvFrameSettingsPage.LOCAL
                         }
                         SettingsPageButton(tvLocalizedString(R.string.tv_photo_pair_title, R.string.tv_photo_pair_title_zh_tw),
                             R.drawable.upload, page == TvFrameSettingsPage.TRANSFER) {
-                            viewModel.selectSource(TvPhotoFrameViewModel.Source.TRANSFER)
                             page = TvFrameSettingsPage.TRANSFER
                         }
                         SettingsPageButton(stringResource(R.string.photo_frame_display),
@@ -141,10 +139,9 @@ internal fun TvPhotoFrameSettingsPanel(
                         when (page) {
                             TvFrameSettingsPage.LOCAL -> {
                                 item {
-                                    Text(stringResource(R.string.photo_browser_browse_device), style = MaterialTheme.typography.titleLarge)
                                     Text(stringResource(R.string.photo_frame_sources, state.photos.count {
                                         !FramePhotoReceiver.isImportedUri(context, it.uri)
-                                    }))
+                                    }), style = MaterialTheme.typography.titleLarge)
                                 }
                                 item {
                                     Button(onClick = onBrowsePhotos, enabled = state.initialized && !busy,
@@ -153,7 +150,10 @@ internal fun TvPhotoFrameSettingsPanel(
                                     }
                                 }
                                 item {
-                                    Button(onClick = onDismiss, enabled = localSources.isNotEmpty(),
+                                    Button(onClick = {
+                                        viewModel.selectSource(TvPhotoFrameViewModel.Source.LOCAL)
+                                        onDismiss()
+                                    }, enabled = localSources.isNotEmpty(),
                                         modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).tvFrameFocus()) {
                                         Text(tvLocalizedString(R.string.tv_photo_play_local, R.string.tv_photo_play_local_zh_tw))
                                     }
@@ -184,10 +184,6 @@ internal fun TvPhotoFrameSettingsPanel(
                             }
                             TvFrameSettingsPage.TRANSFER -> {
                                 item {
-                                    Text(tvLocalizedString(R.string.tv_photo_pair_title, R.string.tv_photo_pair_title_zh_tw),
-                                        style = MaterialTheme.typography.titleLarge)
-                                }
-                                item {
                                     if (transfer.url != null) {
                                         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                                             FramePhotoQrCode(transfer.url!!,
@@ -207,7 +203,10 @@ internal fun TvPhotoFrameSettingsPanel(
                                 item { Text(tvLocalizedString(R.string.tv_photo_pair_stored, R.string.tv_photo_pair_stored_zh_tw,
                                     importedCount)) }
                                 item {
-                                    Button(onClick = onDismiss, enabled = importedCount > 0,
+                                    Button(onClick = {
+                                        viewModel.selectSource(TvPhotoFrameViewModel.Source.TRANSFER)
+                                        onDismiss()
+                                    }, enabled = importedCount > 0,
                                         modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).tvFrameFocus()) {
                                         Text(tvLocalizedString(R.string.tv_photo_pair_play, R.string.tv_photo_pair_play_zh_tw))
                                     }
@@ -221,7 +220,6 @@ internal fun TvPhotoFrameSettingsPanel(
                                 }
                             }
                             TvFrameSettingsPage.DISPLAY -> {
-                                item { Text(stringResource(R.string.photo_frame_display), style = MaterialTheme.typography.titleLarge) }
                                 item { Text(stringResource(R.string.photo_frame_interval), style = MaterialTheme.typography.titleMedium) }
                                 item {
                                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

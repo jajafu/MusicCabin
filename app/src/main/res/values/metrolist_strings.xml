@@ -1317,6 +1317,10 @@
     <string name="frame_transfer_hint_zh_tw" translatable="false">讓傳送照片的手機與這台裝置連上同一區域網路，也可使用手機熱點。用傳送手機掃描 QR code 或開啟網址並選取照片；傳送時保持此設定頁開啟。照片會先在手機壓縮，以副本儲存在這台裝置並加入相框。</string>
     <string name="frame_transfer_intro" translatable="false">Choose photos from this device or USB, or receive photos from a phone over the local network. Use only while parked.</string>
     <string name="frame_transfer_intro_zh_tw" translatable="false">可選擇這台裝置或 USB 中的照片，也可透過區域網路從手機傳送照片。請僅在停車時使用。</string>
+    <string name="frame_transfer_local_count" translatable="false">Local and USB photos: %1$d</string>
+    <string name="frame_transfer_local_count_zh_tw" translatable="false">本機與 USB 照片：%1$d 張</string>
+    <string name="frame_transfer_clear_all" translatable="false">Clear all frame photos</string>
+    <string name="frame_transfer_clear_all_zh_tw" translatable="false">清空相框全部照片</string>
     <string name="frame_transfer_clear_all_confirm" translatable="false">Remove all selected photos and folders, and delete received copies from this device? Local, USB, and phone originals will stay untouched.</string>
     <string name="frame_transfer_clear_all_confirm_zh_tw" translatable="false">要移除相框中所有已選照片與資料夾，並刪除這台裝置的傳入副本嗎？本機、USB 與手機原檔不會受影響。</string>
     <string name="frame_transfer_qr_hint" translatable="false">Scan on the sending phone to open this device’s photo sender</string>

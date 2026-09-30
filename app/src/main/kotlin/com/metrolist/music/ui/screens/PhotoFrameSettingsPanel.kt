@@ -29,6 +29,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -80,7 +81,13 @@ internal fun PhotoFrameSettingsPanel(
     var transferOpen by rememberSaveable { mutableStateOf(false) }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val context = LocalContext.current
-    val receivedCount = state.sources.count { FramePhotoReceiver.isImportedUri(context, it.uri) }
+    val localSources = remember(state.sources, context) {
+        state.sources.filterNot { FramePhotoReceiver.isImportedUri(context, it.uri) }
+    }
+    val receivedCount = state.sources.size - localSources.size
+    val localPhotoCount = remember(state.photos, context) {
+        state.photos.count { !FramePhotoReceiver.isImportedUri(context, it.uri) }
+    }
     DisposableEffect(transferOpen, lifecycle) {
         if (transferOpen) {
             if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) onStartReceiver()
@@ -203,17 +210,18 @@ internal fun PhotoFrameSettingsPanel(
                 )
             }
             item {
-                Text(stringResource(R.string.photo_frame_sources, state.photos.size), style = MaterialTheme.typography.titleMedium)
+                Text(frameTransferString(R.string.frame_transfer_local_count, R.string.frame_transfer_local_count_zh_tw,
+                    localPhotoCount), style = MaterialTheme.typography.titleMedium)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TextButton(onClick = onRescan, enabled = enabled && state.sources.isNotEmpty()) {
+                    TextButton(onClick = onRescan, enabled = enabled && localSources.isNotEmpty()) {
                         Text(stringResource(R.string.photo_frame_rescan))
                     }
                     TextButton(onClick = { confirmClear = true }, enabled = enabled && state.sources.isNotEmpty()) {
-                        Text(stringResource(R.string.photo_frame_clear))
+                        Text(frameTransferString(R.string.frame_transfer_clear_all, R.string.frame_transfer_clear_all_zh_tw))
                     }
                 }
             }
-            items(state.sources, key = { "${it.type}:${it.uri}" }) { source ->
+            items(localSources, key = { "${it.type}:${it.uri}" }) { source ->
                 ListItem(
                     headlineContent = { Text(source.name, maxLines = 2, overflow = TextOverflow.Ellipsis) },
                     overlineContent = {
@@ -250,12 +258,12 @@ internal fun PhotoFrameSettingsPanel(
     if (confirmClear) {
         AlertDialog(
             onDismissRequest = { confirmClear = false },
-            title = { Text(stringResource(R.string.photo_frame_clear)) },
+            title = { Text(frameTransferString(R.string.frame_transfer_clear_all, R.string.frame_transfer_clear_all_zh_tw)) },
             text = { Text(frameTransferString(R.string.frame_transfer_clear_all_confirm,
                 R.string.frame_transfer_clear_all_confirm_zh_tw)) },
             confirmButton = {
                 TextButton(onClick = { confirmClear = false; onClear() }, enabled = enabled) {
-                    Text(stringResource(R.string.photo_frame_clear))
+                    Text(frameTransferString(R.string.frame_transfer_clear_all, R.string.frame_transfer_clear_all_zh_tw))
                 }
             },
             dismissButton = {
@@ -270,7 +278,7 @@ internal fun PhotoFrameSettingsPanel(
             text = { Text(frameTransferString(R.string.frame_transfer_clear_confirm, R.string.frame_transfer_clear_confirm_zh_tw)) },
             confirmButton = {
                 TextButton(onClick = { confirmClearReceived = false; onClearReceived() }, enabled = enabled) {
-                    Text(stringResource(R.string.photo_frame_clear))
+                    Text(frameTransferString(R.string.tv_photo_pair_clear, R.string.tv_photo_pair_clear_zh_tw))
                 }
             },
             dismissButton = {

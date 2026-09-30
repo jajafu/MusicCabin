@@ -4,6 +4,20 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.24
+
+### 中文
+
+- TV 數位相框 1 設定的本地照片、手機傳送與顯示選項改為只切換設定內容；按播放按鈕才切換輪播來源並關閉設定。移除與側邊選項或操作按鈕重複的標題。
+- 手機／車機相框 1 將本機與 USB 照片清單和手機傳入副本分開顯示，並明確區分「清空相框全部照片」與「清空手機傳入照片」。
+- 版本 code 254；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Make TV Photo frame 1 settings navigation show each control page without changing the slideshow source. The Play buttons now select their respective source and close settings. Remove headings repeated by navigation items or action buttons.
+- Separate local/USB selections from received-photo counts in phone and head-unit Photo frame 1 settings, with distinct Clear all frame photos and Clear photos sent from phone actions.
+- Version code 254; no database schema change or data migration.
+
 ## 13.7.23
 
 ### 中文
