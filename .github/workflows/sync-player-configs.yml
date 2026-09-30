@@ -1,6 +1,8 @@
 name: Sync Player Configs
 
 on:
+  schedule:
+    - cron: '0 0,12 * * *'
   workflow_dispatch:
 
 permissions:
