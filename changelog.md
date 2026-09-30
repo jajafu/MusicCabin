@@ -4,6 +4,18 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.25
+
+### 中文
+
+- 數位相框新增方向適配拼圖：橫式螢幕遇到直式照片時左右並排兩張，直式螢幕遇到橫式照片時上下堆疊兩張；兩張共用同一輪播間隔一起切換。湊不到同方向的第二張時退回單張顯示，並沿用完整顯示／裁切填滿設定。適用相框 1（手機／車機／TV）與相框 2 本機來源；Drive 雲端輪播維持單張。
+- 版本 code 255；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Add orientation-aware pairing to Photo frame: landscape screens show two portrait photos side by side, and portrait screens stack two landscape photos, with each pair sharing one slideshow interval. When no same-orientation partner is available, it falls back to a single photo following the fit/crop setting. Applies to Photo frame 1 (phone/head-unit/TV) and Photo frame 2 local sources; Drive cloud playback stays single-photo.
+- Version code 255; no database schema change or data migration.
+
 ## 13.7.24
 
 ### 中文

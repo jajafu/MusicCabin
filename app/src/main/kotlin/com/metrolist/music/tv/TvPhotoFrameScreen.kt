@@ -8,7 +8,6 @@ import android.view.KeyEvent as AndroidKeyEvent
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -38,6 +37,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
@@ -68,13 +68,14 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil3.compose.asPainter
 import coil3.imageLoader
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.SuccessResult
 import coil3.size.Precision
 import coil3.size.Scale
+import com.metrolist.music.photo.FrameSlideDisplay
+import com.metrolist.music.photo.coilFrameOrientation
 import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
@@ -158,6 +159,8 @@ fun TvPhotoFrameScreen(onExit: () -> Unit, viewModel: TvPhotoFrameViewModel = hi
             }.map { it.uri }
         }
         val session = remember(uris, generation) { FramePlaybackSession(uris) }
+        val isLandscape = constraints.maxWidth > constraints.maxHeight
+        val landscapeNow by rememberUpdatedState(isLandscape)
         // A cancelled decode can finish cleanup after its replacement has started.
         // Give each effect its own frame state so old cleanup cannot erase new images.
         var slides by remember(session, width, height, state.settings.intervalSeconds, foreground, showSettings, showMediaBrowser) {
@@ -186,7 +189,12 @@ fun TvPhotoFrameScreen(onExit: () -> Unit, viewModel: TvPhotoFrameViewModel = hi
                 unavailableUris = viewModel::unavailableUris,
             )
             try {
-                playback.play(session, state.settings.intervalSeconds * 1000L) { slides = it }
+                playback.play(
+                    session,
+                    state.settings.intervalSeconds * 1000L,
+                    isLandscape = { landscapeNow },
+                    orientationOf = ::coilFrameOrientation,
+                ) { slides = it }
                 // Keep image ownership within this effect, including single-photo/empty states.
                 kotlinx.coroutines.awaitCancellation()
             } finally {
@@ -201,21 +209,9 @@ fun TvPhotoFrameScreen(onExit: () -> Unit, viewModel: TvPhotoFrameViewModel = hi
         val scale = if (state.settings.crop) ContentScale.Crop else ContentScale.Fit
         val toggleLabel = stringResource(R.string.photo_frame_toggle_controls)
         Box(Modifier.fillMaxSize().clickable(onClickLabel = toggleLabel) { showControls = !showControls }) {
-            slides.current?.let { frame ->
-                Image(
-                    painter = remember(frame.image) { frame.image.asPainter(context) },
-                    contentDescription = null,
-                    contentScale = scale,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            }
-            slides.incoming?.let { frame ->
-                Image(
-                    painter = remember(frame.image) { frame.image.asPainter(context) },
-                    contentDescription = null,
-                    contentScale = scale,
-                    modifier = Modifier.fillMaxSize().graphicsLayer { alpha = fade.value },
-                )
+            FrameSlideDisplay(slides.current, isLandscape, scale)
+            slides.incoming?.let { incoming ->
+                FrameSlideDisplay(incoming, isLandscape, scale, Modifier.graphicsLayer { alpha = fade.value })
             }
         }
         if (state.settings.showLyrics && !showSettings && !showMediaBrowser) {

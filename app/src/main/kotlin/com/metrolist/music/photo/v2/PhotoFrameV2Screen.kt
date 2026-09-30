@@ -81,7 +81,9 @@ import com.metrolist.music.photo.FramePlaybackCommand
 import com.metrolist.music.photo.FrameError
 import com.metrolist.music.photo.FrameLyricsOverlay
 import com.metrolist.music.photo.FramePlaybackState
+import com.metrolist.music.photo.FrameSlideDisplay
 import com.metrolist.music.photo.PhotoFramePlayback
+import com.metrolist.music.photo.coilFrameOrientation
 import java.util.Date
 import kotlinx.coroutines.delay
 
@@ -168,9 +170,11 @@ fun PhotoFrameV2Screen(
         val uris = remember(state.photos, source) { if (source == FrameV2Source.LOCAL) state.photos.map { it.uri } else emptyList() }
         // ViewModel-retained: rotation reuses the shuffle order and resumes at the current photo.
         val session = viewModel.playbackSession(uris, generation)
+        val isLandscape = constraints.maxWidth > constraints.maxHeight
         // Decode size follows the latest layout without restarting playback;
         // rotation only re-lays out the current image and applies the new size to later photos.
         val decodeSize by rememberUpdatedState(width to height)
+        val landscapeNow by rememberUpdatedState(isLandscape)
         // A cancelled decode can finish cleanup after its replacement has started.
         // Give each effect its own frame state so old cleanup cannot erase new images.
         var slides by remember(session, state.settings.intervalSeconds, foreground, showSettings, showMediaBrowser) {
@@ -200,7 +204,12 @@ fun PhotoFrameV2Screen(
                 unavailableUris = viewModel::unavailableUris,
             )
             try {
-                playback.play(session, state.settings.intervalSeconds * 1000L) { slides = it }
+                playback.play(
+                    session,
+                    state.settings.intervalSeconds * 1000L,
+                    isLandscape = { landscapeNow },
+                    orientationOf = ::coilFrameOrientation,
+                ) { slides = it }
                 // Keep image ownership within this effect, including single-photo/empty states.
                 kotlinx.coroutines.awaitCancellation()
             } finally {
@@ -223,21 +232,9 @@ fun PhotoFrameV2Screen(
                     )
                 }
             }
-            slides.current?.let { frame ->
-                Image(
-                    painter = remember(frame.image) { frame.image.asPainter(context) },
-                    contentDescription = null,
-                    contentScale = scale,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            }
-            slides.incoming?.let { frame ->
-                Image(
-                    painter = remember(frame.image) { frame.image.asPainter(context) },
-                    contentDescription = null,
-                    contentScale = scale,
-                    modifier = Modifier.fillMaxSize().graphicsLayer { alpha = fade.value },
-                )
+            slides.current?.let { FrameSlideDisplay(it, isLandscape, scale) }
+            slides.incoming?.let { incoming ->
+                FrameSlideDisplay(incoming, isLandscape, scale, Modifier.graphicsLayer { alpha = fade.value })
             }
         }
         val empty = when (source) {
