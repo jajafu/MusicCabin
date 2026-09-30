@@ -1097,6 +1097,8 @@
     <string name="photo_frame_fill_desc">Crop to fill. Turn off to show the entire photo.</string>
     <string name="photo_frame_clock">Show clock</string>
     <string name="photo_frame_song_info">Show song information</string>
+    <string name="photo_frame_lyrics">Show lyrics</string>
+    <string name="photo_frame_lyrics_desc">Show the current lyric line along the bottom edge.</string>
     <string name="photo_frame_sources">Photos: %1$d</string>
     <string name="photo_frame_rescan">Rescan sources</string>
     <string name="photo_frame_clear">Clear selection</string>

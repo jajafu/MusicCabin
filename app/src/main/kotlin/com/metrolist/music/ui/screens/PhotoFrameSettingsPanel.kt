@@ -192,6 +192,13 @@ internal fun PhotoFrameSettingsPanel(
                                 FrameSettingSwitch(R.string.photo_frame_song_info, state.settings.showSongInfo, enabled) { onSettings(state.settings.copy(showSongInfo = it)) }
                             },
                         ),
+                        Material3SettingsItem(
+                            title = { Text(stringResource(R.string.photo_frame_lyrics)) },
+                            description = { Text(stringResource(R.string.photo_frame_lyrics_desc)) },
+                            trailingContent = {
+                                FrameSettingSwitch(R.string.photo_frame_lyrics, state.settings.showLyrics, enabled) { onSettings(state.settings.copy(showLyrics = it)) }
+                            },
+                        ),
                     ),
                 )
             }

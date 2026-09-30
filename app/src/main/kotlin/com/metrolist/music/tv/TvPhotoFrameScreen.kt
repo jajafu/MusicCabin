@@ -79,8 +79,9 @@ import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.listentogether.RoomRole
-import com.metrolist.music.photo.FramePlaybackCommand
+import com.metrolist.music.photo.FrameLyricsOverlay
 import com.metrolist.music.photo.FramePhotoReceiver
+import com.metrolist.music.photo.FramePlaybackCommand
 import com.metrolist.music.photo.FramePlaybackState
 import com.metrolist.music.photo.FramePlaybackSession
 import com.metrolist.music.photo.PhotoFramePlayback
@@ -216,6 +217,9 @@ fun TvPhotoFrameScreen(onExit: () -> Unit, viewModel: TvPhotoFrameViewModel = hi
                     modifier = Modifier.fillMaxSize().graphicsLayer { alpha = fade.value },
                 )
             }
+        }
+        if (state.settings.showLyrics && !showSettings && !showMediaBrowser) {
+            FrameLyricsOverlay()
         }
         if (showControls) {
             Column(

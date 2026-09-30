@@ -851,6 +851,8 @@
     <string name="photo_frame_fill_desc">裁切照片以填滿畫面。關閉後會顯示完整照片。</string>
     <string name="photo_frame_clock">顯示時鐘</string>
     <string name="photo_frame_song_info">顯示歌曲資訊</string>
+    <string name="photo_frame_lyrics">顯示歌詞</string>
+    <string name="photo_frame_lyrics_desc">在畫面最下方顯示目前歌詞。</string>
     <string name="photo_frame_sources">照片：%1$d 張</string>
     <string name="photo_frame_rescan">重新掃描來源</string>
     <string name="photo_frame_clear">清除選取項目</string>

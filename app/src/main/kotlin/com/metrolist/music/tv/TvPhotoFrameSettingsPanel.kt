@@ -245,6 +245,9 @@ internal fun TvPhotoFrameSettingsPanel(
                                 item { SettingsToggle(stringResource(R.string.photo_frame_song_info), state.settings.showSongInfo, !busy) {
                                     viewModel.updateSettings(state.settings.copy(showSongInfo = !state.settings.showSongInfo))
                                 } }
+                                item { SettingsToggle(stringResource(R.string.photo_frame_lyrics), state.settings.showLyrics, !busy) {
+                                    viewModel.updateSettings(state.settings.copy(showLyrics = !state.settings.showLyrics))
+                                } }
                             }
                         }
                         val visibleError = error ?: state.error

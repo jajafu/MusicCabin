@@ -79,6 +79,7 @@ import com.metrolist.music.R
 import com.metrolist.music.listentogether.RoomRole
 import com.metrolist.music.photo.FramePlaybackCommand
 import com.metrolist.music.photo.FrameError
+import com.metrolist.music.photo.FrameLyricsOverlay
 import com.metrolist.music.photo.FramePlaybackState
 import com.metrolist.music.photo.PhotoFramePlayback
 import java.util.Date
@@ -247,6 +248,9 @@ fun PhotoFrameV2Screen(
         if (source == null || (source == FrameV2Source.LOCAL && (!state.initialized || busy) && slides.current == null) ||
             (source == FrameV2Source.DRIVE && (drive.busy || cloudSlides.loading) && cloudSlides.current == null)) {
             CircularProgressIndicator(Modifier.align(Alignment.Center), color = Color.White)
+        }
+        if (state.settings.showLyrics && !showSettings && !showMediaBrowser) {
+            FrameLyricsOverlay(textColor = Color.White.copy(alpha = 0.85f))
         }
         if (showControls || empty) {
             Column(

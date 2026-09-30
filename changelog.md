@@ -4,6 +4,20 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.23
+
+### 中文
+
+- 數位相框 1（手機／車機）、TV 版相框 1 與數位相框 2 新增歌詞圖層。開啟相框設定中的「顯示歌詞」後，畫面最下方會跟隨目前播放位置的歌詞行，最多一至兩行，超過以省略號截斷，切歌時淡入淡出。歌詞無時間軸時不顯示，以免出現不會變動的文字。
+- 歌詞圖層僅在相框可見時運作，並沿用歌曲的歌詞時間偏移；歌詞尚未下載時會自動向已啟用的來源取得一次並快取。
+- 版本 code 253；無資料庫 schema 變更，升級不需遷移資料。歌詞預設關閉，既有使用者不需變更設定。
+
+### English
+
+- Add a lyric layer to phone and head-unit Photo frame 1, the TV Photo frame 1, and Photo frame 2. Turn on Show lyrics in the frame settings to follow the current lyric line along the bottom edge, kept to one or two lines with an ellipsis for longer text and a fade between lines as the track changes. Lyrics without time tags are not drawn, so the layer never shows a line that will not move.
+- The lyric layer runs only while the frame is visible, honours the song's lyric offset, and fetches lyrics once through the enabled providers when the current track has none cached.
+- Version code 253; no database schema change or data migration. Lyrics are off by default, so existing users need no setting changes.
+
 ## 13.7.22
 
 ### 中文

@@ -31,21 +31,23 @@ class LocalPhotoCatalogTest {
     @Test fun `v2 photos and display settings survive reopening without altering original frame`() = runBlocking {
         val original = original()
         original.addPhotos(listOf(first))
-        original.updateSettings(FrameSettings(intervalSeconds = 30, crop = false))
+        original.updateSettings(FrameSettings(intervalSeconds = 30, crop = false, showLyrics = true))
         val v2 = local()
         v2.initialize()
         assertTrue(v2.state.value.photos.isEmpty())
         v2.addPhotos(listOf(second, second))
-        v2.updateSettings(FrameSettings(intervalSeconds = 5, showClock = false))
+        v2.updateSettings(FrameSettings(intervalSeconds = 5, showClock = false, showLyrics = true))
         val reopened = local().also { it.initialize() }
         assertEquals(listOf(second.toString()), reopened.state.value.photos.map { it.uri })
         assertEquals(5, reopened.state.value.settings.intervalSeconds)
         assertFalse(reopened.state.value.settings.showClock)
+        assertTrue(reopened.state.value.settings.showLyrics)
         reopened.clear()
         val old = original().also { it.initialize() }
         assertEquals(listOf(first.toString()), old.state.value.photos.map { it.uri })
         assertEquals(30, old.state.value.settings.intervalSeconds)
         assertFalse(old.state.value.settings.crop)
+        assertTrue(old.state.value.settings.showLyrics)
         assertTrue(local().also { it.initialize() }.state.value.photos.isEmpty())
     }
 
