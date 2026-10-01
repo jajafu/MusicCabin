@@ -72,7 +72,7 @@ class TvUpdateState {
     fun check(
         scope: CoroutineScope,
         context: Context,
-        failedTemplate: String,
+        failedText: (String) -> String,
         noApkText: String,
         forceRefresh: Boolean = true,
     ) {
@@ -103,7 +103,7 @@ class TvUpdateState {
                             Updater.removeOtherStagedApks(staged)
                         }
                     }.onFailure {
-                        checkError = String.format(failedTemplate, it.message ?: "Unknown error")
+                        checkError = failedText(it.message ?: "Unknown error")
                     }
             }
             refreshInstallPermission(context)
@@ -114,8 +114,8 @@ class TvUpdateState {
     fun download(
         scope: CoroutineScope,
         context: Context,
-        downloadingTemplate: String,
-        failedTemplate: String,
+        downloadingText: (Int) -> String,
+        failedText: (String) -> String,
     ) {
         val releaseInfo = Updater.getCachedLatestRelease() ?: return
         val url = Updater.getDownloadUrlForCurrentVariant(releaseInfo) ?: return
@@ -136,12 +136,9 @@ class TvUpdateState {
                         launch(Dispatchers.Main) {
                             if (total != null && total > 0) {
                                 progress = (downloaded.toFloat() / total).coerceIn(0f, 1f)
-                                progressText = String.format(
-                                    downloadingTemplate,
-                                    (downloaded * 100 / total).toInt(),
-                                )
+                                progressText = downloadingText((downloaded * 100 / total).toInt())
                             } else {
-                                progressText = String.format(downloadingTemplate, 0)
+                                progressText = downloadingText(0)
                             }
                         }
                     }
@@ -155,7 +152,7 @@ class TvUpdateState {
                 progress = 1f
                 progressText = null
             }.onFailure {
-                downloadError = String.format(failedTemplate, it.message ?: "Unknown error")
+                downloadError = failedText(it.message ?: "Unknown error")
                 downloadedFile = null
                 progressText = null
             }

@@ -4,6 +4,20 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.31
+
+### 中文
+
+- 修正 TV 版啟動即崩潰：更新流程把含格式佔位符的字串（`failed_to_check_updates`、`tv_update_downloading`、`tv_update_failed`）當成純文字讀取，Android 會因此拋出 `MissingFormatArgumentException`。改為顯示訊息時才帶參數格式化。
+- 新增格式化字串的回歸測試，避免同類問題再次發生。
+- 版本 code 261；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Fix a crash on every TV launch: the update flow read the format strings `failed_to_check_updates`, `tv_update_downloading` and `tv_update_failed` without their arguments, which throws MissingFormatArgumentException on Android. Those messages are now formatted with their arguments when they are shown.
+- Add a regression test that formats those strings with arguments.
+- Version code 261; no database schema change or data migration.
+
 ## 13.7.30
 
 ### 中文

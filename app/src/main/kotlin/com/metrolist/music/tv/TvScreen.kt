@@ -5,6 +5,7 @@
 
 package com.metrolist.music.tv
 
+import android.content.Context
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -133,10 +134,17 @@ fun TvScreen(database: MusicDatabase, playerConnection: PlayerConnection?, onExi
 
     val updateState = remember { TvUpdateState() }
     val updateScope = rememberCoroutineScope()
-    val failedToCheckTemplate = stringResource(R.string.failed_to_check_updates)
+    // Keep the template read on the non-formatting overload, then supply the error message
+    // only when a check fails.
     val noApkText = tvLocalizedString(R.string.tv_update_no_apk, R.string.tv_update_no_apk_zh_tw)
-    val downloadingTemplate = tvLocalizedString(R.string.tv_update_downloading, R.string.tv_update_downloading_zh_tw)
-    val updateFailedTemplate = tvLocalizedString(R.string.tv_update_failed, R.string.tv_update_failed_zh_tw)
+    val failedToCheckTemplate = stringResource(R.string.failed_to_check_updates)
+    val checkFailedText: (String) -> String = { message -> String.format(failedToCheckTemplate, message) }
+    val downloadingText: (Int) -> String = { percent ->
+        tvLocalizedString(context, R.string.tv_update_downloading, R.string.tv_update_downloading_zh_tw, percent)
+    }
+    val updateFailedText: (String) -> String = { message ->
+        tvLocalizedString(context, R.string.tv_update_failed, R.string.tv_update_failed_zh_tw, message)
+    }
 
     // Automatic update check on TV launch, mirroring the phone flow in MainActivity.
     // TV shows an in-app banner instead of a system notification.
@@ -149,7 +157,7 @@ fun TvScreen(database: MusicDatabase, playerConnection: PlayerConnection?, onExi
                 updateState.check(
                     scope = updateScope,
                     context = context,
-                    failedTemplate = failedToCheckTemplate,
+                    failedText = checkFailedText,
                     noApkText = noApkText,
                     forceRefresh = false,
                 )
@@ -467,7 +475,7 @@ fun TvScreen(database: MusicDatabase, playerConnection: PlayerConnection?, onExi
                             updateState.check(
                                 scope = updateScope,
                                 context = context,
-                                failedTemplate = failedToCheckTemplate,
+                                failedText = checkFailedText,
                                 noApkText = noApkText,
                                 forceRefresh = true,
                             )
@@ -476,8 +484,8 @@ fun TvScreen(database: MusicDatabase, playerConnection: PlayerConnection?, onExi
                             updateState.download(
                                 scope = updateScope,
                                 context = context,
-                                downloadingTemplate = downloadingTemplate,
-                                failedTemplate = updateFailedTemplate,
+                                downloadingText = downloadingText,
+                                failedText = updateFailedText,
                             )
                         },
                         onInstall = { updateState.startInstall(context) },
@@ -591,8 +599,19 @@ private fun TvNavigationItem(
 }
 
 @Composable
-internal fun tvLocalizedString(english: Int, chinese: Int, vararg args: Any): String =
-    stringResource(if (LocalConfiguration.current.locales[0].language == "zh") chinese else english, *args)
+internal fun tvLocalizedString(english: Int, chinese: Int, vararg args: Any): String {
+    val id = if (LocalConfiguration.current.locales[0].language == "zh") chinese else english
+    return if (args.isEmpty()) stringResource(id) else stringResource(id, *args)
+}
+
+/**
+ * Same selection as the composable overload, for coroutine callbacks where
+ * [stringResource] cannot be called.
+ */
+internal fun tvLocalizedString(context: Context, english: Int, chinese: Int, vararg args: Any): String {
+    val id = if (context.resources.configuration.locales[0].language == "zh") chinese else english
+    return if (args.isEmpty()) context.getString(id) else context.getString(id, *args)
+}
 
 @Composable
 private fun TvArtwork(url: String?, size: Dp) {
