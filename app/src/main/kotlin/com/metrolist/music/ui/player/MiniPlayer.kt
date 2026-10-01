@@ -123,6 +123,7 @@ import com.metrolist.music.constants.MiniPlayerBackgroundStyleKey
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
+import com.metrolist.music.ui.component.rememberMiniPlayerScales
 import androidx.palette.graphics.Palette
 import coil3.imageLoader
 import coil3.request.ImageRequest
@@ -239,8 +240,14 @@ private fun NewMiniPlayer(
     val configuration = LocalConfiguration.current
     val density = LocalDensity.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-    val sizeScale = if (isLandscape) 2f else 1f
-    val miniPlayerHeight = if (isLandscape) LandscapeMiniPlayerHeight else MiniPlayerHeight
+    // Keep the landscape base (2x) and grow it with the short edge so a 720dp
+    // head unit renders larger than a 360dp phone; height grows with it.
+    val miniPlayerScales = rememberMiniPlayerScales(
+        isLandscape = isLandscape,
+        baseHeight = if (isLandscape) LandscapeMiniPlayerHeight else MiniPlayerHeight,
+    )
+    val sizeScale = miniPlayerScales.sizeScale
+    val miniPlayerHeight = miniPlayerScales.height
     val isTabletLandscape =
         remember(windowInfo.containerSize.width, configuration.orientation) {
             (windowInfo.containerSize.width / density.density) >= 600f && configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
@@ -391,7 +398,7 @@ private fun NewMiniPlayer(
         Box(
             modifier =
                 Modifier
-                    .then(if (isTabletLandscape) Modifier.width(1000.dp).align(Alignment.Center) else Modifier.fillMaxWidth())
+                    .then(if (isTabletLandscape) Modifier.width(1000.dp * miniPlayerScales.adaptiveScale).align(Alignment.Center) else Modifier.fillMaxWidth())
                     .height(miniPlayerHeight)
                     .offset { IntOffset(offsetXAnimatable.value.roundToInt(), 0) }
                     .clip(RoundedCornerShape(32.dp * sizeScale))
@@ -759,8 +766,12 @@ private fun LegacyMiniPlayer(
     val configuration = LocalConfiguration.current
     val density = LocalDensity.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-    val sizeScale = if (isLandscape) 2f else 1f
-    val miniPlayerHeight = if (isLandscape) LandscapeMiniPlayerHeight else MiniPlayerHeight
+    val legacyScales = rememberMiniPlayerScales(
+        isLandscape = isLandscape,
+        baseHeight = if (isLandscape) LandscapeMiniPlayerHeight else MiniPlayerHeight,
+    )
+    val sizeScale = legacyScales.sizeScale
+    val miniPlayerHeight = legacyScales.height
     val isTabletLandscape =
         remember(windowInfo.containerSize.width, configuration.orientation) {
             (windowInfo.containerSize.width / density.density) >= 600f && configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
@@ -788,7 +799,7 @@ private fun LegacyMiniPlayer(
     Box(
         modifier =
             modifier
-                .then(if (isTabletLandscape) Modifier.width(1000.dp) else Modifier.fillMaxWidth())
+                .then(if (isTabletLandscape) Modifier.width(1000.dp * legacyScales.adaptiveScale) else Modifier.fillMaxWidth())
                 .height(miniPlayerHeight)
                 .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal))
                 .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))

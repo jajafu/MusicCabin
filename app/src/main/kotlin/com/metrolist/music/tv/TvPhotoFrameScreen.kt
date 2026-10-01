@@ -80,12 +80,16 @@ import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.listentogether.RoomRole
+import com.metrolist.music.photo.FRAME_TEXT_BASELINE_SCALE
 import com.metrolist.music.photo.FrameLyricsOverlay
 import com.metrolist.music.photo.FramePhotoReceiver
 import com.metrolist.music.photo.FramePlaybackCommand
 import com.metrolist.music.photo.FramePlaybackState
 import com.metrolist.music.photo.FramePlaybackSession
 import com.metrolist.music.photo.PhotoFramePlayback
+import com.metrolist.music.ui.component.AutoResizeText
+import com.metrolist.music.ui.component.FontSizeRange
+import com.metrolist.music.ui.component.rememberFrameUiScale
 import com.metrolist.music.ui.screens.frameErrorMessage
 import java.util.Date
 import kotlinx.coroutines.delay
@@ -161,6 +165,8 @@ fun TvPhotoFrameScreen(onExit: () -> Unit, viewModel: TvPhotoFrameViewModel = hi
         val session = remember(uris, generation) { FramePlaybackSession(uris) }
         val isLandscape = constraints.maxWidth > constraints.maxHeight
         val landscapeNow by rememberUpdatedState(isLandscape)
+        // TV screens are large; scale overlay text and icons with the short edge.
+        val uiScale = rememberFrameUiScale()
         // A cancelled decode can finish cleanup after its replacement has started.
         // Give each effect its own frame state so old cleanup cannot erase new images.
         var slides by remember(session, width, height, state.settings.intervalSeconds, foreground, showSettings, showMediaBrowser) {
@@ -215,16 +221,17 @@ fun TvPhotoFrameScreen(onExit: () -> Unit, viewModel: TvPhotoFrameViewModel = hi
             }
         }
         if (state.settings.showLyrics && !showSettings && !showMediaBrowser) {
-            FrameLyricsOverlay()
+            FrameLyricsOverlay(uiScale = uiScale)
         }
         if (showControls) {
             Column(
                 Modifier.align(Alignment.TopCenter).fillMaxWidth()
                     .background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.8f), Color.Black.copy(alpha = 0.55f), Color.Transparent)))
-                    .windowInsetsPadding(WindowInsets.safeDrawing).verticalScroll(rememberScrollState()).padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                    .windowInsetsPadding(WindowInsets.safeDrawing).verticalScroll(rememberScrollState()).padding(16.dp * uiScale),
+                verticalArrangement = Arrangement.spacedBy(8.dp * uiScale),
             ) {
                 FrameOverlayContent(
+                    uiScale = uiScale,
                     showClock = state.settings.showClock,
                     clockActive = foreground,
                     showSongInfo = state.settings.showSongInfo,
@@ -268,7 +275,7 @@ fun TvPhotoFrameScreen(onExit: () -> Unit, viewModel: TvPhotoFrameViewModel = hi
 }
 
 @Composable
-private fun FrameClock(active: Boolean) {
+private fun FrameClock(active: Boolean, uiScale: Float) {
     val context = LocalContext.current
     var time by remember { mutableStateOf(DateFormat.getTimeFormat(context).format(Date())) }
     LaunchedEffect(active) {
@@ -278,16 +285,22 @@ private fun FrameClock(active: Boolean) {
         }
     }
     val style = MaterialTheme.typography.headlineLarge
-    Text(
+    AutoResizeText(
         text = time,
+        fontSizeRange = FontSizeRange(
+            min = style.fontSize * FRAME_TEXT_BASELINE_SCALE,
+            max = style.fontSize * FRAME_TEXT_BASELINE_SCALE * uiScale,
+        ),
         color = Color.White,
         maxLines = 1,
-        style = style.copy(fontSize = style.fontSize * 2f, lineHeight = style.lineHeight * 2f),
+        overflow = TextOverflow.Ellipsis,
+        style = style,
     )
 }
 
 @Composable
 private fun FrameOverlayContent(
+    uiScale: Float,
     showClock: Boolean,
     clockActive: Boolean,
     showSongInfo: Boolean,
@@ -312,63 +325,72 @@ private fun FrameOverlayContent(
     val artistStyle = MaterialTheme.typography.bodyLarge
     FlowRow(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp * uiScale),
+        verticalArrangement = Arrangement.spacedBy(8.dp * uiScale),
     ) {
-        if (showClock) FrameClock(clockActive)
+        if (showClock) FrameClock(clockActive, uiScale)
         if (showSongInfo && metadata != null) {
-            Text(
+            AutoResizeText(
                 text = metadata.title,
+                fontSizeRange = FontSizeRange(
+                    min = titleStyle.fontSize * FRAME_TEXT_BASELINE_SCALE,
+                    max = titleStyle.fontSize * FRAME_TEXT_BASELINE_SCALE * uiScale,
+                ),
                 color = Color.White,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                style = titleStyle.copy(fontSize = titleStyle.fontSize * 2f, lineHeight = titleStyle.lineHeight * 2f),
+                style = titleStyle,
             )
-            Text(
+            AutoResizeText(
                 text = metadata.artists.joinToString { it.name },
+                fontSizeRange = FontSizeRange(
+                    min = artistStyle.fontSize * FRAME_TEXT_BASELINE_SCALE,
+                    max = artistStyle.fontSize * FRAME_TEXT_BASELINE_SCALE * uiScale,
+                ),
                 color = Color.White,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                style = artistStyle.copy(fontSize = artistStyle.fontSize * 2f, lineHeight = artistStyle.lineHeight * 2f),
+                style = artistStyle,
             )
         }
     }
     FlowRow(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp * uiScale),
+        verticalArrangement = Arrangement.spacedBy(8.dp * uiScale),
     ) {
-        FrameIcon(R.drawable.skip_previous, R.string.photo_frame_previous, enabled = canControl && canPrevious) { connection?.seekToPrevious() }
+        FrameIcon(R.drawable.skip_previous, R.string.photo_frame_previous, uiScale, enabled = canControl && canPrevious) { connection?.seekToPrevious() }
         FrameIcon(
             if (isPlaying) R.drawable.pause else R.drawable.play,
             if (isPlaying) R.string.photo_frame_pause else R.string.photo_frame_play,
+            uiScale,
             enabled = canControl,
         ) { connection?.togglePlayPause() }
-        FrameIcon(R.drawable.skip_next, R.string.photo_frame_next, enabled = canControl && canNext) { connection?.seekToNext() }
-        FrameIcon(R.drawable.arrow_back, R.string.photo_frame_previous_photo, enabled = canNavigatePhotos, onClick = onPreviousPhoto)
-        FrameIcon(R.drawable.arrow_forward, R.string.photo_frame_next_photo, enabled = canNavigatePhotos, onClick = onNextPhoto)
-        FrameIcon(R.drawable.insert_photo, R.string.photo_frame_pick_photos, enabled = canSelect, onClick = onSelect)
-        FrameIcon(R.drawable.settings, R.string.photo_frame_settings, autoFocus = true, onClick = onSettings)
-        FrameIcon(R.drawable.fullscreen, R.string.tv_frame_hide_controls, onClick = onHideControls)
-        FrameIcon(R.drawable.close, R.string.photo_frame_exit, onClick = onExit)
+        FrameIcon(R.drawable.skip_next, R.string.photo_frame_next, uiScale, enabled = canControl && canNext) { connection?.seekToNext() }
+        FrameIcon(R.drawable.arrow_back, R.string.photo_frame_previous_photo, uiScale, enabled = canNavigatePhotos, onClick = onPreviousPhoto)
+        FrameIcon(R.drawable.arrow_forward, R.string.photo_frame_next_photo, uiScale, enabled = canNavigatePhotos, onClick = onNextPhoto)
+        FrameIcon(R.drawable.insert_photo, R.string.photo_frame_pick_photos, uiScale, enabled = canSelect, onClick = onSelect)
+        FrameIcon(R.drawable.settings, R.string.photo_frame_settings, uiScale, autoFocus = true, onClick = onSettings)
+        FrameIcon(R.drawable.fullscreen, R.string.tv_frame_hide_controls, uiScale, onClick = onHideControls)
+        FrameIcon(R.drawable.close, R.string.photo_frame_exit, uiScale, onClick = onExit)
     }
 }
 
 @Composable
-private fun FrameIcon(icon: Int, label: Int, enabled: Boolean = true, autoFocus: Boolean = false, onClick: () -> Unit) {
+private fun FrameIcon(icon: Int, label: Int, uiScale: Float, enabled: Boolean = true, autoFocus: Boolean = false, onClick: () -> Unit) {
     val requester = remember { FocusRequester() }
     var focused by remember { mutableStateOf(false) }
     LaunchedEffect(autoFocus) { if (autoFocus) requester.requestFocus() }
     IconButton(
         onClick = onClick,
         enabled = enabled,
-        modifier = Modifier.size(64.dp)
+        modifier = Modifier.size(64.dp * uiScale)
             .then(if (autoFocus) Modifier.focusRequester(requester) else Modifier)
             .onFocusChanged { focused = it.isFocused }
             .then(if (focused) Modifier.border(3.dp, Color.White, androidx.compose.foundation.shape.RoundedCornerShape(12.dp)) else Modifier),
         colors = IconButtonDefaults.iconButtonColors(contentColor = Color.White, disabledContentColor = Color.White.copy(alpha = 0.38f)),
     ) {
-        Icon(painterResource(icon), stringResource(label), Modifier.size(48.dp))
+        Icon(painterResource(icon), stringResource(label), Modifier.size(48.dp * uiScale))
     }
 }
 

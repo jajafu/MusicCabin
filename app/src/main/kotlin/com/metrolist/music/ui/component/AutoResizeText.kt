@@ -47,8 +47,18 @@ fun AutoResizeText(
     maxLines: Int = Int.MAX_VALUE,
     style: TextStyle = LocalTextStyle.current,
 ) {
-    var fontSizeValue by remember { mutableFloatStateOf(fontSizeRange.max.value) }
-    var readyToDraw by remember { mutableStateOf(false) }
+    var fontSizeValue by remember(text, fontSizeRange) { mutableFloatStateOf(fontSizeRange.max.value) }
+    var lowerFontSizeValue by remember(text, fontSizeRange) { mutableFloatStateOf(fontSizeRange.min.value) }
+    var upperFontSizeValue by remember(text, fontSizeRange) { mutableFloatStateOf(fontSizeRange.max.value) }
+    var readyToDraw by remember(text, fontSizeRange) { mutableStateOf(false) }
+    // Keep the style's line-height ratio while the font size shrinks; otherwise a
+    // large font keeps the original small line box and gets clipped or overlaps.
+    val baseFontSize = style.fontSize.value.takeIf { it > 0f }
+    val resolvedLineHeight = when {
+        lineHeight != TextUnit.Unspecified -> lineHeight
+        baseFontSize == null || style.lineHeight == TextUnit.Unspecified -> TextUnit.Unspecified
+        else -> style.lineHeight * (fontSizeValue / baseFontSize)
+    }
 
     Text(
         text = text,
@@ -60,26 +70,32 @@ fun AutoResizeText(
         letterSpacing = letterSpacing,
         textDecoration = textDecoration,
         textAlign = textAlign,
-        lineHeight = lineHeight,
+        lineHeight = resolvedLineHeight,
         overflow = overflow,
         softWrap = softWrap,
         style = style,
         fontSize = fontSizeValue.sp,
         onTextLayout = {
-            if (it.didOverflowHeight && !readyToDraw) {
-                // Did Overflow height, calculate next font size value
-                val nextFontSizeValue = fontSizeValue - fontSizeRange.step.value
-                if (nextFontSizeValue <= fontSizeRange.min.value) {
-                    // Reached minimum, set minimum font size and it's readToDraw
-                    fontSizeValue = fontSizeRange.min.value
-                    readyToDraw = true
+            if (!readyToDraw) {
+                val step = fontSizeRange.step.value
+                if (it.didOverflowHeight || it.didOverflowWidth) {
+                    upperFontSizeValue = fontSizeValue
+                    if (fontSizeValue - lowerFontSizeValue <= step) {
+                        // Settle at the largest size known to fit; when nothing above the
+                        // phone baseline fits, lowerFontSizeValue is the baseline itself.
+                        fontSizeValue = lowerFontSizeValue
+                        readyToDraw = true
+                    } else {
+                        fontSizeValue = (lowerFontSizeValue + fontSizeValue) / 2f
+                    }
                 } else {
-                    // Text doesn't fit yet and haven't reached minimum text range, keep decreasing
-                    fontSizeValue = nextFontSizeValue
+                    lowerFontSizeValue = fontSizeValue
+                    if (upperFontSizeValue - fontSizeValue <= step) {
+                        readyToDraw = true
+                    } else {
+                        fontSizeValue = (fontSizeValue + upperFontSizeValue) / 2f
+                    }
                 }
-            } else {
-                // Text fits before reaching the minimum, it's readyToDraw
-                readyToDraw = true
             }
         },
         modifier = modifier.drawWithContent { if (readyToDraw) drawContent() },
@@ -92,7 +108,7 @@ data class FontSizeRange(
     val step: TextUnit = DEFAULT_TEXT_STEP,
 ) {
     init {
-        require(min < max) { "min should be less than max, $this" }
+        require(min <= max) { "min should be less than or equal to max, $this" }
         require(step.value > 0) { "step should be greater than 0, $this" }
     }
 

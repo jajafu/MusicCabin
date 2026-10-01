@@ -80,10 +80,14 @@ import com.metrolist.music.listentogether.RoomRole
 import com.metrolist.music.photo.FramePlaybackCommand
 import com.metrolist.music.photo.FrameError
 import com.metrolist.music.photo.FrameLyricsOverlay
+import com.metrolist.music.photo.FRAME_TEXT_BASELINE_SCALE
 import com.metrolist.music.photo.FramePlaybackState
 import com.metrolist.music.photo.FrameSlideDisplay
 import com.metrolist.music.photo.PhotoFramePlayback
 import com.metrolist.music.photo.coilFrameOrientation
+import com.metrolist.music.ui.component.AutoResizeText
+import com.metrolist.music.ui.component.FontSizeRange
+import com.metrolist.music.ui.component.rememberFrameUiScale
 import java.util.Date
 import kotlinx.coroutines.delay
 
@@ -171,6 +175,8 @@ fun PhotoFrameV2Screen(
         // ViewModel-retained: rotation reuses the shuffle order and resumes at the current photo.
         val session = viewModel.playbackSession(uris, generation)
         val isLandscape = constraints.maxWidth > constraints.maxHeight
+        // Scale clock, song info and icons with the short edge (phone 360dp -> 1x).
+        val uiScale = rememberFrameUiScale()
         // Decode size follows the latest layout without restarting playback;
         // rotation only re-lays out the current image and applies the new size to later photos.
         val decodeSize by rememberUpdatedState(width to height)
@@ -247,16 +253,17 @@ fun PhotoFrameV2Screen(
             CircularProgressIndicator(Modifier.align(Alignment.Center), color = Color.White)
         }
         if (state.settings.showLyrics && !showSettings && !showMediaBrowser) {
-            FrameLyricsOverlay(textColor = Color.White.copy(alpha = 0.85f))
+            FrameLyricsOverlay(textColor = Color.White.copy(alpha = 0.85f), uiScale = uiScale)
         }
         if (showControls || empty) {
             Column(
                 Modifier.align(Alignment.TopCenter).fillMaxWidth()
                     .background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.65f), Color.Black.copy(alpha = 0.3f), Color.Transparent)))
-                    .windowInsetsPadding(WindowInsets.safeDrawing).verticalScroll(rememberScrollState()).padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                    .windowInsetsPadding(WindowInsets.safeDrawing).verticalScroll(rememberScrollState()).padding(16.dp * uiScale),
+                verticalArrangement = Arrangement.spacedBy(8.dp * uiScale),
             ) {
                 FrameOverlayContent(
+                    uiScale = uiScale,
                     showClock = state.settings.showClock,
                     clockActive = foreground,
                     showSongInfo = state.settings.showSongInfo,
@@ -320,7 +327,7 @@ fun PhotoFrameV2Screen(
 }
 
 @Composable
-private fun FrameClock(active: Boolean) {
+private fun FrameClock(active: Boolean, uiScale: Float) {
     val context = LocalContext.current
     var time by remember { mutableStateOf(DateFormat.getTimeFormat(context).format(Date())) }
     LaunchedEffect(active) {
@@ -330,16 +337,22 @@ private fun FrameClock(active: Boolean) {
         }
     }
     val style = MaterialTheme.typography.headlineLarge
-    Text(
+    AutoResizeText(
         text = time,
+        fontSizeRange = FontSizeRange(
+            min = style.fontSize * FRAME_TEXT_BASELINE_SCALE,
+            max = style.fontSize * FRAME_TEXT_BASELINE_SCALE * uiScale,
+        ),
         color = Color.White.copy(alpha = 0.85f),
         maxLines = 1,
-        style = style.copy(fontSize = style.fontSize * 2f, lineHeight = style.lineHeight * 2f),
+        overflow = TextOverflow.Ellipsis,
+        style = style,
     )
 }
 
 @Composable
 private fun FrameOverlayContent(
+    uiScale: Float,
     showClock: Boolean,
     clockActive: Boolean,
     showSongInfo: Boolean,
@@ -362,55 +375,64 @@ private fun FrameOverlayContent(
     val artistStyle = MaterialTheme.typography.bodyLarge
     FlowRow(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp * uiScale),
+        verticalArrangement = Arrangement.spacedBy(8.dp * uiScale),
     ) {
-        if (showClock) FrameClock(clockActive)
+        if (showClock) FrameClock(clockActive, uiScale)
         if (showSongInfo && metadata != null) {
-            Text(
+            AutoResizeText(
                 text = metadata.title,
+                fontSizeRange = FontSizeRange(
+                    min = titleStyle.fontSize * FRAME_TEXT_BASELINE_SCALE,
+                    max = titleStyle.fontSize * FRAME_TEXT_BASELINE_SCALE * uiScale,
+                ),
                 color = Color.White.copy(alpha = 0.85f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                style = titleStyle.copy(fontSize = titleStyle.fontSize * 2f, lineHeight = titleStyle.lineHeight * 2f),
+                style = titleStyle,
             )
-            Text(
+            AutoResizeText(
                 text = metadata.artists.joinToString { it.name },
+                fontSizeRange = FontSizeRange(
+                    min = artistStyle.fontSize * FRAME_TEXT_BASELINE_SCALE,
+                    max = artistStyle.fontSize * FRAME_TEXT_BASELINE_SCALE * uiScale,
+                ),
                 color = Color.White.copy(alpha = 0.85f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                style = artistStyle.copy(fontSize = artistStyle.fontSize * 2f, lineHeight = artistStyle.lineHeight * 2f),
+                style = artistStyle,
             )
         }
     }
     FlowRow(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp * uiScale),
+        verticalArrangement = Arrangement.spacedBy(8.dp * uiScale),
     ) {
-        FrameIcon(R.drawable.skip_previous, R.string.photo_frame_previous, enabled = canControl && canPrevious) { connection?.seekToPrevious() }
+        FrameIcon(R.drawable.skip_previous, R.string.photo_frame_previous, uiScale, enabled = canControl && canPrevious) { connection?.seekToPrevious() }
         FrameIcon(
             if (isPlaying) R.drawable.pause else R.drawable.play,
             if (isPlaying) R.string.photo_frame_pause else R.string.photo_frame_play,
+            uiScale,
             enabled = canControl,
         ) { connection?.togglePlayPause() }
-        FrameIcon(R.drawable.skip_next, R.string.photo_frame_next, enabled = canControl && canNext) { connection?.seekToNext() }
-        FrameIcon(R.drawable.arrow_back, R.string.photo_frame_previous_photo, enabled = canPreviousPhoto, onClick = onPreviousPhoto)
-        FrameIcon(R.drawable.arrow_forward, R.string.photo_frame_next_photo, enabled = canNextPhoto, onClick = onNextPhoto)
-        FrameIcon(R.drawable.settings, R.string.photo_frame_settings, onClick = onSettings)
-        FrameIcon(R.drawable.close, R.string.photo_frame_exit, onClick = onExit)
+        FrameIcon(R.drawable.skip_next, R.string.photo_frame_next, uiScale, enabled = canControl && canNext) { connection?.seekToNext() }
+        FrameIcon(R.drawable.arrow_back, R.string.photo_frame_previous_photo, uiScale, enabled = canPreviousPhoto, onClick = onPreviousPhoto)
+        FrameIcon(R.drawable.arrow_forward, R.string.photo_frame_next_photo, uiScale, enabled = canNextPhoto, onClick = onNextPhoto)
+        FrameIcon(R.drawable.settings, R.string.photo_frame_settings, uiScale, onClick = onSettings)
+        FrameIcon(R.drawable.close, R.string.photo_frame_exit, uiScale, onClick = onExit)
     }
 }
 
 @Composable
-private fun FrameIcon(icon: Int, label: Int, enabled: Boolean = true, onClick: () -> Unit) {
+private fun FrameIcon(icon: Int, label: Int, uiScale: Float, enabled: Boolean = true, onClick: () -> Unit) {
     IconButton(
         onClick = onClick,
         enabled = enabled,
-        modifier = Modifier.size(64.dp),
+        modifier = Modifier.size(64.dp * uiScale),
         colors = IconButtonDefaults.iconButtonColors(contentColor = Color.White.copy(alpha = 0.85f), disabledContentColor = Color.White.copy(alpha = 0.38f)),
     ) {
-        Icon(painterResource(icon), stringResource(label), Modifier.size(48.dp))
+        Icon(painterResource(icon), stringResource(label), Modifier.size(48.dp * uiScale))
     }
 }
 

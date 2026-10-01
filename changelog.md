@@ -4,6 +4,32 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.27
+
+### 中文
+
+- 外觀設定新增大螢幕文字縮放：自動模式依螢幕短邊在手機基準與上限之間縮放（上限 1x–3x 可調，預設 3x），固定模式鎖定單一倍數（1x–3x 可調，預設 2x），即時生效免重啟；橫向播放島另含原有 2x 方位基準。
+- 版本 code 257；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Add a large-screen text scale setting under Appearance: Auto mode scales MiniPlayer and photo frame text between the phone baseline and an adjustable cap (1x–3x, default 3x); Fixed mode locks a single scale (1x–3x, default 2x) on every screen. Changes apply immediately without restart; the landscape playback island keeps its existing 2x orientation baseline on top of the chosen scale.
+- Version code 257; no database schema change or data migration.
+
+## 13.7.26
+
+### 中文
+
+- 迷你播放器、數位相框時鐘／歌名／歌手與相框歌詞以手機既有尺寸為 1 倍基準，依螢幕短邊最多放大至 3 倍；迷你播放器同步放大高度與平板寬度上限。大螢幕長文字可縮回手機基準大小，仍放不下才以省略號結尾，不會縮小於手機基準。
+- 修正相框文字放大後行高未跟著調整，導致字被上下裁切或歌詞兩行重疊。
+- 版本 code 256；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Scale MiniPlayer, photo frame clock/song/artist text, and the frame lyric line up from the existing phone-size layout as a 1x baseline to at most 3x according to the screen's short edge. MiniPlayer height and its tablet width cap grow with the same adaptive factor. On large screens, overlong text may shrink back to the phone baseline before ellipsizing, but never below it.
+- Fix scaled photo frame text keeping its original line height, which clipped single lines and overlapped the two-line lyric.
+- Version code 256; no database schema change or data migration.
+
 ## 13.7.25
 
 ### 中文

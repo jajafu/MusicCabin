@@ -132,6 +132,17 @@
     <string name="primary_color_style">Primary color</string>
     <string name="tertiary_color_style">Tertiary color</string>
     <string name="display_density">Display density</string>
+    <string name="ui_scale_mode">Large-screen text scale</string>
+    <string name="ui_scale_mode_auto">Auto</string>
+    <string name="ui_scale_mode_auto_desc">Grow with screen size, up to %1$s. The landscape mini-player keeps its 2× orientation baseline on top of that.</string>
+    <string name="ui_scale_mode_fixed">Fixed</string>
+    <string name="ui_scale_mode_fixed_desc">Lock one size on every screen at %1$s. The landscape mini-player keeps its 2× orientation baseline on top of that.</string>
+    <string name="ui_scale_summary_auto">Auto, up to %1$s</string>
+    <string name="ui_scale_summary_fixed">Fixed at %1$s</string>
+    <string name="ui_scale_max">Auto scale limit</string>
+    <string name="ui_scale_max_desc">Upper bound for Auto mode. Applies to the mini-player and photo frame text.</string>
+    <string name="fixed_ui_scale">Fixed scale</string>
+    <string name="fixed_ui_scale_desc">Locked size for every screen, used when Fixed is selected.</string>
     <string name="restart">Restart</string>
     <string name="restart_required">Restart required!</string>
     <string name="density_restart_message">The display density change will take effect after restarting the app. Restart now?</string>

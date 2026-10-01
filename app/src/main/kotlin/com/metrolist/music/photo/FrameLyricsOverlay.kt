@@ -37,11 +37,20 @@ import com.metrolist.music.db.entities.LyricsEntity
 import com.metrolist.music.di.LyricsHelperEntryPoint
 import com.metrolist.music.lyrics.LyricsUtils
 import com.metrolist.music.lyrics.lyricsTextLooksSynced
+import com.metrolist.music.ui.component.AutoResizeText
+import com.metrolist.music.ui.component.FontSizeRange
+import com.metrolist.music.ui.component.rememberAdaptiveUiScale
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
+
+/** Existing phone-size scale relative to the Material typography base. */
+const val FRAME_TEXT_BASELINE_SCALE = 2f
+
+/** Existing phone-size lyric scale relative to the Material typography base. */
+const val FRAME_LYRICS_BASELINE_SCALE = 1.5f
 
 /**
  * Bottom lyric line for the photo frame overlays. Follows the synced lyric of the current song and
@@ -52,6 +61,7 @@ import kotlinx.coroutines.withContext
 fun BoxScope.FrameLyricsOverlay(
     textColor: Color = Color.White,
     modifier: Modifier = Modifier,
+    uiScale: Float = rememberAdaptiveUiScale(),
 ) {
     val connection = LocalPlayerConnection.current ?: return
     val context = LocalContext.current
@@ -104,7 +114,11 @@ fun BoxScope.FrameLyricsOverlay(
 
     val current = lines.getOrNull(lineIndex)?.text?.trim().orEmpty()
     if (current.isEmpty()) return
+    // Grow from the existing phone-size baseline (360dp -> 1x) with the screen
+    // short edge; long lines may shrink back to, but never below, that baseline.
     val style = MaterialTheme.typography.titleLarge
+    val minFontSize = style.fontSize * FRAME_LYRICS_BASELINE_SCALE
+    val maxFontSize = minFontSize * uiScale
     Box(
         modifier = modifier
             .align(Alignment.BottomCenter)
@@ -117,7 +131,7 @@ fun BoxScope.FrameLyricsOverlay(
             .windowInsetsPadding(
                 WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal),
             )
-            .padding(horizontal = 24.dp, vertical = 16.dp),
+            .padding(horizontal = 24.dp * uiScale, vertical = 16.dp * uiScale),
         contentAlignment = Alignment.Center,
     ) {
         AnimatedContent(
@@ -125,16 +139,14 @@ fun BoxScope.FrameLyricsOverlay(
             transitionSpec = { fadeIn(tween(FRAME_LYRICS_FADE_MS)) togetherWith fadeOut(tween(FRAME_LYRICS_FADE_MS)) },
             label = "Photo frame lyrics",
         ) { line ->
-            Text(
+            AutoResizeText(
                 text = line,
+                fontSizeRange = FontSizeRange(min = minFontSize, max = maxFontSize),
                 color = textColor,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.Center,
-                style = style.copy(
-                    fontSize = style.fontSize * 1.5f,
-                    lineHeight = style.lineHeight * 1.3f,
-                ),
+                style = style,
             )
         }
     }
