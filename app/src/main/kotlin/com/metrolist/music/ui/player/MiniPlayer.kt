@@ -96,8 +96,7 @@ import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.constants.CropAlbumArtKey
 import com.metrolist.music.constants.DarkModeKey
-import com.metrolist.music.constants.LandscapeMiniPlayerHeight
-import com.metrolist.music.constants.MiniPlayerHeight
+
 import com.metrolist.music.constants.PureBlackMiniPlayerKey
 import com.metrolist.music.constants.SwipeSensitivityKey
 import com.metrolist.music.constants.SwipeThumbnailKey
@@ -239,13 +238,9 @@ private fun NewMiniPlayer(
     val windowInfo = LocalWindowInfo.current
     val configuration = LocalConfiguration.current
     val density = LocalDensity.current
-    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-    // Keep the landscape base (2x) and grow it with the short edge so a 720dp
-    // head unit renders larger than a 360dp phone; height grows with it.
-    val miniPlayerScales = rememberMiniPlayerScales(
-        isLandscape = isLandscape,
-        baseHeight = if (isLandscape) LandscapeMiniPlayerHeight else MiniPlayerHeight,
-    )
+    // Landscape and portrait share the upstream 64.dp size; only the screen short edge
+    // decides the multiplier, so a 720dp head unit renders 2x and a 360dp phone stays 1x.
+    val miniPlayerScales = rememberMiniPlayerScales()
     val sizeScale = miniPlayerScales.sizeScale
     val miniPlayerHeight = miniPlayerScales.height
     val isTabletLandscape =
@@ -765,11 +760,7 @@ private fun LegacyMiniPlayer(
     val windowInfo = LocalWindowInfo.current
     val configuration = LocalConfiguration.current
     val density = LocalDensity.current
-    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-    val legacyScales = rememberMiniPlayerScales(
-        isLandscape = isLandscape,
-        baseHeight = if (isLandscape) LandscapeMiniPlayerHeight else MiniPlayerHeight,
-    )
+    val legacyScales = rememberMiniPlayerScales()
     val sizeScale = legacyScales.sizeScale
     val miniPlayerHeight = legacyScales.height
     val isTabletLandscape =

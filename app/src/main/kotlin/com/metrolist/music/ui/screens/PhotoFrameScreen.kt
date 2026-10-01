@@ -72,6 +72,8 @@ import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.listentogether.RoomRole
 import com.metrolist.music.photo.FrameLyricsOverlay
+import com.metrolist.music.photo.FRAME_ICON_BASELINE_DP
+import com.metrolist.music.photo.FRAME_ICON_BUTTON_BASELINE_DP
 import com.metrolist.music.photo.FRAME_TEXT_BASELINE_SCALE
 import com.metrolist.music.photo.FramePlaybackCommand
 import com.metrolist.music.photo.FramePlaybackState
@@ -196,9 +198,7 @@ fun PhotoFrameScreen(navController: NavHostController, viewModel: PhotoFrameView
                     showClock = state.settings.showClock,
                     clockActive = foreground,
                     showSongInfo = state.settings.showSongInfo,
-                    canSelect = state.initialized && !busy,
                     canNavigatePhotos = uris.size > 1,
-                    onSelect = { showMediaBrowser = true },
                     onSettings = { showSettings = true },
                     onPreviousPhoto = { session.request(FramePlaybackCommand.PREVIOUS) },
                     onNextPhoto = { session.request(FramePlaybackCommand.NEXT) },
@@ -268,9 +268,7 @@ private fun FrameOverlayContent(
     showClock: Boolean,
     clockActive: Boolean,
     showSongInfo: Boolean,
-    canSelect: Boolean,
     canNavigatePhotos: Boolean,
-    onSelect: () -> Unit,
     onSettings: () -> Unit,
     onPreviousPhoto: () -> Unit,
     onNextPhoto: () -> Unit,
@@ -332,7 +330,7 @@ private fun FrameOverlayContent(
         FrameIcon(R.drawable.skip_next, R.string.photo_frame_next, uiScale, enabled = canControl && canNext) { connection?.seekToNext() }
         FrameIcon(R.drawable.arrow_back, R.string.photo_frame_previous_photo, uiScale, enabled = canNavigatePhotos, onClick = onPreviousPhoto)
         FrameIcon(R.drawable.arrow_forward, R.string.photo_frame_next_photo, uiScale, enabled = canNavigatePhotos, onClick = onNextPhoto)
-        FrameIcon(R.drawable.insert_photo, R.string.photo_frame_pick_photos, uiScale, enabled = canSelect, onClick = onSelect)
+        // Photo selection already lives in the in-frame settings sheet; no shortcut here.
         FrameIcon(R.drawable.settings, R.string.photo_frame_settings, uiScale, onClick = onSettings)
         FrameIcon(R.drawable.close, R.string.photo_frame_exit, uiScale, onClick = onExit)
     }
@@ -343,10 +341,10 @@ private fun FrameIcon(icon: Int, label: Int, uiScale: Float, enabled: Boolean = 
     IconButton(
         onClick = onClick,
         enabled = enabled,
-        modifier = Modifier.size(64.dp * uiScale),
+        modifier = Modifier.size(FRAME_ICON_BUTTON_BASELINE_DP.dp * uiScale),
         colors = IconButtonDefaults.iconButtonColors(contentColor = Color.White, disabledContentColor = Color.White.copy(alpha = 0.38f)),
     ) {
-        Icon(painterResource(icon), stringResource(label), Modifier.size(48.dp * uiScale))
+        Icon(painterResource(icon), stringResource(label), Modifier.size(FRAME_ICON_BASELINE_DP.dp * uiScale))
     }
 }
 

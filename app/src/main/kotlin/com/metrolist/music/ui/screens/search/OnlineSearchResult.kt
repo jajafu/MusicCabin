@@ -90,9 +90,7 @@ import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.constants.AutoRadioQueueKey
 import com.metrolist.music.constants.HideVideoSongsKey
-import com.metrolist.music.constants.LandscapeMiniPlayerHeight
 import com.metrolist.music.constants.MiniPlayerBottomSpacing
-import com.metrolist.music.constants.MiniPlayerHeight
 import com.metrolist.music.constants.NavigationBarHeight
 import com.metrolist.music.constants.PauseSearchHistoryKey
 import com.metrolist.music.db.entities.SearchHistory
@@ -105,6 +103,7 @@ import com.metrolist.music.ui.component.EmptyPlaceholder
 import com.metrolist.music.ui.component.HideOnScrollFAB
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.NavigationTitle
+import com.metrolist.music.ui.component.rememberMiniPlayerScales
 import com.metrolist.music.ui.component.YouTubeListItem
 import com.metrolist.music.ui.component.shimmer.ListItemPlaceHolder
 import com.metrolist.music.ui.component.shimmer.ShimmerHost
@@ -131,12 +130,7 @@ fun OnlineSearchResult(
     val playerConnection = LocalPlayerConnection.current ?: return
     val haptic = LocalHapticFeedback.current
     val configuration = LocalConfiguration.current
-    val miniPlayerHeight =
-        if (configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
-            LandscapeMiniPlayerHeight
-        } else {
-            MiniPlayerHeight
-        }
+    val miniPlayerHeight = rememberMiniPlayerScales().height
     val isPlaying by playerConnection.isEffectivelyPlaying.collectAsStateWithLifecycle()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsStateWithLifecycle()
 

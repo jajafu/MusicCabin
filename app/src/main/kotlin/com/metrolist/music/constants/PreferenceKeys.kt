@@ -34,19 +34,8 @@ enum class MiniPlayerBackgroundStyle {
 val DensityScaleKey = floatPreferencesKey("density_scale_factor")
 val CustomDensityScaleKey = floatPreferencesKey("custom_density_scale_value")
 
-/** Auto: scale with the screen short edge. Fixed: lock one scale on every screen. */
-val UiScaleModeKey = stringPreferencesKey("uiScaleMode")
-
-enum class UiScaleMode {
-    AUTO,
-    FIXED,
-}
-
 /** Upper bound applied to auto scaling of mini-player and photo frame text. */
 val AdaptiveScaleMaxKey = floatPreferencesKey("adaptive_scale_max")
-
-/** Locked scale used when [UiScaleMode] is FIXED. */
-val FixedUiScaleKey = floatPreferencesKey("fixed_ui_scale")
 
 enum class DensityScale(
     val value: Float,

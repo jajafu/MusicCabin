@@ -80,6 +80,8 @@ import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.listentogether.RoomRole
+import com.metrolist.music.photo.FRAME_ICON_BASELINE_DP
+import com.metrolist.music.photo.FRAME_ICON_BUTTON_BASELINE_DP
 import com.metrolist.music.photo.FRAME_TEXT_BASELINE_SCALE
 import com.metrolist.music.photo.FrameLyricsOverlay
 import com.metrolist.music.photo.FramePhotoReceiver
@@ -384,13 +386,13 @@ private fun FrameIcon(icon: Int, label: Int, uiScale: Float, enabled: Boolean = 
     IconButton(
         onClick = onClick,
         enabled = enabled,
-        modifier = Modifier.size(64.dp * uiScale)
+        modifier = Modifier.size(FRAME_ICON_BUTTON_BASELINE_DP.dp * uiScale)
             .then(if (autoFocus) Modifier.focusRequester(requester) else Modifier)
             .onFocusChanged { focused = it.isFocused }
             .then(if (focused) Modifier.border(3.dp, Color.White, androidx.compose.foundation.shape.RoundedCornerShape(12.dp)) else Modifier),
         colors = IconButtonDefaults.iconButtonColors(contentColor = Color.White, disabledContentColor = Color.White.copy(alpha = 0.38f)),
     ) {
-        Icon(painterResource(icon), stringResource(label), Modifier.size(48.dp * uiScale))
+        Icon(painterResource(icon), stringResource(label), Modifier.size(FRAME_ICON_BASELINE_DP.dp * uiScale))
     }
 }
 

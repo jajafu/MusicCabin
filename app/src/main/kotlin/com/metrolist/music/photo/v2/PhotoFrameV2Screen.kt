@@ -80,6 +80,8 @@ import com.metrolist.music.listentogether.RoomRole
 import com.metrolist.music.photo.FramePlaybackCommand
 import com.metrolist.music.photo.FrameError
 import com.metrolist.music.photo.FrameLyricsOverlay
+import com.metrolist.music.photo.FRAME_ICON_BASELINE_DP
+import com.metrolist.music.photo.FRAME_ICON_BUTTON_BASELINE_DP
 import com.metrolist.music.photo.FRAME_TEXT_BASELINE_SCALE
 import com.metrolist.music.photo.FramePlaybackState
 import com.metrolist.music.photo.FrameSlideDisplay
@@ -429,10 +431,10 @@ private fun FrameIcon(icon: Int, label: Int, uiScale: Float, enabled: Boolean = 
     IconButton(
         onClick = onClick,
         enabled = enabled,
-        modifier = Modifier.size(64.dp * uiScale),
+        modifier = Modifier.size(FRAME_ICON_BUTTON_BASELINE_DP.dp * uiScale),
         colors = IconButtonDefaults.iconButtonColors(contentColor = Color.White.copy(alpha = 0.85f), disabledContentColor = Color.White.copy(alpha = 0.38f)),
     ) {
-        Icon(painterResource(icon), stringResource(label), Modifier.size(48.dp * uiScale))
+        Icon(painterResource(icon), stringResource(label), Modifier.size(FRAME_ICON_BASELINE_DP.dp * uiScale))
     }
 }
 

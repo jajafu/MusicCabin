@@ -4,29 +4,43 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.28
+
+### 中文
+
+- 修正 1 倍基準定義：相框時鐘／歌名／歌手／歌詞改以 Material 標準字級為 1 倍（手機時鐘 32sp、歌名 22sp、歌手 16sp、歌詞 22sp），先前為標準字級的 2 倍，手機上偏大；車機 1280×720 仍依短邊得 2 倍。
+- 移除播放島橫向額外的 2 倍方位基準，橫向與直向同尺寸，1 倍即為上游的 64dp 版面。
+- 版本 code 258；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Fix the 1x baseline definition: photo frame clock, song title, artist and lyric text now use the stock Material typography as 1x (phone clock 32sp, title 22sp, artist 16sp, lyric 22sp) instead of twice that size, which was too large on phones; a 1280x720 head unit still reports 2x from its short edge.
+- Remove the MiniPlayer's separate 2x landscape baseline so landscape and portrait share one size and 1x matches the upstream 64dp layout.
+- Version code 258; no database schema change or data migration.
+
 ## 13.7.27
 
 ### 中文
 
-- 外觀設定新增大螢幕文字縮放：自動模式依螢幕短邊在手機基準與上限之間縮放（上限 1x–3x 可調，預設 3x），固定模式鎖定單一倍數（1x–3x 可調，預設 2x），即時生效免重啟；橫向播放島另含原有 2x 方位基準。
+- 外觀設定新增自動縮放上限（1x–3x 可調，預設 3x），迷你播放器與數位相框文字依螢幕短邊在手機基準與上限之間縮放，即時生效免重啟。
 - 版本 code 257；無資料庫 schema 變更，升級不需遷移資料。
 
 ### English
 
-- Add a large-screen text scale setting under Appearance: Auto mode scales MiniPlayer and photo frame text between the phone baseline and an adjustable cap (1x–3x, default 3x); Fixed mode locks a single scale (1x–3x, default 2x) on every screen. Changes apply immediately without restart; the landscape playback island keeps its existing 2x orientation baseline on top of the chosen scale.
+- Add an adjustable auto scale limit (1x–3x, default 3x) under Appearance; MiniPlayer and photo frame text scale with the screen short edge between the phone baseline and that cap. Changes apply immediately without restart.
 - Version code 257; no database schema change or data migration.
 
 ## 13.7.26
 
 ### 中文
 
-- 迷你播放器、數位相框時鐘／歌名／歌手與相框歌詞以手機既有尺寸為 1 倍基準，依螢幕短邊最多放大至 3 倍；迷你播放器同步放大高度與平板寬度上限。大螢幕長文字可縮回手機基準大小，仍放不下才以省略號結尾，不會縮小於手機基準。
+- 迷你播放器與數位相框（時鐘／歌名／歌手／歌詞）以 Material 標準字級為 1 倍基準，依螢幕短邊最多放大至 3 倍；迷你播放器橫向與直向同尺寸，不再另加 2 倍方位基準。大螢幕長文字可縮回手機基準大小，仍放不下才以省略號結尾，不會縮小於手機基準。
 - 修正相框文字放大後行高未跟著調整，導致字被上下裁切或歌詞兩行重疊。
 - 版本 code 256；無資料庫 schema 變更，升級不需遷移資料。
 
 ### English
 
-- Scale MiniPlayer, photo frame clock/song/artist text, and the frame lyric line up from the existing phone-size layout as a 1x baseline to at most 3x according to the screen's short edge. MiniPlayer height and its tablet width cap grow with the same adaptive factor. On large screens, overlong text may shrink back to the phone baseline before ellipsizing, but never below it.
+- Scale MiniPlayer and photo frame text (clock/song/artist/lyrics) from the stock Material typography size as a 1x baseline to at most 3x by the screen's short edge. The MiniPlayer no longer adds a separate 2x landscape baseline, so landscape and portrait share one size. On large screens, overlong text may shrink back to the phone baseline before ellipsizing, but never below it.
 - Fix scaled photo frame text keeping its original line height, which clipped single lines and overlapped the two-line lyric.
 - Version code 256; no database schema change or data migration.
 

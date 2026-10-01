@@ -67,7 +67,6 @@ import com.metrolist.music.constants.EnableDynamicIconKey
 import com.metrolist.music.constants.EnableHighRefreshRateKey
 import com.metrolist.music.constants.EnableLandscapeScalingKey
 import com.metrolist.music.constants.ExperimentalLyricsKey
-import com.metrolist.music.constants.FixedUiScaleKey
 import com.metrolist.music.constants.GridItemSize
 import com.metrolist.music.constants.GridItemsSizeKey
 import com.metrolist.music.constants.HidePlayerThumbnailKey
@@ -104,13 +103,10 @@ import com.metrolist.music.constants.SwipeSensitivityKey
 import com.metrolist.music.constants.SwipeThumbnailKey
 import com.metrolist.music.constants.SwipeToRemoveSongKey
 import com.metrolist.music.constants.SwipeToSongKey
-import com.metrolist.music.constants.UiScaleMode
-import com.metrolist.music.constants.UiScaleModeKey
 import com.metrolist.music.constants.UseNewMiniPlayerDesignKey
 import com.metrolist.music.constants.UseNewPlayerDesignKey
 import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.EnumDialog
-import com.metrolist.music.ui.component.FIXED_UI_SCALE_DEFAULT
 import com.metrolist.music.ui.component.FRAME_UI_SCALE_MAX
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.Material3SettingsGroup
@@ -304,25 +300,13 @@ fun AppearanceSettings(
         showRestartDialog = true
     }
 
-    // Large-screen text scale: auto (grow with screen up to a cap) or fixed (one size everywhere).
-    val (uiScaleMode, onUiScaleModeChange) =
-        rememberEnumPreference(
-            UiScaleModeKey,
-            defaultValue = UiScaleMode.AUTO,
-        )
+    // Large-screen text scale grows with the screen short edge up to this adjustable cap.
     val (adaptiveScaleMax, onAdaptiveScaleMaxChange) =
         rememberPreference(
             AdaptiveScaleMaxKey,
             defaultValue = FRAME_UI_SCALE_MAX,
         )
-    val (fixedUiScale, onFixedUiScaleChange) =
-        rememberPreference(
-            FixedUiScaleKey,
-            defaultValue = FIXED_UI_SCALE_DEFAULT,
-        )
-    var showUiScaleModeDialog by rememberSaveable { mutableStateOf(false) }
     var showUiScaleMaxDialog by rememberSaveable { mutableStateOf(false) }
-    var showFixedUiScaleDialog by rememberSaveable { mutableStateOf(false) }
 
     val (listenTogetherInTopBar, onListenTogetherInTopBarChange) =
         rememberPreference(
@@ -778,31 +762,6 @@ fun AppearanceSettings(
         }
     }
 
-    if (showUiScaleModeDialog) {
-        EnumDialog(
-            onDismiss = { showUiScaleModeDialog = false },
-            onSelect = {
-                onUiScaleModeChange(it)
-                showUiScaleModeDialog = false
-            },
-            title = stringResource(R.string.ui_scale_mode),
-            current = uiScaleMode,
-            values = UiScaleMode.entries,
-            valueText = {
-                when (it) {
-                    UiScaleMode.AUTO -> stringResource(R.string.ui_scale_mode_auto)
-                    UiScaleMode.FIXED -> stringResource(R.string.ui_scale_mode_fixed)
-                }
-            },
-            valueDescription = {
-                when (it) {
-                    UiScaleMode.AUTO -> stringResource(R.string.ui_scale_mode_auto_desc, uiScaleLabel(adaptiveScaleMax))
-                    UiScaleMode.FIXED -> stringResource(R.string.ui_scale_mode_fixed_desc, uiScaleLabel(fixedUiScale))
-                }
-            },
-        )
-    }
-
     if (showUiScaleMaxDialog) {
         var tempScaleMax by remember { mutableFloatStateOf(adaptiveScaleMax) }
 
@@ -864,75 +823,6 @@ fun AppearanceSettings(
                 Slider(
                     value = tempScaleMax,
                     onValueChange = { tempScaleMax = it },
-                    valueRange = 1f..FRAME_UI_SCALE_MAX,
-                    steps = UI_SCALE_SLIDER_STEPS,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-        }
-    }
-
-    if (showFixedUiScaleDialog) {
-        var tempFixedScale by remember { mutableFloatStateOf(fixedUiScale) }
-
-        DefaultDialog(
-            onDismiss = {
-                showFixedUiScaleDialog = false
-            },
-            buttons = {
-                TextButton(
-                    onClick = {
-                        tempFixedScale = FIXED_UI_SCALE_DEFAULT
-                    },
-                ) {
-                    Text(stringResource(R.string.reset))
-                }
-
-                Spacer(modifier = Modifier.weight(1f))
-
-                TextButton(
-                    onClick = {
-                        showFixedUiScaleDialog = false
-                    },
-                ) {
-                    Text(stringResource(android.R.string.cancel))
-                }
-                TextButton(
-                    onClick = {
-                        onFixedUiScaleChange(tempFixedScale)
-                        showFixedUiScaleDialog = false
-                    },
-                ) {
-                    Text(stringResource(android.R.string.ok))
-                }
-            },
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(16.dp),
-            ) {
-                Text(
-                    text = stringResource(R.string.fixed_ui_scale),
-                    style = MaterialTheme.typography.headlineSmall,
-                    modifier = Modifier.padding(bottom = 16.dp),
-                )
-
-                Text(
-                    text = uiScaleLabel(tempFixedScale),
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.padding(bottom = 8.dp),
-                )
-
-                Text(
-                    text = stringResource(R.string.fixed_ui_scale_desc),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 16.dp),
-                )
-
-                Slider(
-                    value = tempFixedScale,
-                    onValueChange = { tempFixedScale = it },
                     valueRange = 1f..FRAME_UI_SCALE_MAX,
                     steps = UI_SCALE_SLIDER_STEPS,
                     modifier = Modifier.fillMaxWidth(),
@@ -1945,41 +1835,17 @@ fun AppearanceSettings(
                         onClick = { showDensityScaleDialog = true },
                     ),
                     Material3SettingsItem(
-                        icon = painterResource(R.drawable.linear_scale),
-                        title = { Text(stringResource(R.string.ui_scale_mode)) },
-                        description = {
-                            Text(
-                                when (uiScaleMode) {
-                                    UiScaleMode.AUTO ->
-                                        stringResource(
-                                            R.string.ui_scale_summary_auto,
-                                            uiScaleLabel(adaptiveScaleMax),
-                                        )
-                                    UiScaleMode.FIXED ->
-                                        stringResource(
-                                            R.string.ui_scale_summary_fixed,
-                                            uiScaleLabel(fixedUiScale),
-                                        )
-                                },
-                            )
-                        },
-                        onClick = { showUiScaleModeDialog = true },
-                    ),
-                    Material3SettingsItem(
                         icon = painterResource(R.drawable.trending_up),
                         title = { Text(stringResource(R.string.ui_scale_max)) },
                         description = {
-                            Text(uiScaleLabel(adaptiveScaleMax))
+                            Text(
+                                stringResource(
+                                    R.string.ui_scale_summary_auto,
+                                    uiScaleLabel(adaptiveScaleMax),
+                                ),
+                            )
                         },
                         onClick = { showUiScaleMaxDialog = true },
-                    ),
-                    Material3SettingsItem(
-                        icon = painterResource(R.drawable.equalizer),
-                        title = { Text(stringResource(R.string.fixed_ui_scale)) },
-                        description = {
-                            Text(uiScaleLabel(fixedUiScale))
-                        },
-                        onClick = { showFixedUiScaleDialog = true },
                     ),
                 ),
         )

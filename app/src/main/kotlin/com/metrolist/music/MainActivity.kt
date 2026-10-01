@@ -137,12 +137,10 @@ import com.metrolist.music.constants.EnableHighRefreshRateKey
 import com.metrolist.music.constants.EnableLandscapeScalingKey
 import com.metrolist.music.constants.ExperimentalLyricsKey
 import com.metrolist.music.constants.LastSeenVersionKey
-import com.metrolist.music.constants.LandscapeMiniPlayerHeight
 import com.metrolist.music.constants.ListenTogetherInTopBarKey
 import com.metrolist.music.constants.ListenTogetherUsernameKey
 import com.metrolist.music.constants.LyricsProviderOrderKey
 import com.metrolist.music.constants.MiniPlayerBottomSpacing
-import com.metrolist.music.constants.MiniPlayerHeight
 import com.metrolist.music.constants.NavigationBarAnimationSpec
 import com.metrolist.music.constants.NavigationBarHeight
 import com.metrolist.music.constants.PauseListenHistoryKey
@@ -179,6 +177,7 @@ import com.metrolist.music.ui.component.BottomSheetPage
 import com.metrolist.music.ui.component.LocalBottomSheetPageState
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.rememberBottomSheetState
+import com.metrolist.music.ui.component.rememberMiniPlayerScales
 import com.metrolist.music.ui.component.shimmer.ShimmerTheme
 import com.metrolist.music.ui.menu.YouTubeSongMenu
 import com.metrolist.music.ui.player.BottomSheetPlayer
@@ -814,7 +813,10 @@ class MainActivity : ComponentActivity() {
 
                 val isLandscape = configuration.containerDpSize.width > configuration.containerDpSize.height
                 val isTablet = configuration.containerDpSize.width >= 600.dp
-                val miniPlayerHeight = if (isLandscape) LandscapeMiniPlayerHeight else MiniPlayerHeight
+                // The mini player scales with the screen short edge and shares one size across
+                // orientations, so the collapsed sheet and insets must reserve the scaled height.
+                val miniPlayerScales = rememberMiniPlayerScales()
+                val miniPlayerHeight = miniPlayerScales.height
 
                 val showRail = (isLandscape || isTablet) && !inSearchScreen
 

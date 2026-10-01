@@ -46,11 +46,22 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 
-/** Existing phone-size scale relative to the Material typography base. */
-const val FRAME_TEXT_BASELINE_SCALE = 2f
+/**
+ * Phone-size scale relative to the Material typography base, so 1x renders the
+ * stock headline/title/body sizes on a phone and grows to 3x on large head units.
+ */
+const val FRAME_TEXT_BASELINE_SCALE = 1f
 
-/** Existing phone-size lyric scale relative to the Material typography base. */
-const val FRAME_LYRICS_BASELINE_SCALE = 1.5f
+/** Phone-size lyric scale relative to the Material typography base. */
+const val FRAME_LYRICS_BASELINE_SCALE = 1f
+
+/**
+ * Phone-size scale for the control row. The fork's previous 64.dp / 48.dp buttons were sized for
+ * the old doubled text baseline, so at 1x they looked oversized next to 32sp clock text; these
+ * keep a 48.dp minimum touch target while matching the stock Material control sizes.
+ */
+const val FRAME_ICON_BUTTON_BASELINE_DP = 48f
+const val FRAME_ICON_BASELINE_DP = 32f
 
 /**
  * Bottom lyric line for the photo frame overlays. Follows the synced lyric of the current song and
@@ -114,8 +125,8 @@ fun BoxScope.FrameLyricsOverlay(
 
     val current = lines.getOrNull(lineIndex)?.text?.trim().orEmpty()
     if (current.isEmpty()) return
-    // Grow from the existing phone-size baseline (360dp -> 1x) with the screen
-    // short edge; long lines may shrink back to, but never below, that baseline.
+    // 1x is the stock Material titleLarge size on a phone; grow it with the screen
+    // short edge, and never shrink a long line below that phone baseline.
     val style = MaterialTheme.typography.titleLarge
     val minFontSize = style.fontSize * FRAME_LYRICS_BASELINE_SCALE
     val maxFontSize = minFontSize * uiScale

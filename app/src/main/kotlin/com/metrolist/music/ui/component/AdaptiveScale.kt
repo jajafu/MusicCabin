@@ -14,10 +14,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.Dp
 import com.metrolist.music.constants.AdaptiveScaleMaxKey
-import com.metrolist.music.constants.FixedUiScaleKey
-import com.metrolist.music.constants.UiScaleMode
-import com.metrolist.music.constants.UiScaleModeKey
-import com.metrolist.music.utils.rememberEnumPreference
+import com.metrolist.music.constants.MiniPlayerHeight
 import com.metrolist.music.utils.rememberPreference
 
 /**
@@ -29,13 +26,7 @@ const val ADAPTIVE_SCALE_BASELINE_DP = 360f
 /** Max growth for full-screen photo frame text and icons. */
 const val FRAME_UI_SCALE_MAX = 3f
 
-/** Max adaptive growth for the mini player, on top of its existing orientation baseline. */
-const val MINI_PLAYER_EXTRA_SCALE_MAX = 3f
-
-/** Default fixed scale offered in settings; matches a 720dp-short-edge head unit. */
-const val FIXED_UI_SCALE_DEFAULT = 2f
-
-/** Scale steps offered by the settings sliders, derived from the 1x..3x range. */
+/** Scale steps offered by the settings slider, derived from the 1x..3x range. */
 const val UI_SCALE_SLIDER_STEPS = 3
 
 fun uiScaleLabel(value: Float): String =
@@ -44,36 +35,12 @@ fun uiScaleLabel(value: Float): String =
 fun adaptiveUiScale(shortestDp: Float, maxScale: Float = FRAME_UI_SCALE_MAX): Float =
     (shortestDp / ADAPTIVE_SCALE_BASELINE_DP).coerceIn(1f, maxScale.coerceAtLeast(1f))
 
-fun miniPlayerExtraScale(shortestDp: Float, maxScale: Float = MINI_PLAYER_EXTRA_SCALE_MAX): Float =
-    (shortestDp / ADAPTIVE_SCALE_BASELINE_DP).coerceIn(1f, maxScale.coerceAtLeast(1f))
-
-/** User-chosen scaling behavior read from settings. */
-data class AdaptiveScaleConfig(
-    val mode: UiScaleMode,
-    /** Upper bound for auto scaling. */
-    val maxScale: Float,
-    /** Locked scale used when [mode] is FIXED. */
-    val fixedScale: Float,
-)
-
+/** User-chosen upper bound for auto scaling, read from settings. */
 @Composable
-fun rememberAdaptiveScaleConfig(): AdaptiveScaleConfig {
-    val mode by rememberEnumPreference(UiScaleModeKey, UiScaleMode.AUTO)
+fun rememberAdaptiveScaleMax(): Float {
     val maxScale by rememberPreference(AdaptiveScaleMaxKey, FRAME_UI_SCALE_MAX)
-    val fixedScale by rememberPreference(FixedUiScaleKey, FIXED_UI_SCALE_DEFAULT)
-    return remember(mode, maxScale, fixedScale) {
-        AdaptiveScaleConfig(
-            mode = mode,
-            maxScale = maxScale.coerceIn(1f, FRAME_UI_SCALE_MAX),
-            fixedScale = fixedScale.coerceIn(1f, FRAME_UI_SCALE_MAX),
-        )
-    }
+    return remember(maxScale) { maxScale.coerceIn(1f, FRAME_UI_SCALE_MAX) }
 }
-
-/** Resolve the final multiplier: fixed lock wins, otherwise grow with the screen. */
-fun resolveUiScale(shortestDp: Float, config: AdaptiveScaleConfig): Float =
-    if (config.mode == UiScaleMode.FIXED) config.fixedScale
-    else adaptiveUiScale(shortestDp, config.maxScale)
 
 /**
  * Adaptive scale for full-screen overlays. Call inside BoxWithConstraints so the
@@ -83,9 +50,9 @@ fun resolveUiScale(shortestDp: Float, config: AdaptiveScaleConfig): Float =
 fun BoxWithConstraintsScope.rememberFrameUiScale(): Float {
     val width = maxWidth.value
     val height = maxHeight.value
-    val config = rememberAdaptiveScaleConfig()
-    return remember(width, height, config) {
-        resolveUiScale(minOf(width, height), config)
+    val maxScale = rememberAdaptiveScaleMax()
+    return remember(width, height, maxScale) {
+        adaptiveUiScale(minOf(width, height), maxScale)
     }
 }
 
@@ -96,10 +63,10 @@ fun BoxWithConstraintsScope.rememberFrameUiScale(): Float {
 @Composable
 fun rememberAdaptiveUiScale(): Float {
     val configuration = LocalConfiguration.current
-    val config = rememberAdaptiveScaleConfig()
-    return remember(configuration.screenWidthDp, configuration.screenHeightDp, config) {
+    val maxScale = rememberAdaptiveScaleMax()
+    return remember(configuration.screenWidthDp, configuration.screenHeightDp, maxScale) {
         val shortest = minOf(configuration.screenWidthDp, configuration.screenHeightDp).toFloat()
-        resolveUiScale(shortest, config)
+        adaptiveUiScale(shortest, maxScale)
     }
 }
 
@@ -112,18 +79,19 @@ data class MiniPlayerScales(
     val height: Dp,
 )
 
+/**
+ * Mini player scales from the upstream 64.dp layout, so landscape and portrait share one
+ * size and only the screen's short edge decides the multiplier.
+ */
 @Composable
-fun rememberMiniPlayerScales(
-    isLandscape: Boolean,
-    baseHeight: Dp,
-): MiniPlayerScales {
+fun rememberMiniPlayerScales(baseHeight: Dp = MiniPlayerHeight): MiniPlayerScales {
     val windowInfo = LocalWindowInfo.current
     val density = LocalDensity.current
     // Observe configuration so rotation recomposes even if containerSize lags.
     val configuration = LocalConfiguration.current
     val container = windowInfo.containerSize
-    val config = rememberAdaptiveScaleConfig()
-    return remember(isLandscape, container, density.density, configuration.orientation, config) {
+    val maxScale = rememberAdaptiveScaleMax()
+    return remember(container, density.density, configuration.orientation, baseHeight, maxScale) {
         val densityValue = density.density.takeIf { it > 0f } ?: 1f
         val widthDp = if (container.width > 0) container.width / densityValue
         else configuration.screenWidthDp.toFloat()
@@ -131,13 +99,11 @@ fun rememberMiniPlayerScales(
         else configuration.screenHeightDp.toFloat()
         val shortest = minOf(widthDp, heightDp).takeIf { it > 0f }
             ?: ADAPTIVE_SCALE_BASELINE_DP
-        val extra = if (config.mode == UiScaleMode.FIXED) config.fixedScale
-        else miniPlayerExtraScale(shortest, config.maxScale)
-        val base = if (isLandscape) 2f else 1f
+        val scale = adaptiveUiScale(shortest, maxScale)
         MiniPlayerScales(
-            sizeScale = base * extra,
-            adaptiveScale = extra,
-            height = baseHeight * extra,
+            sizeScale = scale,
+            adaptiveScale = scale,
+            height = baseHeight * scale,
         )
     }
 }
