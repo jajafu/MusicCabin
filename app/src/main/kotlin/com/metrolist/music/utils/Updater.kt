@@ -5,6 +5,11 @@
 
 package com.metrolist.music.utils
 
+import android.content.Context
+import android.content.Intent
+import android.provider.Settings
+import androidx.core.content.FileProvider
+import androidx.core.net.toUri
 import com.metrolist.music.BuildConfig
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
@@ -13,6 +18,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.File
+import java.net.HttpURLConnection
+import java.net.URL
 
 data class ReleaseInfo(
     val tagName: String,
@@ -39,6 +47,7 @@ object Updater {
     private var cachedAllReleases: List<ReleaseInfo> = emptyList()
     
     private const val CHECK_INTERVAL_MILLIS = 2 * 60 * 60 * 1000L // 2 hours
+    private const val STAGED_APK_PREFIX = "MusicCabin-"
     const val GITHUB_RELEASES_URL = "https://github.com/jajafu/MusicCabin/releases"
     private const val GITHUB_API_BASE = "https://api.github.com/repos/jajafu/MusicCabin"
 
@@ -262,4 +271,111 @@ object Updater {
      * Get the latest release info (cached)
      */
     fun getCachedLatestRelease(): ReleaseInfo? = cachedReleaseInfo
+
+    /**
+     * File used to stage a downloaded update APK. Kept under the app cache dir so
+     * no storage permission is needed and FileProvider can share it with the installer.
+     */
+    fun updateApkFile(context: Context, versionName: String): File {
+        val dir = File(context.externalCacheDir ?: context.cacheDir, "updates")
+        if (!dir.exists()) dir.mkdirs()
+        val safeName = versionName.replace(Regex("[^A-Za-z0-9._-]+"), "_")
+        return File(dir, "MusicCabin-$safeName.apk")
+    }
+
+    /**
+     * Delete APKs staged for other versions, keeping [keep]. Prevents the update
+     * cache from accumulating one full APK per release the user ever saw.
+     */
+    fun removeOtherStagedApks(keep: File) {
+        val dir = keep.parentFile ?: return
+        val prefix = STAGED_APK_PREFIX
+        dir.listFiles()?.forEach { file ->
+            if (file.name != keep.name && file.name.startsWith(prefix)) file.delete()
+        }
+    }
+
+    /**
+     * Download an APK with progress callbacks. Runs on IO dispatcher.
+     * onProgress receives (downloadedBytes, totalBytesOrNull).
+     */
+    suspend fun downloadApk(
+        url: String,
+        destFile: File,
+        onProgress: (downloaded: Long, total: Long?) -> Unit = { _, _ -> },
+    ): Result<File> = withContext(Dispatchers.IO) {
+        val tmpFile = File(destFile.parentFile, "${destFile.name}.part")
+        runCatching {
+            var connection: HttpURLConnection? = null
+            try {
+                connection = (URL(url).openConnection() as HttpURLConnection).apply {
+                    instanceFollowRedirects = true
+                    connectTimeout = 30_000
+                    readTimeout = 30_000
+                    setRequestProperty("Accept", "application/octet-stream")
+                    connect()
+                }
+                val code = connection.responseCode
+                if (code !in 200..299) throw IllegalStateException("Download failed: HTTP $code")
+                val total = connection.contentLengthLong.takeIf { it > 0 }
+                connection.inputStream.use { input ->
+                    tmpFile.outputStream().use { output ->
+                        val buffer = ByteArray(64 * 1024)
+                        var downloaded = 0L
+                        while (true) {
+                            val read = input.read(buffer)
+                            if (read < 0) break
+                            output.write(buffer, 0, read)
+                            downloaded += read
+                            onProgress(downloaded, total)
+                        }
+                        output.flush()
+                    }
+                }
+                if (tmpFile.length() == 0L) throw IllegalStateException("Downloaded file is empty")
+                if (destFile.exists()) destFile.delete()
+                if (!tmpFile.renameTo(destFile)) {
+                    tmpFile.copyTo(destFile, overwrite = true)
+                    tmpFile.delete()
+                }
+                destFile
+            } finally {
+                connection?.disconnect()
+            }
+        }.onFailure {
+            // Never leave a half-written staging file behind.
+            runCatching { tmpFile.delete() }
+        }
+    }
+
+    // minSdk is 26, so the API 26 unknown-sources APIs are always available.
+    fun canInstallPackages(context: Context): Boolean =
+        context.packageManager.canRequestPackageInstalls()
+
+    fun openUnknownSourcesSettings(context: Context) {
+        val intent = Intent(
+            Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+            "package:${context.packageName}".toUri(),
+        ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        runCatching { context.startActivity(intent) }
+    }
+
+    /**
+     * Build an install intent for a staged APK. Returns null if the file is missing.
+     * Caller should ensure [canInstallPackages] first and guide the user to
+     * the unknown-sources setting otherwise.
+     */
+    fun buildInstallIntent(context: Context, apkFile: File): Intent? {
+        if (!apkFile.exists() || apkFile.length() == 0L) return null
+        val uri = FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.FileProvider",
+            apkFile,
+        )
+        return Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, "application/vnd.android.package-archive")
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+    }
 }

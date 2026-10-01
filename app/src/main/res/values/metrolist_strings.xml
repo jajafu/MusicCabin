@@ -401,6 +401,38 @@
     <string name="update_available_title">Update available</string>
     <string name="update_channel_name">App updates</string>
     <string name="update_channel_desc">Notifications about new app versions</string>
+    <string name="tv_update">Update</string>
+    <string name="tv_update_zh_tw" translatable="false">更新</string>
+    <string name="tv_update_desc">Check, download and install app updates with the remote</string>
+    <string name="tv_update_desc_zh_tw" translatable="false">用遙控器檢查、下載並安裝應用程式更新</string>
+    <string name="tv_update_check">Check for updates</string>
+    <string name="tv_update_check_zh_tw" translatable="false">檢查更新</string>
+    <string name="tv_update_checking">Checking for updates…</string>
+    <string name="tv_update_checking_zh_tw" translatable="false">正在檢查更新…</string>
+    <string name="tv_update_up_to_date">Already on the latest version</string>
+    <string name="tv_update_up_to_date_zh_tw" translatable="false">已是最新版本</string>
+    <string name="tv_update_available">New version available: %1$s</string>
+    <string name="tv_update_available_zh_tw" translatable="false">有新版本可用：%1$s</string>
+    <string name="tv_update_current">Installed: %1$s</string>
+    <string name="tv_update_current_zh_tw" translatable="false">已安裝版本：%1$s</string>
+    <string name="tv_update_download">Download update</string>
+    <string name="tv_update_download_zh_tw" translatable="false">下載更新</string>
+    <string name="tv_update_downloading">Downloading… %1$d%%</string>
+    <string name="tv_update_downloading_zh_tw" translatable="false">正在下載… %1$d%%</string>
+    <string name="tv_update_downloaded">Download finished</string>
+    <string name="tv_update_downloaded_zh_tw" translatable="false">下載完成</string>
+    <string name="tv_update_install">Install update</string>
+    <string name="tv_update_install_zh_tw" translatable="false">安裝更新</string>
+    <string name="tv_update_install_hint">The system installer opens after download. Confirm to install; the app restarts on the new version.</string>
+    <string name="tv_update_install_hint_zh_tw" translatable="false">下載完成後會開啟系統安裝器。請確認並完成安裝，應用程式會以新版本重新啟動。</string>
+    <string name="tv_update_allow_install_hint">TVs block installs from apps by default. Open settings and allow this app to install packages, then return and install.</string>
+    <string name="tv_update_allow_install_hint_zh_tw" translatable="false">Android TV 預設會封鎖由應用程式發起的安裝。請開啟設定並允許此應用程式安裝應用程式，返回後再安裝。</string>
+    <string name="tv_update_open_settings">Open install permission settings</string>
+    <string name="tv_update_open_settings_zh_tw" translatable="false">開啟安裝權限設定</string>
+    <string name="tv_update_no_apk">No matching APK for this build in the latest release.</string>
+    <string name="tv_update_no_apk_zh_tw" translatable="false">最新版本中沒有符合此建置的 APK。</string>
+    <string name="tv_update_failed">Update failed: %1$s</string>
+    <string name="tv_update_failed_zh_tw" translatable="false">更新失敗：%1$s</string>
 
     <!-- Offload -->
     <string name="audio_offload">Enable audio offload</string>

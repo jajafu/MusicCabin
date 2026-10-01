@@ -4,6 +4,18 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.29
+
+### 中文
+
+- TV 新增完整 App 內更新功能（僅 FOSS 建置）：啟動時自動檢查 GitHub Releases，有新版本時首頁顯示橫幅；側欄「更新」頁可用遙控器檢查、手動下載 APK（附進度條）、開啟系統安裝器安裝，並在缺少安裝未知應用權限時引導至系統設定開啟，介面含繁體中文。手機版維持原有瀏覽器下載流程。
+- 版本 code 259；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Add full in-app updating on TV (FOSS builds only): automatic GitHub Releases check on launch with a HOME banner when an update is available; the sidebar Update page checks, downloads the APK with progress, and opens the system installer from the remote, guiding the user to the install-unknown-apps setting when the permission is missing; the interface includes Traditional Chinese. The phone flow still downloads via browser.
+- Version code 259; no database schema change or data migration.
+
 ## 13.7.28
 
 ### 中文

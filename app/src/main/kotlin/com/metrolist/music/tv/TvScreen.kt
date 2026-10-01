@@ -40,6 +40,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
@@ -67,7 +68,9 @@ import com.metrolist.innertube.models.filterExplicit
 import com.metrolist.innertube.models.filterVideoSongs
 import com.metrolist.innertube.models.filterYoutubeShorts
 import com.metrolist.music.R
+import com.metrolist.music.BuildConfig
 import com.metrolist.music.LocalPlayerConnection
+import com.metrolist.music.constants.CheckForUpdatesKey
 import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.HideVideoSongsKey
 import com.metrolist.music.constants.HideYoutubeShortsKey
@@ -78,13 +81,14 @@ import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.playback.PlayerConnection
 import com.metrolist.music.playback.queues.ListQueue
 import com.metrolist.music.playback.queues.YouTubeQueue
+import com.metrolist.music.utils.Updater
 import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.get
 import com.metrolist.music.ui.utils.resize
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-private enum class TvPage { HOME, SEARCH, QUEUE, FRAME }
+private enum class TvPage { HOME, SEARCH, QUEUE, UPDATE, FRAME }
 
 private data class TvSongSection(val title: String, val label: String?, val songs: List<SongItem>)
 
@@ -127,12 +131,38 @@ fun TvScreen(database: MusicDatabase, playerConnection: PlayerConnection?, onExi
     val queueFocus = remember { FocusRequester() }
     val searchFieldFocus = remember { FocusRequester() }
 
+    val updateState = remember { TvUpdateState() }
+    val updateScope = rememberCoroutineScope()
+    val failedToCheckTemplate = stringResource(R.string.failed_to_check_updates)
+    val noApkText = tvLocalizedString(R.string.tv_update_no_apk, R.string.tv_update_no_apk_zh_tw)
+    val downloadingTemplate = tvLocalizedString(R.string.tv_update_downloading, R.string.tv_update_downloading_zh_tw)
+    val updateFailedTemplate = tvLocalizedString(R.string.tv_update_failed, R.string.tv_update_failed_zh_tw)
+
+    // Automatic update check on TV launch, mirroring the phone flow in MainActivity.
+    // TV shows an in-app banner instead of a system notification.
+    LaunchedEffect(Unit) {
+        if (BuildConfig.UPDATER_AVAILABLE) {
+            val enabled = withContext(Dispatchers.IO) {
+                context.dataStore.get(CheckForUpdatesKey, true)
+            }
+            if (enabled) {
+                updateState.check(
+                    scope = updateScope,
+                    context = context,
+                    failedTemplate = failedToCheckTemplate,
+                    noApkText = noApkText,
+                    forceRefresh = false,
+                )
+            }
+        }
+    }
     BackHandler(page != TvPage.HOME) { page = TvPage.HOME }
     LaunchedEffect(page) {
         when (page) {
             TvPage.HOME -> homeFocus.requestFocus()
             TvPage.SEARCH -> searchFieldFocus.requestFocus()
             TvPage.QUEUE -> queueFocus.requestFocus()
+            TvPage.UPDATE -> Unit
             TvPage.FRAME -> Unit
         }
     }
@@ -248,6 +278,13 @@ fun TvScreen(database: MusicDatabase, playerConnection: PlayerConnection?, onExi
                                 page = TvPage.QUEUE
                             }
                         }
+                        if (BuildConfig.UPDATER_AVAILABLE) {
+                            item {
+                                TvNavigationItem(tvLocalizedString(R.string.tv_update, R.string.tv_update_zh_tw), R.drawable.update, page == TvPage.UPDATE) {
+                                    page = TvPage.UPDATE
+                                }
+                            }
+                        }
                         item {
                             TvNavigationItem(tvLocalizedString(R.string.tv_photo_frame_title, R.string.tv_photo_frame_title_zh_tw),
                                 R.drawable.insert_photo, false) {
@@ -270,6 +307,41 @@ fun TvScreen(database: MusicDatabase, playerConnection: PlayerConnection?, onExi
                         state = rememberLazyListState(),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
+                        if (BuildConfig.UPDATER_AVAILABLE && updateState.hasUpdate && updateState.latestVersion != null) {
+                            item(key = "tv_update_banner") {
+                                Surface(
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = tvLocalizedString(
+                                                    R.string.tv_update_available,
+                                                    R.string.tv_update_available_zh_tw,
+                                                    updateState.latestVersion!!,
+                                                ),
+                                                style = MaterialTheme.typography.titleMedium,
+                                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            )
+                                            Text(
+                                                text = tvLocalizedString(R.string.tv_update_desc, R.string.tv_update_desc_zh_tw),
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            )
+                                        }
+                                        TvButton(tvLocalizedString(R.string.tv_update, R.string.tv_update_zh_tw), false) {
+                                            page = TvPage.UPDATE
+                                        }
+                                    }
+                                }
+                            }
+                        }
                         if (localSongs.isNotEmpty()) item {
                             TvHeading(
                                 stringResource(R.string.quick_picks),
@@ -387,6 +459,33 @@ fun TvScreen(database: MusicDatabase, playerConnection: PlayerConnection?, onExi
                     }
                 }
                 TvPage.FRAME -> Unit
+                TvPage.UPDATE -> {
+                    TvUpdatePage(
+                        state = updateState,
+                        modifier = Modifier.weight(1f),
+                        onCheck = {
+                            updateState.check(
+                                scope = updateScope,
+                                context = context,
+                                failedTemplate = failedToCheckTemplate,
+                                noApkText = noApkText,
+                                forceRefresh = true,
+                            )
+                        },
+                        onDownload = {
+                            updateState.download(
+                                scope = updateScope,
+                                context = context,
+                                downloadingTemplate = downloadingTemplate,
+                                failedTemplate = updateFailedTemplate,
+                            )
+                        },
+                        onInstall = { updateState.startInstall(context) },
+                        onOpenSettings = {
+                            Updater.openUnknownSourcesSettings(context)
+                        },
+                    )
+                }
             }
         }
 
@@ -425,7 +524,7 @@ fun TvScreen(database: MusicDatabase, playerConnection: PlayerConnection?, onExi
 }
 
 @Composable
-private fun TvHeading(text: String, label: String? = null) {
+internal fun TvHeading(text: String, label: String? = null) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -517,12 +616,12 @@ private fun TvArtwork(url: String?, size: Dp) {
 }
 
 @Composable
-private fun TvMessage(text: String) {
+internal fun TvMessage(text: String) {
     Text(text = text, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(12.dp))
 }
 
 @Composable
-private fun TvButton(
+internal fun TvButton(
     text: String,
     selected: Boolean,
     modifier: Modifier = Modifier,
