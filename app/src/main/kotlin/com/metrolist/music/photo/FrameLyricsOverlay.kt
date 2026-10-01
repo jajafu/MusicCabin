@@ -64,6 +64,12 @@ const val FRAME_ICON_BUTTON_BASELINE_DP = 48f
 const val FRAME_ICON_BASELINE_DP = 32f
 
 /**
+ * Vertical gap between the information row (clock/song/artist) and the control row. Kept small so
+ * the two blocks read as one overlay instead of drifting apart on tall screens.
+ */
+const val FRAME_ROW_SPACING_DP = 2f
+
+/**
  * Bottom lyric line for the photo frame overlays. Follows the synced lyric of the current song and
  * keeps to one or two lines, so it never competes with the photo above it. Plain (untimed) lyrics
  * have no current line to follow, so nothing is drawn for them.

@@ -81,6 +81,7 @@ import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.listentogether.RoomRole
 import com.metrolist.music.photo.FRAME_ICON_BASELINE_DP
+import com.metrolist.music.photo.FRAME_ROW_SPACING_DP
 import com.metrolist.music.photo.FRAME_ICON_BUTTON_BASELINE_DP
 import com.metrolist.music.photo.FRAME_TEXT_BASELINE_SCALE
 import com.metrolist.music.photo.FrameLyricsOverlay
@@ -230,7 +231,7 @@ fun TvPhotoFrameScreen(onExit: () -> Unit, viewModel: TvPhotoFrameViewModel = hi
                 Modifier.align(Alignment.TopCenter).fillMaxWidth()
                     .background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.8f), Color.Black.copy(alpha = 0.55f), Color.Transparent)))
                     .windowInsetsPadding(WindowInsets.safeDrawing).verticalScroll(rememberScrollState()).padding(16.dp * uiScale),
-                verticalArrangement = Arrangement.spacedBy(8.dp * uiScale),
+                verticalArrangement = Arrangement.spacedBy(FRAME_ROW_SPACING_DP.dp * uiScale),
             ) {
                 FrameOverlayContent(
                     uiScale = uiScale,
@@ -328,7 +329,7 @@ private fun FrameOverlayContent(
     FlowRow(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(16.dp * uiScale),
-        verticalArrangement = Arrangement.spacedBy(8.dp * uiScale),
+        verticalArrangement = Arrangement.spacedBy(FRAME_ROW_SPACING_DP.dp * uiScale),
     ) {
         if (showClock) FrameClock(clockActive, uiScale)
         if (showSongInfo && metadata != null) {

@@ -24,10 +24,10 @@ import com.metrolist.music.utils.rememberPreference
 const val ADAPTIVE_SCALE_BASELINE_DP = 360f
 
 /** Max growth for full-screen photo frame text and icons. */
-const val FRAME_UI_SCALE_MAX = 3f
+const val FRAME_UI_SCALE_MAX = 5f
 
-/** Scale steps offered by the settings slider, derived from the 1x..3x range. */
-const val UI_SCALE_SLIDER_STEPS = 3
+/** Scale steps offered by the settings slider: 1x..5x in 0.5x increments. */
+const val UI_SCALE_SLIDER_STEPS = 7
 
 fun uiScaleLabel(value: Float): String =
     if (value % 1f == 0f) "${value.toInt()}x" else "${value}x"

@@ -4,6 +4,20 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.30
+
+### 中文
+
+- 自動縮放上限由 1x-3x 改為 1x-5x（預設 5x），大螢幕可進一步放大迷你播放器與相框文字。
+- 縮減數位相框資訊列與控制列之間的行距，讓兩行讀起來是一個整體控制層。
+- 版本 code 260；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Raise the auto scale limit from 1x-3x to 1x-5x (default 5x) so MiniPlayer and photo frame text can grow further on large displays.
+- Reduce the gap between the photo frame information row and the control row so both read as one overlay.
+- Version code 260; no database schema change or data migration.
+
 ## 13.7.29
 
 ### 中文
