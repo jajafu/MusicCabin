@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <string name="tv_photo_frame_title" translatable="false">Photo frame 1</string>
-    <string name="tv_photo_frame_title_zh_tw" translatable="false">數位相框 1</string>
+    <string name="tv_photo_frame_title" translatable="false">Photo frame</string>
+    <string name="tv_photo_frame_title_zh_tw" translatable="false">數位相框</string>
     <string name="tv_photo_local_title" translatable="false">Local photos</string>
     <string name="tv_photo_local_title_zh_tw" translatable="false">本地照片</string>
     <string name="tv_photo_play_local" translatable="false">Play local photos</string>

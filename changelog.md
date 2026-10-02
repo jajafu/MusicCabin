@@ -4,6 +4,20 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.33
+
+### 中文
+
+- TV 左側選單與相框設定標題的「數位相框 1」改為「數位相框」，不再標示編號。功能與路由不變。
+- 移除 TV 相框操作列中重複的選擇圖片圖示，選圖功能保留在齒輪設定的「本地照片」頁。
+- 版本 code 263；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Drop the number from the TV sidebar entry and photo frame settings title, which now read "Photo frame". The feature and route are unchanged.
+- Remove the duplicate photo picker icon from the TV frame control row; photo selection remains on the Local photos page in settings.
+- Version code 263; no database schema change or data migration.
+
 ## 13.7.32
 
 ### 中文

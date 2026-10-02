@@ -104,7 +104,6 @@ fun TvPhotoFrameScreen(onExit: () -> Unit, viewModel: TvPhotoFrameViewModel = hi
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val busy by viewModel.busy.collectAsStateWithLifecycle()
     val actionError by viewModel.error.collectAsStateWithLifecycle()
     val generation by viewModel.generation.collectAsStateWithLifecycle()
     val source by viewModel.source.collectAsStateWithLifecycle()
@@ -240,9 +239,7 @@ fun TvPhotoFrameScreen(onExit: () -> Unit, viewModel: TvPhotoFrameViewModel = hi
                     showClock = state.settings.showClock,
                     clockActive = foreground,
                     showSongInfo = state.settings.showSongInfo,
-                    canSelect = state.initialized && !busy,
                     canNavigatePhotos = uris.size > 1,
-                    onSelect = { viewModel.selectSource(TvPhotoFrameViewModel.Source.LOCAL); showMediaBrowser = true },
                     onSettings = { showSettings = true },
                     onPreviousPhoto = { session.request(FramePlaybackCommand.PREVIOUS) },
                     onNextPhoto = { session.request(FramePlaybackCommand.NEXT) },
@@ -309,9 +306,7 @@ private fun FrameOverlayContent(
     showClock: Boolean,
     clockActive: Boolean,
     showSongInfo: Boolean,
-    canSelect: Boolean,
     canNavigatePhotos: Boolean,
-    onSelect: () -> Unit,
     onSettings: () -> Unit,
     onPreviousPhoto: () -> Unit,
     onNextPhoto: () -> Unit,
@@ -375,7 +370,7 @@ private fun FrameOverlayContent(
             FrameIcon(R.drawable.skip_next, R.string.photo_frame_next, uiScale, enabled = canControl && canNext) { connection?.seekToNext() }
             FrameIcon(R.drawable.arrow_back, R.string.photo_frame_previous_photo, uiScale, enabled = canNavigatePhotos, onClick = onPreviousPhoto)
             FrameIcon(R.drawable.arrow_forward, R.string.photo_frame_next_photo, uiScale, enabled = canNavigatePhotos, onClick = onNextPhoto)
-            FrameIcon(R.drawable.insert_photo, R.string.photo_frame_pick_photos, uiScale, enabled = canSelect, onClick = onSelect)
+            // Photo selection lives in the in-frame settings dialog; no shortcut here.
             FrameIcon(R.drawable.settings, R.string.photo_frame_settings, uiScale, autoFocus = true, onClick = onSettings)
             FrameIcon(R.drawable.fullscreen, R.string.tv_frame_hide_controls, uiScale, onClick = onHideControls)
             FrameIcon(R.drawable.close, R.string.photo_frame_exit, uiScale, onClick = onExit)
