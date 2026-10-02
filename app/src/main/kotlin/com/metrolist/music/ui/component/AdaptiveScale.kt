@@ -19,27 +19,45 @@ import com.metrolist.music.utils.rememberPreference
 
 /**
  * Baseline short edge for a phone in dp. A 360dp-short-edge phone reports 1x;
- * a 720dp short edge reports 2x, and larger displays scale up to 3x.
+ * the selected scale limit is reached at 720dp and above.
  */
 const val ADAPTIVE_SCALE_BASELINE_DP = 360f
 
 /** Max growth for full-screen photo frame text and icons. */
-const val FRAME_UI_SCALE_MAX = 5f
+const val FRAME_UI_SCALE_MAX = 3f
 
-/** Scale steps offered by the settings slider: 1x..5x in 0.5x increments. */
-const val UI_SCALE_SLIDER_STEPS = 7
+/** Default scale limit for large-screen UI. */
+const val FRAME_UI_SCALE_DEFAULT = 2f
+
+/** Scale steps offered by the settings slider: 1x..3x in 0.5x increments. */
+const val UI_SCALE_SLIDER_STEPS = 3
 
 fun uiScaleLabel(value: Float): String =
     if (value % 1f == 0f) "${value.toInt()}x" else "${value}x"
 
-fun adaptiveUiScale(shortestDp: Float, maxScale: Float = FRAME_UI_SCALE_MAX): Float =
-    (shortestDp / ADAPTIVE_SCALE_BASELINE_DP).coerceIn(1f, maxScale.coerceAtLeast(1f))
+fun adaptiveUiScale(shortestDp: Float, maxScale: Float = FRAME_UI_SCALE_MAX): Float {
+    val scaleLimit = normalizeAdaptiveScaleMax(maxScale)
+    val screenProgress =
+        ((shortestDp - ADAPTIVE_SCALE_BASELINE_DP) / ADAPTIVE_SCALE_BASELINE_DP)
+            .coerceIn(0f, 1f)
+    return 1f + (scaleLimit - 1f) * screenProgress
+}
+
+/**
+ * Clamp a stored limit into the slider range. The isFinite check is required because NaN compares
+ * false against everything, so coerceIn would pass it through unchanged.
+ */
+fun normalizeAdaptiveScaleMax(value: Float): Float =
+    when {
+        !value.isFinite() || value > FRAME_UI_SCALE_MAX -> FRAME_UI_SCALE_DEFAULT
+        else -> value.coerceIn(1f, FRAME_UI_SCALE_MAX)
+    }
 
 /** User-chosen upper bound for auto scaling, read from settings. */
 @Composable
 fun rememberAdaptiveScaleMax(): Float {
-    val maxScale by rememberPreference(AdaptiveScaleMaxKey, FRAME_UI_SCALE_MAX)
-    return remember(maxScale) { maxScale.coerceIn(1f, FRAME_UI_SCALE_MAX) }
+    val maxScale by rememberPreference(AdaptiveScaleMaxKey, FRAME_UI_SCALE_DEFAULT)
+    return remember(maxScale) { normalizeAdaptiveScaleMax(maxScale) }
 }
 
 /**

@@ -134,7 +134,7 @@
     <string name="display_density">Display density</string>
     <string name="ui_scale_summary_auto">Auto, up to %1$s</string>
     <string name="ui_scale_max">Auto scale limit</string>
-    <string name="ui_scale_max_desc">Applies to the mini-player and photo frame text</string>
+    <string name="ui_scale_max_desc">Grows from 1x at 360dp to this limit at 720dp; applies to the mini-player and photo frame</string>
     <string name="restart">Restart</string>
     <string name="restart_required">Restart required!</string>
     <string name="density_restart_message">The display density change will take effect after restarting the app. Restart now?</string>

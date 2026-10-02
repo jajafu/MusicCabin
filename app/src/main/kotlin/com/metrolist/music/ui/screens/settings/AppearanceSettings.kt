@@ -107,6 +107,7 @@ import com.metrolist.music.constants.UseNewMiniPlayerDesignKey
 import com.metrolist.music.constants.UseNewPlayerDesignKey
 import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.EnumDialog
+import com.metrolist.music.ui.component.FRAME_UI_SCALE_DEFAULT
 import com.metrolist.music.ui.component.FRAME_UI_SCALE_MAX
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.Material3SettingsGroup
@@ -115,6 +116,7 @@ import com.metrolist.music.ui.component.PlayerSliderTrack
 import com.metrolist.music.ui.component.SquigglySlider
 import com.metrolist.music.ui.component.UI_SCALE_SLIDER_STEPS
 import com.metrolist.music.ui.component.WavySlider
+import com.metrolist.music.ui.component.normalizeAdaptiveScaleMax
 import com.metrolist.music.ui.component.uiScaleLabel
 import com.metrolist.music.ui.theme.DefaultThemeColor
 import com.metrolist.music.ui.theme.PlayerSliderColors
@@ -300,12 +302,13 @@ fun AppearanceSettings(
         showRestartDialog = true
     }
 
-    // Large-screen text scale grows with the screen short edge up to this adjustable cap.
-    val (adaptiveScaleMax, onAdaptiveScaleMaxChange) =
+    // Large-screen text scale grows from 1x at 360dp to the selected limit at 720dp.
+    val (savedAdaptiveScaleMax, onAdaptiveScaleMaxChange) =
         rememberPreference(
             AdaptiveScaleMaxKey,
-            defaultValue = FRAME_UI_SCALE_MAX,
+            defaultValue = FRAME_UI_SCALE_DEFAULT,
         )
+    val adaptiveScaleMax = normalizeAdaptiveScaleMax(savedAdaptiveScaleMax)
     var showUiScaleMaxDialog by rememberSaveable { mutableStateOf(false) }
 
     val (listenTogetherInTopBar, onListenTogetherInTopBarChange) =
@@ -772,7 +775,7 @@ fun AppearanceSettings(
             buttons = {
                 TextButton(
                     onClick = {
-                        tempScaleMax = FRAME_UI_SCALE_MAX
+                        tempScaleMax = FRAME_UI_SCALE_DEFAULT
                     },
                 ) {
                     Text(stringResource(R.string.reset))

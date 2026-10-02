@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
@@ -80,9 +81,10 @@ import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.listentogether.RoomRole
+import com.metrolist.music.photo.FRAME_CONTROL_ICON_LIFT_DP
 import com.metrolist.music.photo.FRAME_ICON_BASELINE_DP
-import com.metrolist.music.photo.FRAME_ROW_SPACING_DP
 import com.metrolist.music.photo.FRAME_ICON_BUTTON_BASELINE_DP
+import com.metrolist.music.photo.FRAME_ROW_SPACING_DP
 import com.metrolist.music.photo.FRAME_TEXT_BASELINE_SCALE
 import com.metrolist.music.photo.FrameLyricsOverlay
 import com.metrolist.music.photo.FramePhotoReceiver
@@ -231,7 +233,7 @@ fun TvPhotoFrameScreen(onExit: () -> Unit, viewModel: TvPhotoFrameViewModel = hi
                 Modifier.align(Alignment.TopCenter).fillMaxWidth()
                     .background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.8f), Color.Black.copy(alpha = 0.55f), Color.Transparent)))
                     .windowInsetsPadding(WindowInsets.safeDrawing).verticalScroll(rememberScrollState()).padding(16.dp * uiScale),
-                verticalArrangement = Arrangement.spacedBy(FRAME_ROW_SPACING_DP.dp * uiScale),
+                verticalArrangement = Arrangement.spacedBy(8.dp * uiScale),
             ) {
                 FrameOverlayContent(
                     uiScale = uiScale,
@@ -326,56 +328,58 @@ private fun FrameOverlayContent(
     val canControl = ready && metadata != null && role != RoomRole.GUEST
     val titleStyle = MaterialTheme.typography.titleLarge
     val artistStyle = MaterialTheme.typography.bodyLarge
-    FlowRow(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(16.dp * uiScale),
-        verticalArrangement = Arrangement.spacedBy(FRAME_ROW_SPACING_DP.dp * uiScale),
-    ) {
-        if (showClock) FrameClock(clockActive, uiScale)
-        if (showSongInfo && metadata != null) {
-            AutoResizeText(
-                text = metadata.title,
-                fontSizeRange = FontSizeRange(
-                    min = titleStyle.fontSize * FRAME_TEXT_BASELINE_SCALE,
-                    max = titleStyle.fontSize * FRAME_TEXT_BASELINE_SCALE * uiScale,
-                ),
-                color = Color.White,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                style = titleStyle,
-            )
-            AutoResizeText(
-                text = metadata.artists.joinToString { it.name },
-                fontSizeRange = FontSizeRange(
-                    min = artistStyle.fontSize * FRAME_TEXT_BASELINE_SCALE,
-                    max = artistStyle.fontSize * FRAME_TEXT_BASELINE_SCALE * uiScale,
-                ),
-                color = Color.White,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                style = artistStyle,
-            )
+    Column(verticalArrangement = Arrangement.spacedBy(FRAME_ROW_SPACING_DP.dp * uiScale)) {
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp * uiScale),
+            verticalArrangement = Arrangement.spacedBy(FRAME_ROW_SPACING_DP.dp * uiScale),
+        ) {
+            if (showClock) FrameClock(clockActive, uiScale)
+            if (showSongInfo && metadata != null) {
+                AutoResizeText(
+                    text = metadata.title,
+                    fontSizeRange = FontSizeRange(
+                        min = titleStyle.fontSize * FRAME_TEXT_BASELINE_SCALE,
+                        max = titleStyle.fontSize * FRAME_TEXT_BASELINE_SCALE * uiScale,
+                    ),
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    style = titleStyle,
+                )
+                AutoResizeText(
+                    text = metadata.artists.joinToString { it.name },
+                    fontSizeRange = FontSizeRange(
+                        min = artistStyle.fontSize * FRAME_TEXT_BASELINE_SCALE,
+                        max = artistStyle.fontSize * FRAME_TEXT_BASELINE_SCALE * uiScale,
+                    ),
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    style = artistStyle,
+                )
+            }
         }
-    }
-    FlowRow(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp * uiScale),
-        verticalArrangement = Arrangement.spacedBy(8.dp * uiScale),
-    ) {
-        FrameIcon(R.drawable.skip_previous, R.string.photo_frame_previous, uiScale, enabled = canControl && canPrevious) { connection?.seekToPrevious() }
-        FrameIcon(
-            if (isPlaying) R.drawable.pause else R.drawable.play,
-            if (isPlaying) R.string.photo_frame_pause else R.string.photo_frame_play,
-            uiScale,
-            enabled = canControl,
-        ) { connection?.togglePlayPause() }
-        FrameIcon(R.drawable.skip_next, R.string.photo_frame_next, uiScale, enabled = canControl && canNext) { connection?.seekToNext() }
-        FrameIcon(R.drawable.arrow_back, R.string.photo_frame_previous_photo, uiScale, enabled = canNavigatePhotos, onClick = onPreviousPhoto)
-        FrameIcon(R.drawable.arrow_forward, R.string.photo_frame_next_photo, uiScale, enabled = canNavigatePhotos, onClick = onNextPhoto)
-        FrameIcon(R.drawable.insert_photo, R.string.photo_frame_pick_photos, uiScale, enabled = canSelect, onClick = onSelect)
-        FrameIcon(R.drawable.settings, R.string.photo_frame_settings, uiScale, autoFocus = true, onClick = onSettings)
-        FrameIcon(R.drawable.fullscreen, R.string.tv_frame_hide_controls, uiScale, onClick = onHideControls)
-        FrameIcon(R.drawable.close, R.string.photo_frame_exit, uiScale, onClick = onExit)
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp * uiScale),
+            verticalArrangement = Arrangement.spacedBy(FRAME_ROW_SPACING_DP.dp * uiScale),
+        ) {
+            FrameIcon(R.drawable.skip_previous, R.string.photo_frame_previous, uiScale, enabled = canControl && canPrevious) { connection?.seekToPrevious() }
+            FrameIcon(
+                if (isPlaying) R.drawable.pause else R.drawable.play,
+                if (isPlaying) R.string.photo_frame_pause else R.string.photo_frame_play,
+                uiScale,
+                enabled = canControl,
+            ) { connection?.togglePlayPause() }
+            FrameIcon(R.drawable.skip_next, R.string.photo_frame_next, uiScale, enabled = canControl && canNext) { connection?.seekToNext() }
+            FrameIcon(R.drawable.arrow_back, R.string.photo_frame_previous_photo, uiScale, enabled = canNavigatePhotos, onClick = onPreviousPhoto)
+            FrameIcon(R.drawable.arrow_forward, R.string.photo_frame_next_photo, uiScale, enabled = canNavigatePhotos, onClick = onNextPhoto)
+            FrameIcon(R.drawable.insert_photo, R.string.photo_frame_pick_photos, uiScale, enabled = canSelect, onClick = onSelect)
+            FrameIcon(R.drawable.settings, R.string.photo_frame_settings, uiScale, autoFocus = true, onClick = onSettings)
+            FrameIcon(R.drawable.fullscreen, R.string.tv_frame_hide_controls, uiScale, onClick = onHideControls)
+            FrameIcon(R.drawable.close, R.string.photo_frame_exit, uiScale, onClick = onExit)
+        }
     }
 }
 
@@ -393,7 +397,12 @@ private fun FrameIcon(icon: Int, label: Int, uiScale: Float, enabled: Boolean = 
             .then(if (focused) Modifier.border(3.dp, Color.White, androidx.compose.foundation.shape.RoundedCornerShape(12.dp)) else Modifier),
         colors = IconButtonDefaults.iconButtonColors(contentColor = Color.White, disabledContentColor = Color.White.copy(alpha = 0.38f)),
     ) {
-        Icon(painterResource(icon), stringResource(label), Modifier.size(FRAME_ICON_BASELINE_DP.dp * uiScale))
+        Icon(
+            painterResource(icon),
+            stringResource(label),
+            Modifier.size(FRAME_ICON_BASELINE_DP.dp * uiScale)
+                .offset(y = (-FRAME_CONTROL_ICON_LIFT_DP * uiScale).dp),
+        )
     }
 }
 

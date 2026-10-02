@@ -4,6 +4,20 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.32
+
+### 中文
+
+- 修正車機短邊約 720dp 時自動縮放停在 2x，導致選擇 2.5x／3x 沒有尺寸變化；改為從 360dp 的 1x 漸進縮放，至 720dp 達到所選上限。上限恢復為 3x，預設 2x；舊設定若超過新上限，會回到 2x。
+- 明確分組相框資訊列與操作列，將兩列間距縮至原本約三分之一，並把操作圖示上移以消除觸控按鈕內造成的視覺空隙；48dp 觸控區不變。
+- 版本 code 262；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Fix auto scaling stopping at 2x on a roughly 720dp-short-edge head unit, where selecting 2.5x or 3x made no size difference. Scale now interpolates from 1x at 360dp to the selected limit at 720dp; the limit is restored to 3x and defaults to 2x. Saved values above the restored limit fall back to 2x.
+- Explicitly group the photo-frame information and control rows, reduce their gap to about one third, and lift the control icons to remove the apparent whitespace inside the touch buttons. The 48dp touch targets are unchanged.
+- Version code 262; no database schema change or data migration.
+
 ## 13.7.31
 
 ### 中文

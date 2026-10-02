@@ -64,10 +64,12 @@ const val FRAME_ICON_BUTTON_BASELINE_DP = 48f
 const val FRAME_ICON_BASELINE_DP = 32f
 
 /**
- * Vertical gap between the information row (clock/song/artist) and the control row. Kept small so
- * the two blocks read as one overlay instead of drifting apart on tall screens.
+ * Vertical gap between the information row (clock/song/artist) and the control row.
  */
-const val FRAME_ROW_SPACING_DP = 2f
+const val FRAME_ROW_SPACING_DP = 2.5f
+
+/** Lift control glyphs within their unchanged touch targets to reduce the visible row gap. */
+const val FRAME_CONTROL_ICON_LIFT_DP = 5f
 
 /**
  * Bottom lyric line for the photo frame overlays. Follows the synced lyric of the current song and
