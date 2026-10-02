@@ -16,7 +16,7 @@ object PaxsenixLyricsProvider : LyricsProvider {
     
     override val name = "Paxsenix"
 
-    override fun isEnabled(preferences: Preferences): Boolean = preferences[EnablePaxsenixKey] ?: true
+    override fun isEnabled(preferences: Preferences): Boolean = preferences[EnablePaxsenixKey] ?: false
 
     override suspend fun getLyrics(
         context: Context,

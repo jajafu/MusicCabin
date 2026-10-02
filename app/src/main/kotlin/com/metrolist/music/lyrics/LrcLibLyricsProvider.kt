@@ -13,7 +13,7 @@ import com.metrolist.music.constants.EnableLrcLibKey
 object LrcLibLyricsProvider : LyricsProvider {
     override val name = "LrcLib"
 
-    override fun isEnabled(preferences: Preferences): Boolean = preferences[EnableLrcLibKey] ?: true
+    override fun isEnabled(preferences: Preferences): Boolean = preferences[EnableLrcLibKey] ?: false
 
     override suspend fun getLyrics(
         context: Context,

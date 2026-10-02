@@ -4,6 +4,18 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.34
+
+### 中文
+
+- 歌詞提供者選擇中，第一項 LrcLib 與第四項 Paxsenix 預設改為關閉；已儲存的開關不受影響，新安裝或未設定過的使用者才會看到關閉狀態。
+- 版本 code 264；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Change the defaults in lyrics provider selection so the first item LrcLib and the fourth item Paxsenix start disabled; saved toggles are unaffected and only fresh installs or never-configured users see the off state.
+- Version code 264; no database schema change or data migration.
+
 ## 13.7.33
 
 ### 中文
