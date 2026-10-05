@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.ContextWrapper
 import android.text.format.DateFormat
 import android.view.KeyEvent as AndroidKeyEvent
+import android.view.WindowManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
@@ -420,6 +421,11 @@ private fun FrameImmersiveMode(active: Boolean) {
         val activity = unwrapped as? Activity
         if (!active || activity == null) return@DisposableEffect onDispose { }
         val window = activity.window
+        // A photo slideshow is not video playback, so nothing holds the
+        // idle timer while it runs. Without this flag the TV starts its
+        // screensaver (dream) after the system timeout even mid-slideshow.
+        val keepScreenOn = window.attributes.flags and WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON != 0
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         val controller = WindowCompat.getInsetsController(window, window.decorView)
         val insets = ViewCompat.getRootWindowInsets(window.decorView)
         val statusVisible = insets?.isVisible(WindowInsetsCompat.Type.statusBars()) ?: true
@@ -428,6 +434,7 @@ private fun FrameImmersiveMode(active: Boolean) {
         controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         controller.hide(WindowInsetsCompat.Type.systemBars())
         onDispose {
+            if (!keepScreenOn) window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             controller.systemBarsBehavior = behavior
             if (statusVisible) controller.show(WindowInsetsCompat.Type.statusBars()) else controller.hide(WindowInsetsCompat.Type.statusBars())
             if (navigationVisible) controller.show(WindowInsetsCompat.Type.navigationBars()) else controller.hide(WindowInsetsCompat.Type.navigationBars())

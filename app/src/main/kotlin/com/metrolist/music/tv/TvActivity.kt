@@ -24,6 +24,7 @@ import androidx.lifecycle.lifecycleScope
 import com.metrolist.music.db.MusicDatabase
 import com.metrolist.music.playback.MusicService
 import com.metrolist.music.playback.PlayerConnection
+import com.metrolist.music.utils.SyncUtils
 import dagger.hilt.android.AndroidEntryPoint
 import timber.log.Timber
 import javax.inject.Inject
@@ -31,6 +32,7 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class TvActivity : ComponentActivity() {
     @Inject lateinit var database: MusicDatabase
+    @Inject lateinit var syncUtils: SyncUtils
 
     private var playerConnection by mutableStateOf<PlayerConnection?>(null)
     private var serviceBound = false
@@ -57,7 +59,7 @@ class TvActivity : ComponentActivity() {
         }
         setContent {
             TvTheme {
-                TvScreen(database = database, playerConnection = playerConnection, onExitApp = ::stopPlaybackAndExit)
+                TvScreen(database = database, playerConnection = playerConnection, syncUtils = syncUtils, onExitApp = ::stopPlaybackAndExit)
             }
         }
     }

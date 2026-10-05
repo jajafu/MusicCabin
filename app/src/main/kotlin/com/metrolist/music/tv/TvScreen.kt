@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -63,6 +64,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Timeline
 import coil3.compose.AsyncImage
 import com.metrolist.innertube.YouTube
+import com.metrolist.innertube.models.PlaylistItem
 import com.metrolist.innertube.models.SongItem
 import com.metrolist.innertube.models.WatchEndpoint
 import com.metrolist.innertube.models.filterExplicit
@@ -82,6 +84,7 @@ import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.playback.PlayerConnection
 import com.metrolist.music.playback.queues.ListQueue
 import com.metrolist.music.playback.queues.YouTubeQueue
+import com.metrolist.music.utils.SyncUtils
 import com.metrolist.music.utils.Updater
 import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.get
@@ -89,18 +92,30 @@ import com.metrolist.music.ui.utils.resize
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-private enum class TvPage { HOME, SEARCH, QUEUE, UPDATE, FRAME }
+private enum class TvPage { HOME, SEARCH, QUEUE, UPDATE, FRAME, LIBRARY, PLAYLIST }
 
-private data class TvSongSection(val title: String, val label: String?, val songs: List<SongItem>)
+private data class TvSongSection(
+    val title: String,
+    val label: String?,
+    val songs: List<SongItem>,
+    val playlists: List<PlaylistItem> = emptyList(),
+)
 
 @Composable
-fun TvScreen(database: MusicDatabase, playerConnection: PlayerConnection?, onExitApp: () -> Unit) {
+fun TvScreen(
+    database: MusicDatabase,
+    playerConnection: PlayerConnection?,
+    syncUtils: SyncUtils,
+    onExitApp: () -> Unit,
+) {
     val context = LocalContext.current
     val isChinese = LocalConfiguration.current.locales[0].language == "zh"
     val recommendationTitle = stringResource(
         if (isChinese) R.string.tv_recommendations_zh_tw else R.string.tv_recommendations
     )
     val quickPicksTitle = stringResource(R.string.tv_quick_picks)
+    val addToPlaylistLabel = tvLocalizedString(R.string.tv_add_to_playlist, R.string.tv_add_to_playlist_zh_tw)
+    val saveLabel = tvLocalizedString(R.string.tv_save, R.string.tv_save_zh_tw)
     val quickPicksFlow = remember(database) { database.quickPicks() }
     val quickPicks by quickPicksFlow.collectAsStateWithLifecycle(initialValue = emptyList())
     val localSongs = remember(quickPicks) { quickPicks.take(6) }
@@ -120,6 +135,10 @@ fun TvScreen(database: MusicDatabase, playerConnection: PlayerConnection?, onExi
     var homeSections by remember { mutableStateOf<List<TvSongSection>>(emptyList()) }
     var homeLoading by remember { mutableStateOf(true) }
     var homeFailed by remember { mutableStateOf(false) }
+    var playlistTarget by remember { mutableStateOf<TvPlaylistTarget?>(null) }
+    var playlistReturnPage by remember { mutableStateOf(TvPage.HOME) }
+    var addToPlaylistSong by remember { mutableStateOf<SongItem?>(null) }
+    val tvScope = rememberCoroutineScope()
     var searchText by remember { mutableStateOf("") }
     var searchTerm by remember { mutableStateOf("") }
     var searchReload by remember { mutableIntStateOf(0) }
@@ -130,6 +149,7 @@ fun TvScreen(database: MusicDatabase, playerConnection: PlayerConnection?, onExi
     val homeFocus = remember { FocusRequester() }
     val searchFocus = remember { FocusRequester() }
     val queueFocus = remember { FocusRequester() }
+    val libraryFocus = remember { FocusRequester() }
     val searchFieldFocus = remember { FocusRequester() }
 
     val updateState = remember { TvUpdateState() }
@@ -164,15 +184,29 @@ fun TvScreen(database: MusicDatabase, playerConnection: PlayerConnection?, onExi
             }
         }
     }
-    BackHandler(page != TvPage.HOME) { page = TvPage.HOME }
+    BackHandler(page != TvPage.HOME) {
+        if (page == TvPage.PLAYLIST) {
+            page = playlistReturnPage
+        } else {
+            page = TvPage.HOME
+        }
+    }
     LaunchedEffect(page) {
         when (page) {
             TvPage.HOME -> homeFocus.requestFocus()
             TvPage.SEARCH -> searchFieldFocus.requestFocus()
             TvPage.QUEUE -> queueFocus.requestFocus()
+            TvPage.LIBRARY -> libraryFocus.requestFocus()
+            TvPage.PLAYLIST -> if (playlistReturnPage == TvPage.LIBRARY) libraryFocus.requestFocus() else homeFocus.requestFocus()
             TvPage.UPDATE -> Unit
             TvPage.FRAME -> Unit
         }
+    }
+
+    fun openPlaylist(target: TvPlaylistTarget) {
+        playlistReturnPage = page
+        playlistTarget = target
+        page = TvPage.PLAYLIST
     }
 
     LaunchedEffect(homeReload) {
@@ -184,6 +218,7 @@ fun TvScreen(database: MusicDatabase, playerConnection: PlayerConnection?, onExi
                 val hideVideos = context.dataStore.get(HideVideoSongsKey, false)
                 val hideShorts = context.dataStore.get(HideYoutubeShortsKey, false)
                 val seen = hashSetOf<String>()
+                val seenPlaylists = hashSetOf<String>()
                 buildList {
                     for (section in YouTube.home().getOrThrow().sections) {
                         if (size == 4) break
@@ -193,12 +228,17 @@ fun TvScreen(database: MusicDatabase, playerConnection: PlayerConnection?, onExi
                             .filterYoutubeShorts(hideShorts)
                             .filter { it.id !in seen }
                             .take(6)
-                        if (songs.isEmpty()) continue
+                        val playlists = section.items.filterIsInstance<PlaylistItem>()
+                            .filter { it.id !in seenPlaylists }
+                            .take(6)
+                        if (songs.isEmpty() && playlists.isEmpty()) continue
                         seen.addAll(songs.map { it.id })
+                        seenPlaylists.addAll(playlists.map { it.id })
                         add(TvSongSection(
                             section.title.ifBlank { recommendationTitle },
                             section.label,
                             songs,
+                            playlists,
                         ))
                     }
                 }
@@ -286,6 +326,11 @@ fun TvScreen(database: MusicDatabase, playerConnection: PlayerConnection?, onExi
                                 page = TvPage.QUEUE
                             }
                         }
+                        item {
+                            TvNavigationItem(tvLocalizedString(R.string.tv_library, R.string.tv_library_zh_tw), R.drawable.library_music, page == TvPage.LIBRARY, Modifier.focusRequester(libraryFocus)) {
+                                page = TvPage.LIBRARY
+                            }
+                        }
                         if (BuildConfig.UPDATER_AVAILABLE) {
                             item {
                                 TvNavigationItem(tvLocalizedString(R.string.tv_update, R.string.tv_update_zh_tw), R.drawable.update, page == TvPage.UPDATE) {
@@ -357,36 +402,53 @@ fun TvScreen(database: MusicDatabase, playerConnection: PlayerConnection?, onExi
                             )
                         }
                         items(localSongs, key = { "local_${it.id}" }) { song ->
-                            TvSongRow(
-                                title = song.title,
-                                artists = song.orderedArtists.joinToString { it.name },
-                                thumbnailUrl = song.thumbnailUrl?.resize(160, 160),
+                            TvLocalSongRow(
+                                song = song,
+                                syncUtils = syncUtils,
+                                scope = tvScope,
+                                database = database,
                                 enabled = ready,
-                            ) {
-                                playerConnection?.playQueue(
-                                    ListQueue(
-                                        title = quickPicksTitle,
-                                        items = localSongs.map { it.toMediaItem() },
-                                        startIndex = localSongs.indexOfFirst { it.id == song.id },
+                                addLabel = addToPlaylistLabel,
+                                onPlay = {
+                                    playerConnection?.playQueue(
+                                        ListQueue(
+                                            title = quickPicksTitle,
+                                            items = localSongs.map { it.toMediaItem() },
+                                            startIndex = localSongs.indexOfFirst { it.id == song.id },
+                                        )
                                     )
-                                )
-                            }
+                                },
+                                onAddToPlaylist = { addToPlaylistSong = it },
+                            )
                         }
                         homeSections.forEachIndexed { sectionIndex, section ->
                             item(key = "section_$sectionIndex") {
                                 TvHeading(section.title, section.label)
                             }
                             items(section.songs, key = { "remote_${it.id}" }) { song ->
-                                TvSongRow(
-                                    title = song.title,
-                                    artists = song.artists.joinToString { it.name },
-                                    thumbnailUrl = song.thumbnail.resize(160, 160),
+                                TvOnlineSongRow(
+                                    song = song,
+                                    database = database,
+                                    syncUtils = syncUtils,
+                                    scope = tvScope,
                                     enabled = ready,
-                                ) {
-                                    playerConnection?.playQueue(
-                                        YouTubeQueue(WatchEndpoint(videoId = song.id), song.toMediaMetadata())
-                                    )
-                                }
+                                    addLabel = addToPlaylistLabel,
+                                    onPlay = {
+                                        playerConnection?.playQueue(
+                                            YouTubeQueue(WatchEndpoint(videoId = song.id), song.toMediaMetadata())
+                                        )
+                                    },
+                                    onAddToPlaylist = { addToPlaylistSong = song },
+                                )
+                            }
+                            items(section.playlists, key = { "playlist_${it.id}" }) { playlist ->
+                                TvHomePlaylistRow(
+                                    playlist = playlist,
+                                    database = database,
+                                    scope = tvScope,
+                                    saveLabel = saveLabel,
+                                    onOpen = { openPlaylist(TvPlaylistTarget.Online(playlist.id)) },
+                                )
                             }
                         }
                         if (homeLoading) item { TvMessage(stringResource(R.string.tv_loading)) }
@@ -418,16 +480,20 @@ fun TvScreen(database: MusicDatabase, playerConnection: PlayerConnection?, onExi
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             items(searchSongs, key = { it.id }) { song ->
-                                TvSongRow(
-                                    title = song.title,
-                                    artists = song.artists.joinToString { it.name },
-                                    thumbnailUrl = song.thumbnail.resize(160, 160),
+                                TvOnlineSongRow(
+                                    song = song,
+                                    database = database,
+                                    syncUtils = syncUtils,
+                                    scope = tvScope,
                                     enabled = ready,
-                                ) {
-                                    playerConnection?.playQueue(
-                                        YouTubeQueue(WatchEndpoint(videoId = song.id), song.toMediaMetadata())
-                                    )
-                                }
+                                    addLabel = addToPlaylistLabel,
+                                    onPlay = {
+                                        playerConnection?.playQueue(
+                                            YouTubeQueue(WatchEndpoint(videoId = song.id), song.toMediaMetadata())
+                                        )
+                                    },
+                                    onAddToPlaylist = { addToPlaylistSong = song },
+                                )
                             }
                             if (searchLoading) item { TvMessage(stringResource(R.string.tv_loading)) }
                             if (searchFailed) item {
@@ -454,16 +520,53 @@ fun TvScreen(database: MusicDatabase, playerConnection: PlayerConnection?, onExi
                                 thumbnailUrl = item.mediaMetadata.artworkUri?.toString()?.resize(160, 160),
                                 enabled = ready,
                                 selected = index == currentQueueIndex,
-                            ) {
-                                val player = playerConnection?.player ?: return@TvSongRow
-                                val timeline = player.currentTimeline
-                                val actualIndex = (0 until timeline.windowCount).firstOrNull {
-                                    timeline.getWindow(it, Timeline.Window()).uid == window.uid
-                                } ?: return@TvSongRow
-                                player.seekTo(actualIndex, 0L)
-                                playerConnection.play()
-                            }
+                                onClick = {
+                                    val player = playerConnection?.player ?: return@TvSongRow
+                                    val timeline = player.currentTimeline
+                                    val actualIndex = (0 until timeline.windowCount).firstOrNull {
+                                        timeline.getWindow(it, Timeline.Window()).uid == window.uid
+                                    } ?: return@TvSongRow
+                                    player.seekTo(actualIndex, 0L)
+                                    playerConnection.play()
+                                },
+                            )
                         }
+                    }
+                }
+                TvPage.LIBRARY -> {
+                    TvLibraryPage(
+                        database = database,
+                        playerConnection = playerConnection,
+                        scope = tvScope,
+                        syncUtils = syncUtils,
+                        ready = ready,
+                        modifier = Modifier.weight(1f),
+                        onOpenLocalPlaylist = { openPlaylist(TvPlaylistTarget.Local(it)) },
+                        onAddToPlaylist = { addToPlaylistSong = it },
+                    )
+                }
+                TvPage.PLAYLIST -> {
+                    val target = playlistTarget
+                    if (target == null) {
+                        TvMessage(
+                            tvLocalizedString(R.string.tv_loading, R.string.tv_loading),
+                        )
+                    } else {
+                        TvPlaylistDetailPage(
+                            target = target,
+                            database = database,
+                            playerConnection = playerConnection,
+                            scope = tvScope,
+                            syncUtils = syncUtils,
+                            ready = ready,
+                            modifier = Modifier.weight(1f),
+                            onAddToPlaylist = { addToPlaylistSong = it },
+                            onDeleted = {
+                                playlistTarget = null
+                                page = TvPage.LIBRARY
+                            },
+                            onBack = { page = playlistReturnPage },
+                        )
                     }
                 }
                 TvPage.FRAME -> Unit
@@ -527,6 +630,16 @@ fun TvScreen(database: MusicDatabase, playerConnection: PlayerConnection?, onExi
                     playerConnection?.seekToNext()
                 }
             }
+        }
+
+        addToPlaylistSong?.let { song ->
+            TvAddToPlaylistDialog(
+                song = song,
+                database = database,
+                syncUtils = syncUtils,
+                scope = tvScope,
+                onDismiss = { addToPlaylistSong = null },
+            )
         }
     }
 }
@@ -614,7 +727,7 @@ internal fun tvLocalizedString(context: Context, english: Int, chinese: Int, var
 }
 
 @Composable
-private fun TvArtwork(url: String?, size: Dp) {
+internal fun TvArtwork(url: String?, size: Dp) {
     Box(
         modifier = Modifier.size(size).clip(RoundedCornerShape(8.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant),
@@ -636,7 +749,12 @@ private fun TvArtwork(url: String?, size: Dp) {
 
 @Composable
 internal fun TvMessage(text: String) {
-    Text(text = text, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(12.dp))
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodyLarge,
+        color = MaterialTheme.colorScheme.onBackground,
+        modifier = Modifier.padding(12.dp),
+    )
 }
 
 @Composable
@@ -665,13 +783,14 @@ internal fun TvButton(
 }
 
 @Composable
-private fun TvSongRow(
+internal fun TvSongRow(
     title: String,
     artists: String,
     thumbnailUrl: String?,
     enabled: Boolean,
     selected: Boolean = false,
     onClick: () -> Unit,
+    trailingActions: @Composable RowScope.() -> Unit = {},
 ) {
     var focused by remember { mutableStateOf(false) }
     val active = selected || focused
@@ -707,6 +826,11 @@ private fun TvSongRow(
                     )
                 }
             }
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                content = trailingActions,
+            )
         }
     }
 }

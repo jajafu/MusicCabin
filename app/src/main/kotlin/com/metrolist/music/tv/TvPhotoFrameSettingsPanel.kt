@@ -49,9 +49,14 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.metrolist.music.R
+import com.metrolist.music.constants.AdaptiveScaleMaxKey
 import com.metrolist.music.photo.FramePhotoQrCode
 import com.metrolist.music.photo.FramePhotoReceiver
+import com.metrolist.music.ui.component.FRAME_UI_SCALE_DEFAULT
+import com.metrolist.music.ui.component.normalizeAdaptiveScaleMax
+import com.metrolist.music.ui.component.uiScaleLabel
 import com.metrolist.music.ui.screens.frameErrorMessage
+import com.metrolist.music.utils.rememberPreference
 
 private enum class TvFrameSettingsPage { LOCAL, TRANSFER, DISPLAY }
 
@@ -76,6 +81,11 @@ internal fun TvPhotoFrameSettingsPanel(
     var page by rememberSaveable { mutableStateOf(TvFrameSettingsPage.LOCAL) }
     var confirmClearLocal by rememberSaveable { mutableStateOf(false) }
     var confirmClearImported by rememberSaveable { mutableStateOf(false) }
+    val (savedUiScaleMax, onUiScaleMaxChange) = rememberPreference(
+        AdaptiveScaleMaxKey,
+        defaultValue = FRAME_UI_SCALE_DEFAULT,
+    )
+    val uiScaleMax = normalizeAdaptiveScaleMax(savedUiScaleMax)
     val closeFocus = remember { FocusRequester() }
     var closeFocused by remember { mutableStateOf(false) }
 
@@ -233,6 +243,27 @@ internal fun TvPhotoFrameSettingsPanel(
                                             }
                                         }
                                     }
+                                }
+                                item { Text(stringResource(R.string.ui_scale_max), style = MaterialTheme.typography.titleMedium) }
+                                item {
+                                    Text(stringResource(R.string.ui_scale_max_desc), style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                item {
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        listOf(1f, 1.5f, 2f, 2.5f, 3f).forEach { value ->
+                                            OutlinedButton(onClick = { onUiScaleMaxChange(value) },
+                                                enabled = !busy, modifier = Modifier.weight(1f).tvFrameFocus(),
+                                                border = BorderStroke(if (value == uiScaleMax) 3.dp else 1.dp,
+                                                    if (value == uiScaleMax) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline)) {
+                                                Text(uiScaleLabel(value))
+                                            }
+                                        }
+                                    }
+                                }
+                                item {
+                                    Text(stringResource(R.string.ui_scale_summary_auto, uiScaleLabel(uiScaleMax)),
+                                        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
                                 }
                                 item { SettingsToggle(stringResource(R.string.photo_frame_fill), state.settings.crop, !busy) {
                                     viewModel.updateSettings(state.settings.copy(crop = !state.settings.crop))

@@ -21,6 +21,40 @@
     <string name="tv_empty_queue">The queue is empty.</string>
     <string name="tv_no_results">No songs found.</string>
     <string name="tv_nothing_playing">Nothing playing</string>
+    <string name="tv_library">Library</string>
+    <string name="tv_library_zh_tw" translatable="false">收藏</string>
+    <string name="tv_liked_songs">Liked songs</string>
+    <string name="tv_liked_songs_zh_tw" translatable="false">喜愛歌曲</string>
+    <string name="tv_saved_playlists">Saved playlists</string>
+    <string name="tv_saved_playlists_zh_tw" translatable="false">收藏的歌單</string>
+    <string name="tv_empty_liked_songs">No liked songs yet. Press the heart button on any song to save it here.</string>
+    <string name="tv_empty_liked_songs_zh_tw" translatable="false">還沒有喜愛歌曲，在任何歌曲上按愛心即可收藏到這裡。</string>
+    <string name="tv_empty_saved_playlists">No saved playlists yet. Open a playlist and press Save.</string>
+    <string name="tv_empty_saved_playlists_zh_tw" translatable="false">還沒有收藏的歌單，開啟歌單後按「收藏」即可加入。</string>
+    <string name="tv_play_all">Play all</string>
+    <string name="tv_play_all_zh_tw" translatable="false">全部播放</string>
+    <string name="tv_save">Save</string>
+    <string name="tv_save_zh_tw" translatable="false">收藏</string>
+    <string name="tv_saved">Saved</string>
+    <string name="tv_saved_zh_tw" translatable="false">已收藏</string>
+    <string name="tv_add_to_playlist">Add to playlist</string>
+    <string name="tv_add_to_playlist_zh_tw" translatable="false">加入歌單</string>
+    <string name="tv_new_playlist">New playlist</string>
+    <string name="tv_new_playlist_zh_tw" translatable="false">新增歌單</string>
+    <string name="tv_playlist_name_hint">Playlist name</string>
+    <string name="tv_playlist_name_hint_zh_tw" translatable="false">歌單名稱</string>
+    <string name="tv_create">Create</string>
+    <string name="tv_create_zh_tw" translatable="false">建立</string>
+    <string name="tv_remove">Remove</string>
+    <string name="tv_remove_zh_tw" translatable="false">移除</string>
+    <string name="tv_delete_playlist">Delete playlist</string>
+    <string name="tv_delete_playlist_zh_tw" translatable="false">刪除歌單</string>
+    <string name="tv_delete_playlist_confirm">Delete this playlist? Songs stay in your library.</string>
+    <string name="tv_delete_playlist_confirm_zh_tw" translatable="false">確定刪除這個歌單嗎？歌曲會保留在媒體庫中。</string>
+    <string name="tv_back">Back</string>
+    <string name="tv_back_zh_tw" translatable="false">返回</string>
+    <string name="tv_songs_count">%1$d songs</string>
+    <string name="tv_songs_count_zh_tw" translatable="false">%1$d 首歌曲</string>
     <string name="app_name" translatable="false">MusicCabin</string>
     <string name="shortcut_target_package" translatable="false">com.jajafu.musiccabin</string>
     <string name="musiccabin_about">About MusicCabin</string>

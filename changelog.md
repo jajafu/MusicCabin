@@ -4,6 +4,28 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.38
+
+### 中文
+
+- TV 首頁現在會顯示歌單區塊（例如 Featured playlists for you），不再只收歌曲；點歌單可開啟詳情頁，查看歌曲、全部播放或收藏。
+- TV 新增側欄「收藏」頁：上半為喜愛歌曲（可取消愛心、全部播放），下半為收藏的歌單（可取消收藏、點播）。
+- TV 歌曲列新增愛心與加入歌單按鈕；加入歌單可在既有可編輯歌單中選擇，也可直接新增本地歌單並加入。
+- TV 歌單詳情頁提供全部播放與收藏；可編輯的本地歌單可移除歌曲與刪除歌單（同步時一併處理 YouTube 端）。
+- TV 數位相框播放時保持螢幕開啟，長時間輪播不再被 Google TV 螢幕保護程式打斷；離開相框後恢復原本的旗標狀態。
+- TV 數位相框設定「顯示」頁新增自動縮放上限（1x–3x，預設 2x），與手機版設定 → 外觀共用同一設定，遙控器可直接切換，即時生效。
+- 版本 code 268；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- The TV Home now shows playlist sections (e.g. Featured playlists for you) instead of songs only; opening a playlist shows its songs with Play all and Save.
+- The TV sidebar gains a Library page: liked songs on top (unlike, play all) and saved playlists below (unsave, open and play).
+- TV song rows gain like and add-to-playlist buttons; the picker lists editable playlists and can create a new local playlist inline.
+- The TV playlist detail page offers Play all and Save; editable local playlists support removing songs and deleting the playlist (including the YouTube side when synced).
+- Keep the screen on while the TV photo frame is playing so long slideshows are no longer interrupted by the Google TV screensaver; the previous flag state is restored on exit.
+- Add the auto scale limit (1x–3x, default 2x) to the TV photo frame Display settings, sharing the same setting as Appearance on phones and adjustable with the remote; changes apply immediately.
+- Version code 268; no database schema change or data migration.
+
 ## 13.7.34
 
 ### 中文
