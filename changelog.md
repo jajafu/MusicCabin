@@ -4,6 +4,34 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.40
+
+### 中文
+
+- 歌詞選單的搜尋改為「更換歌詞來源」：點一下就用目前歌曲直接查全部已啟用的來源並列出候選，選取即覆寫；原輸入歌名／歌手保留為結果清單內的實心「調整搜尋關鍵字」按鈕，髒標題時可手動修正再查。
+- 數位相框資訊列的時鐘、歌名與歌手改為單行垂直置中（歌名真的放不下被省略時才隱藏歌手，優先顯示完整歌名），並去除字體內距與固定行高，混合字級視覺重心齊平。
+- 手機數位相框、TV 數位相框與數位相框 2 的操作列新增歌詞圖示，可直接開啟更換歌詞來源（TV 可用遙控器操作）；選取的歌詞會存檔，之後播放同一首歌維持使用。
+- 版本 code 270；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- The lyrics menu search is now "Switch lyrics source": one tap searches all enabled providers with the current track and lists the candidates; picking one overwrites the saved lyrics. The title/artist inputs remain as "Adjust search keywords" inside the results for dirty YouTube titles.
+- Vertically center the single-line photo frame info row (clock, song title, artist; the artist is hidden only when the title itself is ellipsized so the full title shows first) and trim font padding and fixed line heights so mixed sizes share one visual center.
+- Add a lyrics icon to the control rows of the phone photo frame, the TV photo frame, and photo frame 2 for quick lyrics source switching (remote-friendly on TV with a visible focus ring); the picked lyrics are saved so later playback of the same track keeps using them.
+- Version code 270; no database schema change or data migration.
+
+## 13.7.39
+
+### 中文
+
+- 數位相框的歌詞改為像歌詞頁一樣同時顯示前一句、目前句及後一句，前後句以 40% 透明度顯示，行距收緊更緊湊，避免遮住照片。
+- 版本 code 269；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Show the previous, current, and next lyric lines together in the photo frame like the lyrics page, with the surrounding lines at 40% opacity and tighter line spacing to keep the photo visible.
+- Version code 269; no database schema change or data migration.
+
 ## 13.7.38
 
 ### 中文

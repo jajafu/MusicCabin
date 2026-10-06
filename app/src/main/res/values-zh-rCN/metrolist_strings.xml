@@ -524,6 +524,8 @@
     <string name="enable_lyricsplus_desc">多源同步歌词支持</string>
     <string name="lyrics_provider_selection">提供商选择</string>
     <string name="lyrics_provider_selection_desc">选择要启用的歌词提供商</string>
+    <string name="switch_lyrics_source">更换歌词来源</string>
+    <string name="adjust_lyrics_search">调整搜索关键词</string>
     <string name="lyrics_provider_priority">歌词提供商优先级</string>
     <string name="lyrics_provider_priority_desc">拖动即可按偏好重新排序提供商。位置越高，优先级越高</string>
     <string name="changelog">更新日志</string>

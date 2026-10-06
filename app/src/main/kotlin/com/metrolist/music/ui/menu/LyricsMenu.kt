@@ -31,6 +31,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -152,10 +153,8 @@ fun LyricsMenu(
         mutableStateOf(false)
     }
 
-    val searchMediaMetadata =
-        remember(showSearchDialog) {
-            mediaMetadataProvider()
-        }
+    val searchMediaMetadataState = remember { mutableStateOf(mediaMetadataProvider()) }
+    var searchMediaMetadata by searchMediaMetadataState
     val (titleField, onTitleFieldChange) =
         rememberSaveable(showSearchDialog, stateSaver = TextFieldValue.Saver) {
             mutableStateOf(
@@ -174,6 +173,29 @@ fun LyricsMenu(
         }
 
     val isNetworkAvailable by viewModel.isNetworkAvailable.collectAsStateWithLifecycle()
+
+    // One-tap lyrics source switch: search all enabled providers with the current
+    // track metadata and show the results directly. The keyword inputs stay
+    // available as a fallback inside the results dialog.
+    fun startLyricsSourceSearch() {
+        val current = mediaMetadataProvider()
+        searchMediaMetadata = current
+        onTitleFieldChange(TextFieldValue(current.title))
+        onArtistFieldChange(TextFieldValue(current.artists.joinToString { it.name }))
+        viewModel.search(
+            current.id,
+            current.title,
+            current.artists.joinToString { it.name },
+            current.duration,
+            current.album?.title
+        )
+        showSearchResultDialog = true
+
+        // Show warning only if network is definitely unavailable
+        if (!isNetworkAvailable) {
+            Toast.makeText(context, context.getString(R.string.error_no_internet), Toast.LENGTH_SHORT).show()
+        }
+    }
 
     if (showSearchDialog) {
         DefaultDialog(
@@ -269,6 +291,28 @@ fun LyricsMenu(
         ListDialog(
             onDismiss = { showSearchResultDialog = false },
         ) {
+            item {
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = stringResource(R.string.switch_lyrics_source),
+                        style = MaterialTheme.typography.titleSmall,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Button(
+                        onClick = {
+                            showSearchDialog = true
+                        },
+                    ) {
+                        Text(stringResource(R.string.adjust_lyrics_search))
+                    }
+                }
+            }
             itemsIndexed(results) { index, result ->
                 Row(
                     modifier =
@@ -415,15 +459,15 @@ fun LyricsMenu(
                         NewAction(
                             icon = {
                                 Icon(
-                                    painter = painterResource(R.drawable.search),
+                                    painter = painterResource(R.drawable.lyrics),
                                     contentDescription = null,
                                     modifier = Modifier.size(28.dp),
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             },
-                            text = stringResource(R.string.search),
+                            text = stringResource(R.string.switch_lyrics_source),
                             onClick = {
-                                showSearchDialog = true
+                                startLyricsSourceSearch()
                             },
                         ),
                         NewAction(

@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -46,6 +47,7 @@ fun AutoResizeText(
     softWrap: Boolean = true,
     maxLines: Int = Int.MAX_VALUE,
     style: TextStyle = LocalTextStyle.current,
+    onSettled: (TextLayoutResult) -> Unit = {},
 ) {
     var fontSizeValue by remember(text, fontSizeRange) { mutableFloatStateOf(fontSizeRange.max.value) }
     var lowerFontSizeValue by remember(text, fontSizeRange) { mutableFloatStateOf(fontSizeRange.min.value) }
@@ -85,6 +87,7 @@ fun AutoResizeText(
                         // phone baseline fits, lowerFontSizeValue is the baseline itself.
                         fontSizeValue = lowerFontSizeValue
                         readyToDraw = true
+                        onSettled(it)
                     } else {
                         fontSizeValue = (lowerFontSizeValue + fontSizeValue) / 2f
                     }
@@ -92,6 +95,7 @@ fun AutoResizeText(
                     lowerFontSizeValue = fontSizeValue
                     if (upperFontSizeValue - fontSizeValue <= step) {
                         readyToDraw = true
+                        onSettled(it)
                     } else {
                         fontSizeValue = (fontSizeValue + upperFontSizeValue) / 2f
                     }

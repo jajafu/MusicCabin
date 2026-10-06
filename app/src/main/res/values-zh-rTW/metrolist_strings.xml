@@ -292,6 +292,8 @@
     <string name="enable_lyricsplus_desc">來自多個來源的同步歌詞</string>
     <string name="lyrics_provider_selection">選擇歌詞提供者</string>
     <string name="lyrics_provider_selection_desc">選擇要啟用的歌詞提供者</string>
+    <string name="switch_lyrics_source">更換歌詞來源</string>
+    <string name="adjust_lyrics_search">調整搜尋關鍵字</string>
     <string name="enable_song_cache">啟用歌曲快取</string>
     <string name="enable_song_cache_desc">自動快取歌曲以便日後播放</string>
     <string name="deleting">正在刪除…</string>

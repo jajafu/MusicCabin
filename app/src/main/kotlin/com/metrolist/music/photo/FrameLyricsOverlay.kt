@@ -6,8 +6,10 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -72,8 +74,17 @@ const val FRAME_ROW_SPACING_DP = 2.5f
 const val FRAME_CONTROL_ICON_LIFT_DP = 5f
 
 /**
- * Bottom lyric line for the photo frame overlays. Follows the synced lyric of the current song and
- * keeps to one or two lines, so it never competes with the photo above it. Plain (untimed) lyrics
+ * Alpha for the previous/next lyric lines relative to the current line color.
+ * Matches the lyrics page dimming, fixed at 40%.
+ */
+const val FRAME_LYRICS_SIDE_ALPHA = 0.4f
+
+/** Tight vertical gap between the previous/current/next lyric lines. */
+const val FRAME_LYRICS_LINE_SPACING_DP = 2f
+
+/**
+ * Bottom lyric lines for the photo frame overlays. Follows the synced lyric of the current song and
+ * shows the previous and next lines like the lyrics page, so it never competes with the photo above it. Plain (untimed) lyrics
  * have no current line to follow, so nothing is drawn for them.
  */
 @Composable
@@ -133,11 +144,15 @@ fun BoxScope.FrameLyricsOverlay(
 
     val current = lines.getOrNull(lineIndex)?.text?.trim().orEmpty()
     if (current.isEmpty()) return
+    val previous = lines.getOrNull(lineIndex - 1)?.text?.trim().orEmpty()
+    val next = lines.getOrNull(lineIndex + 1)?.text?.trim().orEmpty()
+    val window = Triple(previous, current, next)
     // 1x is the stock Material titleLarge size on a phone; grow it with the screen
     // short edge, and never shrink a long line below that phone baseline.
     val style = MaterialTheme.typography.titleLarge
     val minFontSize = style.fontSize * FRAME_LYRICS_BASELINE_SCALE
     val maxFontSize = minFontSize * uiScale
+    val sideColor = textColor.copy(alpha = textColor.alpha * FRAME_LYRICS_SIDE_ALPHA)
     Box(
         modifier = modifier
             .align(Alignment.BottomCenter)
@@ -150,23 +165,50 @@ fun BoxScope.FrameLyricsOverlay(
             .windowInsetsPadding(
                 WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal),
             )
-            .padding(horizontal = 24.dp * uiScale, vertical = 16.dp * uiScale),
+            .padding(horizontal = 24.dp * uiScale, vertical = 12.dp * uiScale),
         contentAlignment = Alignment.Center,
     ) {
         AnimatedContent(
-            targetState = current,
+            targetState = window,
             transitionSpec = { fadeIn(tween(FRAME_LYRICS_FADE_MS)) togetherWith fadeOut(tween(FRAME_LYRICS_FADE_MS)) },
             label = "Photo frame lyrics",
-        ) { line ->
-            AutoResizeText(
-                text = line,
-                fontSizeRange = FontSizeRange(min = minFontSize, max = maxFontSize),
-                color = textColor,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Center,
-                style = style,
-            )
+        ) { (prevLine, currentLine, nextLine) ->
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(FRAME_LYRICS_LINE_SPACING_DP.dp * uiScale),
+            ) {
+                if (prevLine.isNotEmpty()) {
+                    AutoResizeText(
+                        text = prevLine,
+                        fontSizeRange = FontSizeRange(min = minFontSize, max = maxFontSize),
+                        color = sideColor,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.Center,
+                        style = style,
+                    )
+                }
+                AutoResizeText(
+                    text = currentLine,
+                    fontSizeRange = FontSizeRange(min = minFontSize, max = maxFontSize),
+                    color = textColor,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center,
+                    style = style,
+                )
+                if (nextLine.isNotEmpty()) {
+                    AutoResizeText(
+                        text = nextLine,
+                        fontSizeRange = FontSizeRange(min = minFontSize, max = maxFontSize),
+                        color = sideColor,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.Center,
+                        style = style,
+                    )
+                }
+            }
         }
     }
 }
