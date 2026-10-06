@@ -48,6 +48,7 @@ import com.metrolist.music.ui.screens.search.OnlineSearchResult
 import com.metrolist.music.ui.screens.search.SearchScreen
 import com.metrolist.music.ui.screens.settings.AboutScreen
 import com.metrolist.music.ui.screens.settings.AiSettings
+import com.metrolist.music.ui.screens.settings.AuthorizeTvScreen
 import com.metrolist.music.ui.screens.settings.AndroidAutoSettings
 import com.metrolist.music.ui.screens.settings.AppearanceSettings
 import com.metrolist.music.ui.screens.settings.BackupAndRestore
@@ -396,6 +397,10 @@ fun NavGraphBuilder.navigationBuilder(
 
     composable("login") {
         LoginScreen(navController)
+    }
+
+    composable("authorize_tv") {
+        AuthorizeTvScreen(navController)
     }
 
     composable("switch_channel") {

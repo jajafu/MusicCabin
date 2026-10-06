@@ -4,6 +4,38 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.42
+
+### 中文
+
+- Paxsenix 歌詞來源改回預設開啟；LyricsPlus 的程式預設與設定頁不一致（設定顯示開、實際抓取為關）一併修正為預設開啟。LrcLib 維持預設關閉；曾手動關閉者不受影響。
+- 數位相框「顯示」設定新增 KTV 模式（手機、TV、相框 2 共用）：開啟後相框歌詞只向 LyricsPlus 與 Paxsenix 抓取逐字歌詞（忽略啟用開關），庫存的行級歌詞會強制重抓，都抓不到才退回一般順序的行級歌詞；手動挑選（含手機歌詞選單與文字編輯）的歌詞會做標記，自動重抓不再覆寫。
+- 歌詞一律走 KTV 引擎：無逐字時間的來源改為整句點亮（不再用假逐字動畫），相框當句同步改用同一引擎，未唱部分以 45% 顯示以突顯掃描效果，前後句維持 40% 透明度的三句顯示。
+- 新增的 KTV 開關與 TV 授權相關字串同步附上繁中對照，中文語系直接顯示中文，不需等待 Crowdin 翻譯。
+- 版本 code 272；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Paxsenix lyrics is enabled by default again; LyricsPlus had mismatched defaults (settings showed on while fetching treated it as off) and is now default-on in both. LrcLib stays default-off; users who explicitly disabled a provider are unaffected.
+- Photo frame Display settings gain a KTV mode (shared by phone, TV, and frame 2): frame lyrics are fetched only from LyricsPlus and Paxsenix for word-synced lyrics (enable switches ignored); cached line-level lyrics are refetched, falling back to the regular order line-level lyrics when neither has word timing. Manually picked lyrics (frame picker, phone menu, and text edits) are marked so auto-refetch never overwrites them.
+- Lyrics always render with the KTV engine: sources without word timings light the whole line at once instead of guessed per-word animation, and the frame's current line uses the same engine with the unsung part dimmed to 45% so the sweep stays visible, while the surrounding lines keep the 40% dimmed three-line layout.
+- New KTV and TV authorization strings ship with Traditional Chinese alongside English so Chinese locales show translated text without waiting for Crowdin.
+- Version code 272; no database schema change or data migration.
+
+## 13.7.41
+
+### 中文
+
+- Google TV 新增側欄「帳號」頁：未登入時顯示 QR code、電視網址與 6 位數配對碼，手機在同一 Wi-Fi 下開啟帳號選單 →「授權 TV 登入」，輸入網址與配對碼即可把手機登入推送到電視，不需在電視上輸入 email 與密碼；登入成功後自動同步 YouTube 收藏與歌單，已登入時可手動立即同步或登出。FOSS 與 GMS 皆可使用，不需 Google Play 服務。
+- 區網授權接收服務只在 TV 帳號頁開啟時運作，配對碼單次有效、錯誤太多次即鎖定，登入資料只寫入本機 DataStore，不上傳雲端中轉。
+- 版本 code 271；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Google TV gains an Account page in the sidebar: while logged out it shows a QR code, the TV address, and a 6-digit pairing code. On the same Wi-Fi, open the phone account menu → Authorize TV login, enter the address and code, and the phone pushes its login to the TV — no email/password typing on the TV. The library syncs from YouTube automatically after authorization; manual sync and logout are available once logged in. Works on both FOSS and GMS with no Google Play services required.
+- The LAN authorization receiver only runs while the TV Account page is open; each pairing code is single-use and the receiver locks after too many wrong attempts. Credentials are only written to the local DataStore with no cloud relay.
+- Version code 271; no database schema change or data migration.
+
 ## 13.7.40
 
 ### 中文

@@ -44,6 +44,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -318,6 +319,27 @@ fun AccountSettings(
             ),
             useLowContrast = true
         )
+
+        if (isLoggedIn) {
+            Spacer(Modifier.height(8.dp))
+
+            Material3SettingsGroup(
+                items = listOf(
+                    Material3SettingsItem(
+                        title = {
+                            val zh = LocalConfiguration.current.locales[0].language == "zh"
+                            Text(stringResource(if (zh) R.string.tv_authorize_title_zh_tw else R.string.tv_authorize_title))
+                        },
+                        icon = painterResource(R.drawable.login),
+                        onClick = {
+                            onClose()
+                            navController.navigate("authorize_tv")
+                        },
+                    ),
+                ),
+                useLowContrast = true
+            )
+        }
 
         Spacer(Modifier.height(8.dp))
 

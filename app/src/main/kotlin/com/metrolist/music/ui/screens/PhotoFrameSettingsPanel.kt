@@ -206,6 +206,13 @@ internal fun PhotoFrameSettingsPanel(
                                 FrameSettingSwitch(R.string.photo_frame_lyrics, state.settings.showLyrics, enabled) { onSettings(state.settings.copy(showLyrics = it)) }
                             },
                         ),
+                        Material3SettingsItem(
+                            title = { Text(frameTransferString(R.string.photo_frame_ktv, R.string.photo_frame_ktv_zh_tw)) },
+                            description = { Text(frameTransferString(R.string.photo_frame_ktv_desc, R.string.photo_frame_ktv_desc_zh_tw)) },
+                            trailingContent = {
+                                FrameSettingSwitch(frameTransferString(R.string.photo_frame_ktv, R.string.photo_frame_ktv_zh_tw), state.settings.ktvMode, enabled) { onSettings(state.settings.copy(ktvMode = it)) }
+                            },
+                        ),
                     ),
                 )
             }
@@ -331,7 +338,11 @@ private fun FrameIntervalSlider(
 
 @Composable
 private fun FrameSettingSwitch(label: Int, checked: Boolean, enabled: Boolean, onCheckedChange: (Boolean) -> Unit) {
-    val description = stringResource(label)
+    FrameSettingSwitch(stringResource(label), checked, enabled, onCheckedChange)
+}
+
+@Composable
+private fun FrameSettingSwitch(description: String, checked: Boolean, enabled: Boolean, onCheckedChange: (Boolean) -> Unit) {
     Switch(checked, onCheckedChange, Modifier.semantics { contentDescription = description }, enabled = enabled)
 }
 

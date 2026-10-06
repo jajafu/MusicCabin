@@ -167,7 +167,7 @@ object LyricsPlusProvider : LyricsProvider {
     }
 
     override fun isEnabled(preferences: Preferences): Boolean =
-        preferences[EnableLyricsPlus] ?: false
+        preferences[EnableLyricsPlus] ?: true
 
     private suspend fun fetchFromUrl(
         url: String,

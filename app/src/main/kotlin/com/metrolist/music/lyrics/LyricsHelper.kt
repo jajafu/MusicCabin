@@ -45,8 +45,7 @@ constructor(
     private val cache = LruCache<String, List<LyricsResult>>(MAX_CACHE_SIZE)
     private var currentLyricsJob: Job? = null
 
-    suspend fun getLyrics(mediaMetadata: MediaMetadata): LyricsWithProvider {
-        currentLyricsJob?.cancel()
+    suspend fun getLyrics(mediaMetadata: MediaMetadata): LyricsWithProvider {        currentLyricsJob?.cancel()
 
         val cached = cache.get(mediaMetadata.id)?.firstOrNull()
         if (cached != null) {
@@ -108,6 +107,49 @@ constructor(
         }
 
         return result ?: LyricsWithProvider(LYRICS_NOT_FOUND, PROVIDER_NONE)
+    }
+
+    /**
+     * KTV fetch: only LyricsPlus and Paxsenix, ignoring their enable switches.
+     * Returns the first word-synced result, or null when neither has one so the
+     * caller can fall back to the regular provider order.
+     */
+    suspend fun getKtvLyrics(mediaMetadata: MediaMetadata): LyricsWithProvider? {
+        val isNetworkAvailable = try {
+            networkConnectivity.isCurrentlyConnected()
+        } catch (e: Exception) {
+            true
+        }
+        if (!isNetworkAvailable) return null
+        val cleanedTitle = LyricsUtils.cleanTitleForSearch(mediaMetadata.title)
+        val artists = mediaMetadata.artists.joinToString { it.name }
+        return withTimeoutOrNull(MAX_LYRICS_FETCH_MS) {
+            for (provider in KTV_PROVIDERS.mapNotNull { LyricsProviderRegistry.getProviderByName(it) }) {
+                val providerResult = try {
+                    withTimeoutOrNull(PER_PROVIDER_TIMEOUT_MS) {
+                        provider.getLyrics(
+                            context,
+                            mediaMetadata.id,
+                            cleanedTitle,
+                            artists,
+                            mediaMetadata.duration,
+                            mediaMetadata.album?.title,
+                        )
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Timber.tag("LyricsHelper").w("KTV ${provider.name} threw: ${e.message}")
+                    null
+                }
+                val text = providerResult?.getOrNull()?.let { LyricsUtils.filterLyricsCreditLines(it) }
+                if (!text.isNullOrBlank() && LyricsUtils.isWordSynced(text)) {
+                    Timber.tag("LyricsHelper").i("Got KTV lyrics from ${provider.name}")
+                    return@withTimeoutOrNull LyricsWithProvider(text, provider.name)
+                }
+            }
+            null
+        }
     }
 
     suspend fun getAllLyrics(
@@ -204,6 +246,7 @@ constructor(
 
     companion object {
         private const val MAX_CACHE_SIZE = 3
+        private val KTV_PROVIDERS = listOf("LyricsPlus", "Paxsenix")
     }
 }
 

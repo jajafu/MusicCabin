@@ -277,6 +277,9 @@ internal fun TvPhotoFrameSettingsPanel(
                                 item { SettingsToggle(stringResource(R.string.photo_frame_lyrics), state.settings.showLyrics, !busy) {
                                     viewModel.updateSettings(state.settings.copy(showLyrics = !state.settings.showLyrics))
                                 } }
+                                item { SettingsToggle(tvLocalizedString(R.string.photo_frame_ktv, R.string.photo_frame_ktv_zh_tw), state.settings.ktvMode, !busy) {
+                                    viewModel.updateSettings(state.settings.copy(ktvMode = !state.settings.ktvMode))
+                                } }
                             }
                         }
                         val visibleError = error ?: state.error

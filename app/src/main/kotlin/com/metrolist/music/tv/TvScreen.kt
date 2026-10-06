@@ -92,7 +92,7 @@ import com.metrolist.music.ui.utils.resize
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-private enum class TvPage { HOME, SEARCH, QUEUE, UPDATE, FRAME, LIBRARY, PLAYLIST }
+private enum class TvPage { HOME, SEARCH, QUEUE, UPDATE, FRAME, LIBRARY, PLAYLIST, ACCOUNT }
 
 private data class TvSongSection(
     val title: String,
@@ -150,6 +150,7 @@ fun TvScreen(
     val searchFocus = remember { FocusRequester() }
     val queueFocus = remember { FocusRequester() }
     val libraryFocus = remember { FocusRequester() }
+    val accountFocus = remember { FocusRequester() }
     val searchFieldFocus = remember { FocusRequester() }
 
     val updateState = remember { TvUpdateState() }
@@ -197,6 +198,7 @@ fun TvScreen(
             TvPage.SEARCH -> searchFieldFocus.requestFocus()
             TvPage.QUEUE -> queueFocus.requestFocus()
             TvPage.LIBRARY -> libraryFocus.requestFocus()
+            TvPage.ACCOUNT -> accountFocus.requestFocus()
             TvPage.PLAYLIST -> if (playlistReturnPage == TvPage.LIBRARY) libraryFocus.requestFocus() else homeFocus.requestFocus()
             TvPage.UPDATE -> Unit
             TvPage.FRAME -> Unit
@@ -329,6 +331,11 @@ fun TvScreen(
                         item {
                             TvNavigationItem(tvLocalizedString(R.string.tv_library, R.string.tv_library_zh_tw), R.drawable.library_music, page == TvPage.LIBRARY, Modifier.focusRequester(libraryFocus)) {
                                 page = TvPage.LIBRARY
+                            }
+                        }
+                        item {
+                            TvNavigationItem(tvLocalizedString(R.string.tv_account, R.string.tv_account_zh_tw), R.drawable.account, page == TvPage.ACCOUNT, Modifier.focusRequester(accountFocus)) {
+                                page = TvPage.ACCOUNT
                             }
                         }
                         if (BuildConfig.UPDATER_AVAILABLE) {
@@ -570,6 +577,9 @@ fun TvScreen(
                     }
                 }
                 TvPage.FRAME -> Unit
+                TvPage.ACCOUNT -> {
+                    TvAuthPage(modifier = Modifier.weight(1f))
+                }
                 TvPage.UPDATE -> {
                     TvUpdatePage(
                         state = updateState,

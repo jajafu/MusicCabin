@@ -50,6 +50,7 @@ import com.metrolist.music.R
 import com.metrolist.music.db.entities.LyricsEntity
 import com.metrolist.music.di.LyricsHelperEntryPoint
 import com.metrolist.music.lyrics.LyricsResult
+import com.metrolist.music.lyrics.markManualLyrics
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.ListDialog
@@ -203,14 +204,19 @@ fun FrameLyricsSourcePicker(
                         .tvPickerFocus()
                         .clickable {
                             searchJob?.cancel()
-                            connection?.database?.query {
-                                upsert(
-                                    LyricsEntity(
-                                        id = metadata.id,
-                                        lyrics = result.lyrics,
-                                        provider = result.providerName,
-                                    ),
-                                )
+                            scope.launch(Dispatchers.IO) {
+                                // Mark first so the frame KTV auto-refetch (which
+                                // restarts on the DB change below) yields to this pick.
+                                context.markManualLyrics(metadata.id)
+                                connection?.database?.query {
+                                    upsert(
+                                        LyricsEntity(
+                                            id = metadata.id,
+                                            lyrics = result.lyrics,
+                                            provider = result.providerName,
+                                        ),
+                                    )
+                                }
                             }
                             onDismiss()
                         }

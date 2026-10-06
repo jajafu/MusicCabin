@@ -29,6 +29,7 @@ data class FrameSettings(
     val showClock: Boolean = true,
     val showSongInfo: Boolean = true,
     val showLyrics: Boolean = false,
+    val ktvMode: Boolean = false,
 ) {
     internal fun validated() = copy(
         intervalSeconds = intervalSeconds.takeIf { it in setOf(5, 10, 15, 30, 60) } ?: 10,

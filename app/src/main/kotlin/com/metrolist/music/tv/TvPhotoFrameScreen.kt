@@ -232,7 +232,7 @@ fun TvPhotoFrameScreen(onExit: () -> Unit, viewModel: TvPhotoFrameViewModel = hi
             }
         }
         if (state.settings.showLyrics && !showSettings && !showMediaBrowser) {
-            FrameLyricsOverlay(uiScale = uiScale)
+            FrameLyricsOverlay(uiScale = uiScale, ktvOnly = state.settings.ktvMode)
         }
         if (showControls) {
             Column(

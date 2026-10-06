@@ -80,6 +80,23 @@ private data class HyphenGroupWord(
     val groupEndMs: Long
 )
 
+/** Fallback line length when the next line time is unknown. */
+private const val WHOLE_LINE_FALLBACK_MS = 3000L
+
+/**
+ * Single-entry timing covering a whole line, used when a source has no word
+ * timings so the KTV engine lights the line at once.
+ */
+internal fun wholeLineWords(mainText: String, startMs: Long, endMs: Long): List<WordTimestamp> =
+    listOf(
+        WordTimestamp(
+            text = mainText,
+            startTime = startMs / 1000.0,
+            endTime = (endMs / 1000.0).coerceAtLeast(startMs / 1000.0 + 0.5),
+            hasTrailingSpace = false,
+        )
+    )
+
 private fun String.containsRtl(): Boolean {
     for (c in this) {
         val directionality = Character.getDirectionality(c).toInt()
@@ -136,7 +153,8 @@ internal fun LyricsLine(
     onSizeChanged: (Int) -> Unit,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    lineEndMs: Long? = null,
 ) {
     val density = LocalDensity.current
     
@@ -229,19 +247,10 @@ internal fun LyricsLine(
                 val effectiveWords = if (item.words?.isNotEmpty() == true) {
                     item.words
                 } else {
-                    remember(mainText, item.time) {
-                        val words = mainText.split(Regex("\\s+")).filter { it.isNotBlank() }
-                        val wordDurationSec = 0.18
-                        val wordStaggerSec = 0.03
-                        val startTimeSec = item.time / 1000.0
-                        words.mapIndexed { idx, wordText ->
-                            WordTimestamp(
-                                text = wordText,
-                                startTime = startTimeSec + (idx * wordStaggerSec),
-                                endTime = startTimeSec + (idx * wordStaggerSec) + wordDurationSec,
-                                hasTrailingSpace = idx < words.size - 1
-                            )
-                        }
+                    // No word timings: light the whole line at once instead of
+                    // guessing per-word timings.
+                    remember(mainText, item.time, lineEndMs) {
+                        wholeLineWords(mainText, item.time, lineEndMs ?: (item.time + WHOLE_LINE_FALLBACK_MS))
                     }
                 }
 
@@ -297,7 +306,7 @@ internal fun LyricsLine(
 }
 
 @Composable
-private fun WordLevelLyrics(
+internal fun WordLevelLyrics(
     mainText: String,
     words: List<WordTimestamp>,
     isActiveLine: Boolean,

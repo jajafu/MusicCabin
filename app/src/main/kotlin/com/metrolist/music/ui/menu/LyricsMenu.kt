@@ -49,6 +49,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -68,6 +69,9 @@ import com.metrolist.music.db.entities.LyricsEntity
 import com.metrolist.music.db.entities.SongEntity
 import com.metrolist.music.lyrics.LyricsTranslationHelper
 import com.metrolist.music.lyrics.LyricsUtils
+import com.metrolist.music.lyrics.markManualLyrics
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.ListDialog
@@ -103,6 +107,7 @@ fun LyricsMenu(
 ) {
     val context = LocalContext.current
     val database = LocalDatabase.current
+    val menuScope = rememberCoroutineScope()
     
     val openRouterApiKey by rememberPreference(OpenRouterApiKey, "")
     val deeplApiKey by rememberPreference(DeeplApiKey, "")
@@ -133,14 +138,20 @@ fun LyricsMenu(
             initialTextFieldValue = TextFieldValue(lyricsProvider()?.lyrics.orEmpty()),
             singleLine = false,
             onDone = {
-                database.query {
-                    upsert(
-                        LyricsEntity(
-                            id = mediaMetadataProvider().id,
-                            lyrics = it,
-                            provider = lyricsProvider()?.provider ?: "Manual",
-                        ),
-                    )
+                val editedId = mediaMetadataProvider().id
+                val editedProvider = lyricsProvider()?.provider ?: "Manual"
+                val editedLyrics = it
+                menuScope.launch(Dispatchers.IO) {
+                    context.markManualLyrics(editedId)
+                    database.query {
+                        upsert(
+                            LyricsEntity(
+                                id = editedId,
+                                lyrics = editedLyrics,
+                                provider = editedProvider,
+                            ),
+                        )
+                    }
                 }
             },
         )
@@ -321,14 +332,18 @@ fun LyricsMenu(
                         .clickable {
                             onDismiss()
                             viewModel.cancelSearch()
-                            database.query {
-                                upsert(
-                                    LyricsEntity(
-                                        id = searchMediaMetadata.id,
-                                        lyrics = result.lyrics,
-                                        provider = result.providerName,
-                                    ),
-                                )
+                            val pickedId = searchMediaMetadata.id
+                            menuScope.launch(Dispatchers.IO) {
+                                context.markManualLyrics(pickedId)
+                                database.query {
+                                    upsert(
+                                        LyricsEntity(
+                                            id = pickedId,
+                                            lyrics = result.lyrics,
+                                            provider = result.providerName,
+                                        ),
+                                    )
+                                }
                             }
                         }
                         .padding(12.dp)

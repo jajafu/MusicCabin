@@ -1170,6 +1170,10 @@
     <string name="photo_frame_song_info">Show song information</string>
     <string name="photo_frame_lyrics">Show lyrics</string>
     <string name="photo_frame_lyrics_desc">Show the current lyric line along the bottom edge.</string>
+    <string name="photo_frame_ktv">KTV mode</string>
+    <string name="photo_frame_ktv_desc">Frame lyrics prefer word-synced LyricsPlus and Paxsenix sources. Other cached lyrics are refetched, falling back to whole-line display.</string>
+    <string name="photo_frame_ktv_zh_tw" translatable="false">KTV 模式</string>
+    <string name="photo_frame_ktv_desc_zh_tw" translatable="false">相框歌詞優先使用 LyricsPlus 與 Paxsenix 的逐字歌詞，其他快取歌詞會重新抓取，抓不到則退回整句顯示。</string>
     <string name="photo_frame_sources">Photos: %1$d</string>
     <string name="photo_frame_rescan">Rescan sources</string>
     <string name="photo_frame_clear">Clear selection</string>
@@ -1404,4 +1408,44 @@
     <string name="frame_transfer_clear_confirm_zh_tw" translatable="false">要刪除這台裝置內所有傳入的照片副本嗎？傳送手機、本機與 USB 的原檔不會受影響。</string>
     <string name="tv_photo_local_empty" translatable="false">Internal storage is available, but no accessible indexed photos were found. If photos are already on the TV, allow full photo access and wait for media scanning. You can also send photos from a phone.</string>
     <string name="tv_photo_local_empty_zh_tw" translatable="false">已偵測到內部儲存空間，但目前沒有可讀取且已建立索引的照片。若電視內已有照片，請允許完整照片存取權並等候媒體掃描；也可以從手機傳送照片。</string>
+    <string name="tv_account" translatable="false">Account</string>
+    <string name="tv_account_zh_tw" translatable="false">帳號</string>
+    <string name="tv_auth_signed_in" translatable="false">Signed in as %1$s</string>
+    <string name="tv_auth_signed_in_zh_tw" translatable="false">已登入：%1$s</string>
+    <string name="tv_auth_syncing" translatable="false">Login received — syncing your library from YouTube…</string>
+    <string name="tv_auth_syncing_zh_tw" translatable="false">已收到登入，正在從 YouTube 同步收藏…</string>
+    <string name="tv_auth_sync_now" translatable="false">Sync now</string>
+    <string name="tv_auth_sync_now_zh_tw" translatable="false">立即同步</string>
+    <string name="tv_auth_logout" translatable="false">Log out</string>
+    <string name="tv_auth_logout_zh_tw" translatable="false">登出</string>
+    <string name="tv_auth_qr_hint" translatable="false">Scan on your phone to open the TV login address</string>
+    <string name="tv_auth_qr_hint_zh_tw" translatable="false">用手機掃描，開啟電視登入網址</string>
+    <string name="tv_auth_address" translatable="false">On your phone, open: %1$s</string>
+    <string name="tv_auth_address_zh_tw" translatable="false">請在手機開啟：%1$s</string>
+    <string name="tv_auth_hint" translatable="false">On your phone, open the account menu and choose Authorize TV login, then enter the address and 6-digit code above. Keep this screen open while authorizing; each code is single-use and the receiver stops after too many wrong attempts.</string>
+    <string name="tv_auth_hint_zh_tw" translatable="false">在手機開啟帳號選單並選擇授權 TV 登入，輸入上方網址與 6 位數配對碼。授權時保持此畫面開啟；每組配對碼僅可使用一次，錯誤太多次會停止接收。</string>
+    <string name="tv_authorize_title">Authorize TV login</string>
+    <string name="tv_authorize_title_zh_tw" translatable="false">授權 TV 登入</string>
+    <string name="tv_authorize_desc">Make sure the TV is showing its Account page with the address and 6-digit code, and that both devices are on the same Wi-Fi. This sends the current phone login to the TV so its playlists stay in sync.</string>
+    <string name="tv_authorize_desc_zh_tw" translatable="false">請確認電視正在顯示帳號頁的網址與 6 位數配對碼，且兩台裝置連上同一 Wi-Fi。這會把目前手機的登入傳送到電視，讓電視歌單保持同步。</string>
+    <string name="tv_authorize_account">Pushing login for: %1$s</string>
+    <string name="tv_authorize_account_zh_tw" translatable="false">正在推送登入：%1$s</string>
+    <string name="tv_authorize_address_hint">TV address</string>
+    <string name="tv_authorize_address_hint_zh_tw" translatable="false">電視網址</string>
+    <string name="tv_authorize_code_hint">6-digit code</string>
+    <string name="tv_authorize_code_hint_zh_tw" translatable="false">6 位數配對碼</string>
+    <string name="tv_authorize_send">Send login to TV</string>
+    <string name="tv_authorize_send_zh_tw" translatable="false">傳送登入到電視</string>
+    <string name="tv_authorize_sending">Sending…</string>
+    <string name="tv_authorize_sending_zh_tw" translatable="false">傳送中…</string>
+    <string name="tv_authorize_sent">Login sent. The TV will sync your library shortly.</string>
+    <string name="tv_authorize_sent_zh_tw" translatable="false">登入已傳送，電視稍後會同步收藏。</string>
+    <string name="tv_authorize_failed">TV rejected the login. Check the address and code, then reopen the TV Account page.</string>
+    <string name="tv_authorize_failed_zh_tw" translatable="false">電視拒絕登入。請檢查網址與配對碼，然後重新開啟電視帳號頁。</string>
+    <string name="tv_authorize_locked">Too many wrong attempts. Reopen the TV Account page for a fresh code.</string>
+    <string name="tv_authorize_locked_zh_tw" translatable="false">錯誤太多次。請重新開啟電視帳號頁取得新配對碼。</string>
+    <string name="tv_authorize_network_error">Could not reach the TV. Check that both devices share the same Wi-Fi.</string>
+    <string name="tv_authorize_network_error_zh_tw" translatable="false">無法連上電視。請確認兩台裝置在同一 Wi-Fi。</string>
+    <string name="tv_authorize_login_first">Log in on this phone first, then authorize the TV.</string>
+    <string name="tv_authorize_login_first_zh_tw" translatable="false">請先在這支手機登入，再授權電視。</string>
 </resources>

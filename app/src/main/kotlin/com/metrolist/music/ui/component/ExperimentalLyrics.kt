@@ -766,6 +766,7 @@ fun ExperimentalLyrics(
                                         expressiveAccent = expressiveAccent, lyricsTextPosition = lyricsTextPosition,
                                         respectAgentPositioning = respectAgentPositioning, isAutoScrollEnabled = isAutoScrollEnabled,
                                         displayedCurrentLineIndex = deferredCurrentLineIndex,
+                                        lineEndMs = lines.getOrNull(index + 1)?.time,
                                         onSizeChanged = { itemHeights[listIndex] = it },
                                         onClick = {
                                             if (isSelectionModeActive) {
