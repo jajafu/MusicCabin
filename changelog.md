@@ -4,6 +4,18 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.43
+
+### 中文
+
+- 修正歌詞選單無網路提示的 Compose lint 錯誤（改用 `stringResource` 讀取字串），Foss Release CI 的 `lintFossRelease` 可重新通過；無功能與顯示變更。
+- 版本 code 273；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Fix the Compose lint error for the lyrics menu offline toast (read the string via `stringResource`), so Foss Release CI `lintFossRelease` passes again; no functional or UI change.
+- Version code 273; no database schema change or data migration.
+
 ## 13.7.42
 
 ### 中文

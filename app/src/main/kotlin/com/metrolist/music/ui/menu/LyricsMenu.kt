@@ -184,6 +184,7 @@ fun LyricsMenu(
         }
 
     val isNetworkAvailable by viewModel.isNetworkAvailable.collectAsStateWithLifecycle()
+    val noInternetMessage = stringResource(R.string.error_no_internet)
 
     // One-tap lyrics source switch: search all enabled providers with the current
     // track metadata and show the results directly. The keyword inputs stay
@@ -204,7 +205,7 @@ fun LyricsMenu(
 
         // Show warning only if network is definitely unavailable
         if (!isNetworkAvailable) {
-            Toast.makeText(context, context.getString(R.string.error_no_internet), Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, noInternetMessage, Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -265,7 +266,7 @@ fun LyricsMenu(
                         
                         // Show warning only if network is definitely unavailable
                         if (!isNetworkAvailable) {
-                            Toast.makeText(context, context.getString(R.string.error_no_internet), Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, noInternetMessage, Toast.LENGTH_SHORT).show()
                         }
                     },
                 ) {
