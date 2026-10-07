@@ -4,6 +4,18 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.46
+
+### 中文
+
+- 手機版數位相框設定的底部「完成」改為相框 2 同款的顯眼填滿按鈕並固定在底部：設定本來就是即時儲存，按鈕只負責關閉，改後不用滑到底也看得到。TV 版維持右上關閉鈕，不另加底部按鈕。
+- 版本 code 276；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- The phone photo frame settings Done button now uses the same prominent filled style as Frame 2 and stays pinned at the bottom: settings already save instantly and the button only closes the sheet, so it is visible without scrolling to the end. The TV version keeps its top-right close button with no bottom button added.
+- Version code 276; no database schema change or data migration.
+
 ## 13.7.45
 
 ### 中文
