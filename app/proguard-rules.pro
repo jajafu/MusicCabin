@@ -105,6 +105,9 @@
 # concrete reflection targets into unrelated or abstract classes, making the
 # converter fail during static initialization only in minified builds.
 -keep class com.github.houbb.opencc4j.** { *; }
+# opencc4j's optional HuaBan segmenter references Jieba, which is not used by
+# the Taiwan converter and is intentionally not included in the app.
+-dontwarn com.huaban.analysis.jieba.JiebaSegmenter
 
 -dontwarn javax.servlet.ServletContainerInitializer
 -dontwarn org.bouncycastle.jsse.BCSSLParameters
