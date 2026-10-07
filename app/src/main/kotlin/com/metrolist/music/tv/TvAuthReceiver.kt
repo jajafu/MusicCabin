@@ -88,7 +88,8 @@ internal class TvAuthReceiver(
             headers[line.substring(0, split).lowercase()] = line.substring(split + 1).trim()
         }
         if (request[0] == "GET" && request[1] == "/") {
-            respond(output, 200, INFO_PAGE.toByteArray(StandardCharsets.UTF_8), "text/html; charset=utf-8")
+            val host = "${socket.localAddress.hostAddress}:$PORT"
+            respond(output, 200, infoPage(host).toByteArray(StandardCharsets.UTF_8), "text/html; charset=utf-8")
             return
         }
         if (request[0] != "POST" || request[1] != "/auth") {
@@ -199,15 +200,26 @@ internal class TvAuthReceiver(
         private const val MAX_HEADERS = 32
         private const val MAX_ATTEMPTS = 10
 
-        private val INFO_PAGE = """
+        private fun infoPage(host: String): String {
+            val deepLink = "musiccabin://authorize_tv?host=$host"
+            return """
             <!doctype html><html><head><meta charset="utf-8">
-            <meta name="viewport" content="width=device-width,initial-scale=1"></head>
-            <body><h1>MusicCabin TV login</h1>
-            <p>This address only accepts a login pushed from the MusicCabin app.
-            On your phone, open the account menu, choose Authorize TV login,
-            then enter the TV address and the 6-digit code shown on the TV.</p>
+            <meta name="viewport" content="width=device-width,initial-scale=1">
+            <style>body{font-family:sans-serif;max-width:36em;margin:2em auto;padding:0 1em;line-height:1.6}
+            .btn{display:inline-block;margin:.6em 0;padding:.8em 1.6em;background:#1a73e8;color:#fff;border-radius:8px;text-decoration:none;font-size:1.1em}</style>
+            </head><body>
+            <h1>MusicCabin 電視登入</h1>
+            <p>請用已安裝 MusicCabin 並已登入的手機繼續。點下面按鈕會跳回 App 並自動填入電視網址，再輸入電視畫面上的 6 位數配對碼即可完成授權。</p>
+            <p><a class="btn" href="$deepLink">用 MusicCabin App 繼續</a></p>
+            <p>手機還沒安裝 App？請先安裝、登入後再重新掃描。<br><a href="https://github.com/jajafu/MusicCabin/releases">下載 MusicCabin</a></p>
+            <hr>
+            <h1>MusicCabin TV login</h1>
+            <p>Continue on a phone with the MusicCabin app installed and logged in. The button below jumps back to the app with the TV address filled in; then enter the 6-digit code shown on the TV.</p>
+            <p><a class="btn" href="$deepLink">Continue in the MusicCabin app</a></p>
+            <p>No app yet? Install it, log in, then scan again.<br><a href="https://github.com/jajafu/MusicCabin/releases">Get MusicCabin</a></p>
             </body></html>
-        """.trimIndent()
+            """.trimIndent()
+        }
 
         private fun privateAddress(context: Context): Inet4Address? {
             val manager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager

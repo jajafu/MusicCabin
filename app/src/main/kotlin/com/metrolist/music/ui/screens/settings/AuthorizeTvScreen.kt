@@ -68,7 +68,10 @@ import java.util.concurrent.TimeUnit
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AuthorizeTvScreen(navController: NavController) {
+fun AuthorizeTvScreen(
+    navController: NavController,
+    initialAddress: String = "",
+) {
     val scope = rememberCoroutineScope()
     val (cookie) = rememberPreference(InnerTubeCookieKey, "")
     val (visitorData) = rememberPreference(VisitorDataKey, "")
@@ -78,7 +81,7 @@ fun AuthorizeTvScreen(navController: NavController) {
     val (accountEmail) = rememberPreference(AccountEmailKey, "")
     val (channelHandle) = rememberPreference(AccountChannelHandleKey, "")
 
-    var tvAddress by rememberSaveable { mutableStateOf("") }
+    var tvAddress by rememberSaveable(initialAddress) { mutableStateOf(initialAddress) }
     var pairCode by rememberSaveable { mutableStateOf("") }
     var sending by rememberSaveable { mutableStateOf(false) }
     var result by rememberSaveable { mutableStateOf<String?>(null) }
@@ -156,6 +159,12 @@ fun AuthorizeTvScreen(navController: NavController) {
         ) {
             if (!isLoggedIn) {
                 InfoLabel(text = loginFirst)
+                Button(
+                    onClick = { navController.navigate("login") },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(tvAuthString(R.string.tv_authorize_go_login, R.string.tv_authorize_go_login_zh_tw))
+                }
             } else {
                 Text(
                     text = tvAuthString(R.string.tv_authorize_account, R.string.tv_authorize_account_zh_tw, accountName.ifBlank { "YouTube" }),

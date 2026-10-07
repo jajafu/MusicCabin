@@ -1448,4 +1448,6 @@
     <string name="tv_authorize_network_error_zh_tw" translatable="false">無法連上電視。請確認兩台裝置在同一 Wi-Fi。</string>
     <string name="tv_authorize_login_first">Log in on this phone first, then authorize the TV.</string>
     <string name="tv_authorize_login_first_zh_tw" translatable="false">請先在這支手機登入，再授權電視。</string>
+    <string name="tv_authorize_go_login">Go to login</string>
+    <string name="tv_authorize_go_login_zh_tw" translatable="false">前往登入</string>
 </resources>

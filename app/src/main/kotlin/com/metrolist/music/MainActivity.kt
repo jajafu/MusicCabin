@@ -1517,6 +1517,13 @@ class MainActivity : ComponentActivity() {
         val uri = intent.data ?: intent.extras?.getString(Intent.EXTRA_TEXT)?.toUri() ?: return
         intent.data = null
         intent.removeExtra(Intent.EXTRA_TEXT)
+        if (uri.scheme == "musiccabin" && uri.host == "authorize_tv") {
+            val host = uri.getQueryParameter("host").orEmpty()
+            navController.navigate(if (host.isBlank()) "authorize_tv" else "authorize_tv?host=$host") {
+                launchSingleTop = true
+            }
+            return
+        }
         val coroutineScope = lifecycle.coroutineScope
 
         val listenCode =

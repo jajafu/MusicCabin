@@ -4,6 +4,18 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.44
+
+### 中文
+
+- TV 登入 QR 改為中英雙語說明頁並附「用 App 繼續」按鈕：掃碼後點按鈕即跳回手機 App 並自動填入電視網址，只需再輸入 6 位數配對碼；手機未登入時授權頁直接提供前往登入按鈕。
+- 版本 code 274；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- The TV login QR now opens a bilingual page with a continue-in-app button: tapping it jumps back to the phone app with the TV address prefilled so only the 6-digit code needs typing. The authorize screen offers a go-to-login button when the phone is not logged in.
+- Version code 274; no database schema change or data migration.
+
 ## 13.7.43
 
 ### 中文

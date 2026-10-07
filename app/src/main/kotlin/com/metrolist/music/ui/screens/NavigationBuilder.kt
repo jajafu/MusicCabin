@@ -399,8 +399,16 @@ fun NavGraphBuilder.navigationBuilder(
         LoginScreen(navController)
     }
 
-    composable("authorize_tv") {
-        AuthorizeTvScreen(navController)
+    composable(
+        route = "authorize_tv?host={host}",
+        arguments = listOf(
+            navArgument("host") {
+                type = NavType.StringType
+                defaultValue = ""
+            },
+        ),
+    ) {
+        AuthorizeTvScreen(navController, initialAddress = it.arguments?.getString("host").orEmpty())
     }
 
     composable("switch_channel") {
