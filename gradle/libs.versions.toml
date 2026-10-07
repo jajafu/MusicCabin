@@ -30,6 +30,7 @@ composeReorderable = "3.1.0"
 shimmer = "1.4.0"
 palette = "1.0.0"
 apacheLang3 = "3.20.0"
+opencc4j = "1.14.0"
 brotli = "0.1.2"
 desugaring = "2.1.5"
 junit = "4.13.2"
@@ -93,6 +94,8 @@ room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
 room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
 
 apache-lang3 = { module = "org.apache.commons:commons-lang3", version.ref = "apacheLang3" }
+
+opencc4j = { module = "com.github.houbb:opencc4j", version.ref = "opencc4j" }
 
 hilt = { module = "com.google.dagger:hilt-android", version.ref = "hilt" }
 hilt-compiler = { module = "com.google.dagger:hilt-android-compiler", version.ref = "hilt" }

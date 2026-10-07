@@ -174,6 +174,15 @@ internal fun PhotoFrameV2SettingsPanel(
                                         FrameSettingSwitch(frameV2String(FrameV2Text.KtvMode), state.settings.ktvMode, enabled) { onSettings(state.settings.copy(ktvMode = it)) }
                                     },
                                 ),
+                                Material3SettingsItem(
+                                    icon = painterResource(R.drawable.lyrics),
+                                    title = { Text(frameV2String(FrameV2Text.S2tMode)) },
+                                    description = { Text(frameV2String(FrameV2Text.S2tModeDesc)) },
+                                    enabled = enabled,
+                                    trailingContent = {
+                                        FrameSettingSwitch(frameV2String(FrameV2Text.S2tMode), state.settings.s2tEnabled, enabled) { onSettings(state.settings.copy(s2tEnabled = it)) }
+                                    },
+                                ),
                             ),
                         )
                     }

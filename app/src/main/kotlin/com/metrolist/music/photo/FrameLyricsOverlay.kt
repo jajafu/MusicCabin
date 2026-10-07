@@ -106,6 +106,7 @@ fun BoxScope.FrameLyricsOverlay(
     modifier: Modifier = Modifier,
     uiScale: Float = rememberAdaptiveUiScale(),
     ktvOnly: Boolean = false,
+    s2tEnabled: Boolean = false,
 ) {
     val connection = LocalPlayerConnection.current ?: return
     val context = LocalContext.current
@@ -161,12 +162,13 @@ fun BoxScope.FrameLyricsOverlay(
         }
     }
 
-    val lines = remember(lyricsEntity) {
+    val lines = remember(lyricsEntity, s2tEnabled) {
         val text = lyricsEntity?.lyrics?.trim().orEmpty()
         if (text.isEmpty() || text == LyricsEntity.LYRICS_NOT_FOUND || !lyricsTextLooksSynced(text)) {
             emptyList()
         } else {
-            LyricsUtils.parseLyrics(text)
+            val parsed = LyricsUtils.parseLyrics(text)
+            if (s2tEnabled) convertFrameLyricsToTraditional(parsed) else parsed
         }
     }
 
