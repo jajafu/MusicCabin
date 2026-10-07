@@ -99,6 +99,13 @@
 # @Serializable and @Polymorphic are used at runtime for polymorphic serialization.
 -keepattributes RuntimeVisibleAnnotations,AnnotationDefault
 
+## opencc4j
+# opencc4j creates its segmenters and dictionary implementations through
+# Class.newInstance(). Without keeping the library, R8 can merge those
+# concrete reflection targets into unrelated or abstract classes, making the
+# converter fail during static initialization only in minified builds.
+-keep class com.github.houbb.opencc4j.** { *; }
+
 -dontwarn javax.servlet.ServletContainerInitializer
 -dontwarn org.bouncycastle.jsse.BCSSLParameters
 -dontwarn org.bouncycastle.jsse.BCSSLSocket
