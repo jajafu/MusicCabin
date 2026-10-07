@@ -635,4 +635,35 @@ class PhotoFramePlaybackTest {
         assertFalse(canPair(FramePhotoOrientation.PORTRAIT, FramePhotoOrientation.LANDSCAPE))
         assertFalse(canPair(FramePhotoOrientation.SQUARE, FramePhotoOrientation.SQUARE))
     }
+
+    @Test
+    fun `shuffle queue history is bounded for long sessions`() {
+        val queue = FrameShuffleQueue(listOf("a", "b", "c"), Random(3))
+        repeat(FRAME_HISTORY_LIMIT + 60) { queue.next() }
+        var steps = 0
+        while (queue.previous() != null) {
+            steps++
+        }
+        assertEquals(FRAME_HISTORY_LIMIT - 1, steps)
+    }
+
+    @Test
+    fun `slide history is bounded for long sessions`() = runBlocking {
+        val session = FramePlaybackSession(listOf("a", "b", "c"), Random(3))
+        val engine = PhotoFramePlayback<String>(load = { it }, onUnreadable = {}, transitionMillis = 0)
+        var committed = 0
+        try {
+            engine.play(session, 0) { state ->
+                if (state.incoming == null && state.current != null) {
+                    committed++
+                    if (committed == FRAME_HISTORY_LIMIT + 60) throw CancellationException("done")
+                }
+            }
+        } catch (_: CancellationException) {
+            // Stop the otherwise infinite slideshow once enough slides were displayed.
+        }
+        assertEquals(FRAME_HISTORY_LIMIT + 60, committed)
+        assertEquals(FRAME_HISTORY_LIMIT, session.slideHistory.size)
+        assertEquals(session.slideHistory.lastIndex, session.slideIndex)
+    }
 }

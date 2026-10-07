@@ -23,7 +23,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -46,7 +45,6 @@ fun SettingsScreen(
     navController: NavController,
     latestVersionName: String,
 ) {
-    val uriHandler = LocalUriHandler.current
     val context = LocalContext.current
     val isAndroid12OrLater = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     val hasAndroidAuto = remember {
@@ -241,30 +239,25 @@ fun SettingsScreen(
                 if (BuildConfig.UPDATER_AVAILABLE &&
                     Updater.isUpdateAvailable(BuildConfig.VERSION_NAME, latestVersionName)
                 ) {
-                    val releaseInfo = Updater.getCachedLatestRelease()
-                    val downloadUrl = releaseInfo?.let { Updater.getDownloadUrlForCurrentVariant(it) }
-
-                    if (downloadUrl != null) {
-                        add(
-                            Material3SettingsItem(
-                                icon = painterResource(R.drawable.update),
-                                title = { 
-                                    Text(
-                                        text = stringResource(R.string.new_version_available),
-                                    )
-                                },
-                                description = {
-                                    Text(
-                                        text = latestVersionName,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                },
-                                showBadge = true,
-                                onClick = { uriHandler.openUri(downloadUrl) }
-                            )
+                    add(
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.update),
+                            title = {
+                                Text(
+                                    text = stringResource(R.string.new_version_available),
+                                )
+                            },
+                            description = {
+                                Text(
+                                    text = latestVersionName,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            },
+                            showBadge = true,
+                            onClick = { navController.navigate("settings/updater") }
                         )
-                    }
+                    )
                 }
             }
         )

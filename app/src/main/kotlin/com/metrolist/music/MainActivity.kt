@@ -228,6 +228,7 @@ class MainActivity : ComponentActivity() {
         private const val ACTION_LIBRARY = "com.metrolist.music.action.LIBRARY"
         val ACTION_RECOGNITION = "${BuildConfig.APPLICATION_ID}.action.RECOGNITION"
         const val ACTION_OPEN_WIDGET_TARGET = "com.metrolist.music.action.OPEN_WIDGET_TARGET"
+        const val ACTION_OPEN_UPDATER = "com.metrolist.music.action.OPEN_UPDATER"
         const val EXTRA_AUTO_START_RECOGNITION = "auto_start_recognition"
         const val EXTRA_WIDGET_TARGET_TYPE = "widget_target_type"
         const val EXTRA_WIDGET_TARGET_ID = "widget_target_id"
@@ -523,33 +524,31 @@ class MainActivity : ComponentActivity() {
                                 if (hasUpdate && notifEnabled) {
                                     val downloadUrl = Updater.getDownloadUrlForCurrentVariant(releaseInfo)
                                     if (downloadUrl != null) {
-                                        val viewIntent = Intent(Intent.ACTION_VIEW, downloadUrl.toUri())
-                                        val resolvedComponent = viewIntent.resolveActivity(packageManager)
-                                        if (resolvedComponent != null) {
-                                            viewIntent.setComponent(resolvedComponent)
-                                            val flags =
-                                                PendingIntent.FLAG_UPDATE_CURRENT or
-                                                    PendingIntent.FLAG_IMMUTABLE
-                                            val pending = PendingIntent.getActivity(this@MainActivity, 1001, viewIntent, flags)
+                                        val updateIntent = Intent(this@MainActivity, MainActivity::class.java).apply {
+                                            action = ACTION_OPEN_UPDATER
+                                        }
+                                        val flags =
+                                            PendingIntent.FLAG_UPDATE_CURRENT or
+                                                PendingIntent.FLAG_IMMUTABLE
+                                        val pending = PendingIntent.getActivity(this@MainActivity, 1001, updateIntent, flags)
 
-                                            val notif =
-                                                NotificationCompat
-                                                    .Builder(this@MainActivity, "updates")
-                                                    .setSmallIcon(R.drawable.update)
-                                                    .setContentTitle(getString(R.string.update_available_title))
-                                                    .setContentText(releaseInfo.versionName)
-                                                    .setContentIntent(pending)
-                                                    .setAutoCancel(true)
-                                                    .build()
+                                        val notif =
+                                            NotificationCompat
+                                                .Builder(this@MainActivity, "updates")
+                                                .setSmallIcon(R.drawable.update)
+                                                .setContentTitle(getString(R.string.update_available_title))
+                                                .setContentText(releaseInfo.versionName)
+                                                .setContentIntent(pending)
+                                                .setAutoCancel(true)
+                                                .build()
 
-                                            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-                                                ContextCompat.checkSelfPermission(
-                                                    this@MainActivity,
-                                                    Manifest.permission.POST_NOTIFICATIONS,
-                                                ) == PackageManager.PERMISSION_GRANTED
-                                            ) {
-                                                NotificationManagerCompat.from(this@MainActivity).notify(1001, notif)
-                                            }
+                                        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+                                            ContextCompat.checkSelfPermission(
+                                                this@MainActivity,
+                                                Manifest.permission.POST_NOTIFICATIONS,
+                                            ) == PackageManager.PERMISSION_GRANTED
+                                        ) {
+                                            NotificationManagerCompat.from(this@MainActivity).notify(1001, notif)
                                         }
                                     }
                                 }
@@ -980,11 +979,13 @@ class MainActivity : ComponentActivity() {
                     if (pendingIntent != null) {
                         handleWidgetTargetIntent(pendingIntent!!, navController)
                         handleRecognitionIntent(pendingIntent!!, navController)
+                        handleUpdaterIntent(pendingIntent!!, navController)
                         handleDeepLinkIntent(pendingIntent!!, navController)
                         pendingIntent = null
                     } else {
                         handleWidgetTargetIntent(intent, navController)
                         handleRecognitionIntent(intent, navController)
+                        handleUpdaterIntent(intent, navController)
                         handleDeepLinkIntent(intent, navController)
                     }
                 }
@@ -994,6 +995,7 @@ class MainActivity : ComponentActivity() {
                         Consumer<Intent> { intent ->
                             handleWidgetTargetIntent(intent, navController)
                             handleRecognitionIntent(intent, navController)
+                            handleUpdaterIntent(intent, navController)
                             handleDeepLinkIntent(intent, navController)
                         }
 
@@ -1446,6 +1448,21 @@ class MainActivity : ComponentActivity() {
                 }
             }
             }
+        }
+    }
+
+    /**
+     * Handles the ACTION_OPEN_UPDATER intent sent from the update notification.
+     * Always navigates to the in-app updater screen for download and install.
+     */
+    private fun handleUpdaterIntent(
+        intent: Intent,
+        navController: NavHostController,
+    ) {
+        if (intent.action != ACTION_OPEN_UPDATER) return
+        intent.action = null
+        navController.navigate("settings/updater") {
+            launchSingleTop = true
         }
     }
 

@@ -45,7 +45,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -85,7 +84,6 @@ fun AccountSettings(
     latestVersionName: String
 ) {
     val context = LocalContext.current
-    val uriHandler = LocalUriHandler.current
 
     val (accountNamePref, onAccountNameChange) = rememberPreference(AccountNameKey, "")
     val (accountEmail, onAccountEmailChange) = rememberPreference(AccountEmailKey, "")
@@ -463,25 +461,21 @@ fun AccountSettings(
             if (BuildConfig.UPDATER_AVAILABLE &&
                 Updater.isUpdateAvailable(BuildConfig.VERSION_NAME, latestVersionName)
             ) {
-                val releaseInfo = Updater.getCachedLatestRelease()
-                val downloadUrl = releaseInfo?.let { Updater.getDownloadUrlForCurrentVariant(it) }
-                
-                if (downloadUrl != null) {
-                    PreferenceEntry(
-                        title = {
-                            Text(text = stringResource(R.string.new_version_available))
-                        },
-                        description = latestVersionName,
-                        icon = {
-                            BadgedBox(badge = { Badge() }) {
-                                Icon(painterResource(R.drawable.update), null)
-                            }
-                        },
-                        onClick = {
-                            uriHandler.openUri(downloadUrl)
+                PreferenceEntry(
+                    title = {
+                        Text(text = stringResource(R.string.new_version_available))
+                    },
+                    description = latestVersionName,
+                    icon = {
+                        BadgedBox(badge = { Badge() }) {
+                            Icon(painterResource(R.drawable.update), null)
                         }
-                    )
-                }
+                    },
+                    onClick = {
+                        onClose()
+                        navController.navigate("settings/updater")
+                    }
+                )
             }
         }
     }

@@ -89,6 +89,7 @@ import com.metrolist.music.utils.Updater
 import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.get
 import com.metrolist.music.ui.utils.resize
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -212,10 +213,14 @@ fun TvScreen(
     }
 
     LaunchedEffect(homeReload) {
+        // Guard against a cancelled (superseded) request overwriting the
+        // state of its replacement: only the latest request may publish.
+        val activeRequest = homeReload
+        fun isCurrent() = activeRequest == homeReload
         homeLoading = true
         homeFailed = false
-        runCatching {
-            withContext(Dispatchers.IO) {
+        try {
+            homeSections = withContext(Dispatchers.IO) {
                 val hideExplicit = context.dataStore.get(HideExplicitKey, false)
                 val hideVideos = context.dataStore.get(HideVideoSongsKey, false)
                 val hideShorts = context.dataStore.get(HideYoutubeShortsKey, false)
@@ -245,18 +250,30 @@ fun TvScreen(
                     }
                 }
             }
-        }.onSuccess { homeSections = it }
-            .onFailure { homeFailed = true }
-        homeLoading = false
+            if (!isCurrent()) return@LaunchedEffect
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            if (!isCurrent()) return@LaunchedEffect
+            homeFailed = true
+        } finally {
+            if (isCurrent()) homeLoading = false
+        }
     }
 
     LaunchedEffect(searchTerm, searchReload) {
         if (searchTerm.isBlank()) return@LaunchedEffect
+        // Same superseded-request guard as the home effect above: rapid
+        // consecutive searches must not let the cancelled request publish
+        // a stale failure or loading state.
+        val activeTerm = searchTerm
+        val activeRequest = searchReload
+        fun isCurrent() = activeTerm == searchTerm && activeRequest == searchReload
         searchLoading = true
         searchFailed = false
         searchSongs = emptyList()
-        runCatching {
-            withContext(Dispatchers.IO) {
+        try {
+            searchSongs = withContext(Dispatchers.IO) {
                 val hideExplicit = context.dataStore.get(HideExplicitKey, false)
                 val hideVideos = context.dataStore.get(HideVideoSongsKey, false)
                 val hideShorts = context.dataStore.get(HideYoutubeShortsKey, false)
@@ -268,9 +285,15 @@ fun TvScreen(
                     .distinctBy { it.id }
                     .take(50)
             }
-        }.onSuccess { searchSongs = it }
-            .onFailure { searchFailed = true }
-        searchLoading = false
+            if (!isCurrent()) return@LaunchedEffect
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            if (!isCurrent()) return@LaunchedEffect
+            searchFailed = true
+        } finally {
+            if (isCurrent()) searchLoading = false
+        }
     }
 
     val submitSearch = {

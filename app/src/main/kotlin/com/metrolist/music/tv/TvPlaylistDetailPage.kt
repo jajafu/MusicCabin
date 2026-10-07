@@ -37,6 +37,7 @@ import com.metrolist.music.playback.PlayerConnection
 import com.metrolist.music.playback.queues.ListQueue
 import com.metrolist.music.playback.queues.YouTubePlaylistQueue
 import com.metrolist.music.utils.SyncUtils
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -212,18 +213,27 @@ private fun TvOnlinePlaylistDetail(
     val savedLabel = tvLocalizedString(R.string.tv_saved, R.string.tv_saved_zh_tw)
 
     LaunchedEffect(browseId, reload) {
+        // Only the latest request may publish: a cancelled load (e.g. fast
+        // playlist switching) must not report a stale failure or clear the
+        // loading state of its replacement.
+        val activeBrowseId = browseId
+        val activeReload = reload
+        fun isCurrent() = activeBrowseId == browseId && activeReload == reload
         loading = true
         failed = false
-        runCatching {
-            withContext(Dispatchers.IO) {
+        try {
+            page = withContext(Dispatchers.IO) {
                 YouTube.playlist(browseId).getOrThrow()
             }
-        }.onSuccess {
-            page = it
-        }.onFailure {
+            if (!isCurrent()) return@LaunchedEffect
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            if (!isCurrent()) return@LaunchedEffect
             failed = true
+        } finally {
+            if (isCurrent()) loading = false
         }
-        loading = false
     }
 
     val loaded = page

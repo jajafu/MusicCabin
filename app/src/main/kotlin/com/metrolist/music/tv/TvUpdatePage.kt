@@ -183,18 +183,50 @@ fun TvUpdatePage(
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    val firstButtonFocus = remember { FocusRequester() }
-    // The entry button is disabled while an automatic check or download is already
-    // running, so the initial focus request may be ignored. Remember whether it
-    // landed and retry once when the target becomes usable.
+    val checkButtonFocus = remember { FocusRequester() }
+    // Download, install and open-settings never coexist; they share one
+    // requester so update transitions can steer focus to the primary action.
+    val actionButtonFocus = remember { FocusRequester() }
+    // The entry button used to be disabled while an automatic check or download
+    // was already running, so the initial focus request could be ignored.
+    // Buttons now stay focusable while their own operation runs, but keep the
+    // retry as a safety net. Remember whether it landed.
     var entryFocusLanded by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         state.refreshInstallPermission(context)
-        firstButtonFocus.requestFocus()
+        checkButtonFocus.requestFocus()
     }
     LaunchedEffect(state.isChecking, state.isDownloading) {
         if (!entryFocusLanded && !state.isChecking && !state.isDownloading) {
-            firstButtonFocus.requestFocus()
+            checkButtonFocus.requestFocus()
+        }
+    }
+    // When a check reveals an update, move focus to the download button so the
+    // next OK press continues the flow. Likewise, when a download finishes,
+    // move focus to install (or open-settings). Each transition steers once.
+    var downloadSteered by remember { mutableStateOf(false) }
+    var installSteered by remember { mutableStateOf(false) }
+    val showDownloadAction = state.hasUpdate && state.downloadedFile == null
+    val showInstallAction = state.downloadedFile != null
+    LaunchedEffect(showDownloadAction, state.isChecking, state.isDownloading) {
+        if (showDownloadAction && !state.isChecking && !state.isDownloading) {
+            if (!downloadSteered) {
+                downloadSteered = true
+                installSteered = false
+                actionButtonFocus.requestFocus()
+            }
+        } else {
+            downloadSteered = false
+        }
+    }
+    LaunchedEffect(showInstallAction, state.isDownloading) {
+        if (showInstallAction && !state.isDownloading) {
+            if (!installSteered) {
+                installSteered = true
+                actionButtonFocus.requestFocus()
+            }
+        } else {
+            installSteered = false
         }
     }
     DisposableEffect(lifecycleOwner, state, context) {
@@ -301,9 +333,12 @@ fun TvUpdatePage(
                     text = tvLocalizedString(R.string.tv_update_check, R.string.tv_update_check_zh_tw),
                     selected = false,
                     modifier = Modifier
-                        .focusRequester(firstButtonFocus)
+                        .focusRequester(checkButtonFocus)
                         .onFocusChanged { if (it.isFocused) entryFocusLanded = true },
-                    enabled = !state.isChecking && !state.isDownloading,
+                    // Stay focusable while its own check runs (a repeat press is
+                    // a guarded no-op); only yield while a download owns the flow.
+                    // Disabling the focused button would strand remote focus.
+                    enabled = !state.isDownloading,
                 ) { onCheck() }
                 if (state.hasUpdate) {
                     if (state.downloadedFile != null) {
@@ -311,12 +346,14 @@ fun TvUpdatePage(
                             TvButton(
                                 text = tvLocalizedString(R.string.tv_update_install, R.string.tv_update_install_zh_tw),
                                 selected = true,
+                                modifier = Modifier.focusRequester(actionButtonFocus),
                                 enabled = !state.isDownloading,
                             ) { onInstall() }
                         } else {
                             TvButton(
                                 text = tvLocalizedString(R.string.tv_update_open_settings, R.string.tv_update_open_settings_zh_tw),
                                 selected = true,
+                                modifier = Modifier.focusRequester(actionButtonFocus),
                                 enabled = !state.isDownloading,
                             ) { onOpenSettings() }
                         }
@@ -324,7 +361,10 @@ fun TvUpdatePage(
                         TvButton(
                             text = tvLocalizedString(R.string.tv_update_download, R.string.tv_update_download_zh_tw),
                             selected = true,
-                            enabled = !state.isDownloading && !state.isChecking,
+                            modifier = Modifier.focusRequester(actionButtonFocus),
+                            // Stay focusable while downloading so focus waits on
+                            // this button with the progress indicator below.
+                            enabled = !state.isChecking,
                         ) { onDownload() }
                     }
                 }

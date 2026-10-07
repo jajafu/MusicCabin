@@ -322,6 +322,13 @@
     <string name="hide_changelog">Hide changelog</string>
     <string name="view_changelog">View changelog</string>
     <string name="failed_to_check_updates">Failed to check for updates: %s</string>
+    <string name="update_download_button">Download update</string>
+    <string name="update_downloading_format">Downloading… %1$d%%</string>
+    <string name="update_downloaded_desc">Download finished. Install now to update.</string>
+    <string name="update_install_button">Install update</string>
+    <string name="update_allow_install_button">Allow installs from this app</string>
+    <string name="update_allow_install_desc">Android blocks installs from apps by default. Open settings, allow this app, then come back and install.</string>
+    <string name="failed_to_download_update">Failed to download update: %s</string>
 
     <string name="all_time">All time</string>
     <string name="past_24_hours">Past 24 hours</string>

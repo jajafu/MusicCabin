@@ -4,6 +4,44 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.51
+
+### 中文
+
+- 手機版更新器支援 App 內下載安裝（FOSS 版）：設定 → 更新器的新版本區新增下載按鈕與進度條，下載完成可直接安裝，未允許安裝未知應用時導向系統設定；設定頁、帳號選單與更新通知的入口都改為開啟 App 內更新器，不再跳轉瀏覽器。
+- 版本 code 281；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Phone updater now downloads and installs in-app (FOSS builds): the updater screen gains a download button with a progress bar, installs directly after download, and guides to system settings when installs from this app are not allowed yet. The settings, account menu, and notification entries now open the in-app updater instead of a browser.
+- Version code 281; no database schema change or data migration.
+
+## 13.7.50
+
+### 中文
+
+- TV 更新頁遙控器焦點修正：檢查／下載按鈕在任務執行中保持可聚焦，不再把焦點丟到側欄；檢查出新版本會自動把焦點移到下載按鈕，下載完成自動移到安裝（或開啟設定）按鈕，下載中焦點停在原按鈕顯示進度等待。
+- 版本 code 280；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Fixed TV update page remote focus: check/download buttons stay focusable while their operation runs instead of stranding focus onto the sidebar; focus now auto-moves to download when an update is found, to install (or open-settings) when the download finishes, and stays on the download button with progress while downloading.
+- Version code 280; no database schema change or data migration.
+
+## 13.7.49
+
+### 中文
+
+- TV 首頁、搜尋與歌單詳情頁的載入改為正確傳遞協程取消：快速連續搜尋或切換歌單時，被取代的舊請求不再回報假錯誤，也不再用過期的載入狀態覆蓋新請求；只有最新請求能更新畫面。
+- 本機數位相框播放歷史改為最多保留 200 步（與 Drive 輪播一致）：長時間開啟相框不再無上限累積上一張／下一張紀錄，超過時丟棄最舊紀錄。
+- 版本 code 279；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- TV home, search, and playlist detail loading now propagate coroutine cancellation correctly: when searches or playlists are switched in quick succession, a superseded request no longer reports a stale failure or overwrites the replacement's loading state; only the latest request updates the UI.
+- Local photo frame playback history is now capped at 200 steps (matching the Drive slideshow): leaving the frame open no longer accumulates previous/next records without bound, with the oldest records dropped past the cap.
+- Version code 279; no database schema change or data migration.
+
 ## 13.7.48
 
 ### 中文

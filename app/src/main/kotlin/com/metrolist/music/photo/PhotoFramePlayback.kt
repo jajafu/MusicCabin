@@ -11,6 +11,9 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.random.Random
 
+/** Maximum retained navigation steps; mirrors the Drive slideshow cap. */
+internal const val FRAME_HISTORY_LIMIT = 200
+
 /** Holds URI strings only; image ownership belongs to the visible screen. */
 internal class FrameShuffleQueue(uris: List<String>, private val random: Random = Random.Default) {
     private val photos = uris.distinct()
@@ -57,6 +60,9 @@ internal class FrameShuffleQueue(uris: List<String>, private val random: Random 
             val next = round[index++]
             if (next.uri !in failed) {
                 history += next
+                while (history.size > FRAME_HISTORY_LIMIT) {
+                    history.removeAt(0)
+                }
                 historyIndex = history.lastIndex
                 previous = next.uri
                 return next
@@ -342,6 +348,9 @@ internal class PhotoFramePlayback<T : Any>(
                 }
                 if (session.slideHistory.lastOrNull() != slide.uris) {
                     session.slideHistory += slide.uris
+                    while (session.slideHistory.size > FRAME_HISTORY_LIMIT) {
+                        session.slideHistory.removeAt(0)
+                    }
                 }
                 session.slideIndex = session.slideHistory.lastIndex
             }

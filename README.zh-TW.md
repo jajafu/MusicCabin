@@ -75,7 +75,7 @@ MusicCabin 是 [Metrolist](https://github.com/MetrolistGroup/Metrolist) 的 Andr
 
 GitHub Actions workflow 均為手動執行。發版 workflow 只會建置 FOSS Release APK，並將 `MusicCabin-v<version>-car.apk` 發布到本專案的 GitHub Releases。Release notes 使用 `changelog.md` 的對應版本內容；重新執行既有版本時也會更新日誌。Workflow 需要固定的 Android 簽章 Secrets：`RELEASE_KEYSTORE_BASE64`、`RELEASE_STORE_PASSWORD`、`RELEASE_KEY_ALIAS` 與 `RELEASE_KEY_PASSWORD`；請勿提交 keystore 或密碼。播放器設定同步也改為手動執行。
 
-只有 FOSS 建置啟用 App 內更新器，會檢查[本專案的 Releases](https://github.com/jajafu/MusicCabin/releases)。手機版會開啟符合版本的 APK 下載頁供確認，TV 版則在 App 內直接下載（顯示進度）並開啟系統安裝器；Android 仍會要求使用者核准安裝，TV 可能需先允許此 App 安裝未知應用。僅 FOSS 建置為此流程宣告 `REQUEST_INSTALL_PACKAGES` 權限，其他 variant 不會。自用 GMS 建置一律手動更新。
+只有 FOSS 建置啟用 App 內更新器，會檢查[本專案的 Releases](https://github.com/jajafu/MusicCabin/releases)。手機與 TV 版都在 App 內直接下載符合版本的 APK（顯示進度）並開啟系統安裝器；Android 仍會要求使用者核准安裝，可能需先允許此 App 安裝未知應用。僅 FOSS 建置為此流程宣告 `REQUEST_INSTALL_PACKAGES` 權限，其他 variant 不會。自用 GMS 建置一律手動更新。
 
 Release 名稱可能包含 `-car` 後綴；更新器會比較版本中的數字部分，因此目前版本不會被誤判為有新更新。
 
