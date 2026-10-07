@@ -1,8 +1,12 @@
 package com.metrolist.music.photo
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
@@ -190,14 +194,15 @@ fun BoxScope.FrameLyricsOverlay(
         }
     }
 
-    val entry = lines.getOrNull(lineIndex)
-    val current = entry?.text?.trim().orEmpty()
-    if (current.isEmpty()) return
+    val entry = lines.getOrNull(lineIndex) ?: return
+    if (entry.text.isBlank()) return
     val lyricsOffset = (song?.song?.lyricsOffset ?: 0).toLong()
-    val previous = lines.getOrNull(lineIndex - 1)?.text?.trim().orEmpty()
-    val next = lines.getOrNull(lineIndex + 1)?.text?.trim().orEmpty()
-    val lineEndMs = lines.getOrNull(lineIndex + 1)?.time
-    val window = Triple(previous, current, next)
+    val window = FrameLyricsWindow(
+        lineIndex = lineIndex,
+        previousEntry = lines.getOrNull(lineIndex - 1),
+        currentEntry = entry,
+        nextEntry = lines.getOrNull(lineIndex + 1),
+    )
     // 1x is the stock Material titleLarge size on a phone; grow it with the screen
     // short edge, and never shrink a long line below that phone baseline.
     val style = MaterialTheme.typography.titleLarge
@@ -221,16 +226,40 @@ fun BoxScope.FrameLyricsOverlay(
     ) {
         AnimatedContent(
             targetState = window,
-            transitionSpec = { fadeIn(tween(FRAME_LYRICS_FADE_MS)) togetherWith fadeOut(tween(FRAME_LYRICS_FADE_MS)) },
+            transitionSpec = {
+                val movingUp = targetState.lineIndex >= initialState.lineIndex
+                if (movingUp) {
+                    (fadeIn(tween(FRAME_LYRICS_FADE_MS)) +
+                        slideInVertically(
+                            tween(FRAME_LYRICS_SLIDE_MS, easing = FastOutSlowInEasing),
+                        ) { fullHeight -> fullHeight / targetState.visibleLineCount }) togetherWith
+                        (fadeOut(tween(FRAME_LYRICS_FADE_MS)) +
+                            slideOutVertically(
+                                tween(FRAME_LYRICS_SLIDE_MS, easing = FastOutSlowInEasing),
+                            ) { fullHeight -> -fullHeight / initialState.visibleLineCount }) using
+                        SizeTransform(clip = false)
+                } else {
+                    (fadeIn(tween(FRAME_LYRICS_FADE_MS)) +
+                        slideInVertically(
+                            tween(FRAME_LYRICS_SLIDE_MS, easing = FastOutSlowInEasing),
+                        ) { fullHeight -> -fullHeight / targetState.visibleLineCount }) togetherWith
+                        (fadeOut(tween(FRAME_LYRICS_FADE_MS)) +
+                            slideOutVertically(
+                                tween(FRAME_LYRICS_SLIDE_MS, easing = FastOutSlowInEasing),
+                            ) { fullHeight -> fullHeight / initialState.visibleLineCount }) using
+                        SizeTransform(clip = false)
+                }
+            },
             label = "Photo frame lyrics",
-        ) { (prevLine, currentLine, nextLine) ->
+        ) { lyricWindow ->
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(FRAME_LYRICS_LINE_SPACING_DP.dp * uiScale),
             ) {
-                if (prevLine.isNotEmpty()) {
+                val previousLine = lyricWindow.previousEntry?.text?.trim().orEmpty()
+                if (previousLine.isNotEmpty()) {
                     AutoResizeText(
-                        text = prevLine,
+                        text = previousLine,
                         fontSizeRange = FontSizeRange(min = minFontSize, max = maxFontSize),
                         color = sideColor,
                         maxLines = 1,
@@ -240,13 +269,14 @@ fun BoxScope.FrameLyricsOverlay(
                     )
                 }
                 FrameKtvCurrentLine(
-                    entry = entry,
-                    lineEndMs = lineEndMs,
+                    entry = lyricWindow.currentEntry,
+                    lineEndMs = lyricWindow.nextEntry?.time,
                     currentPositionMs = positionMs,
                     lyricsOffset = lyricsOffset,
                     textColor = textColor,
                     maxFontSize = maxFontSize,
                 )
+                val nextLine = lyricWindow.nextEntry?.text?.trim().orEmpty()
                 if (nextLine.isNotEmpty()) {
                     AutoResizeText(
                         text = nextLine,
@@ -263,8 +293,21 @@ fun BoxScope.FrameLyricsOverlay(
     }
 }
 
+private data class FrameLyricsWindow(
+    val lineIndex: Int,
+    val previousEntry: LyricsEntry?,
+    val currentEntry: LyricsEntry,
+    val nextEntry: LyricsEntry?,
+) {
+    val visibleLineCount: Int
+        get() = 1 +
+            (if (previousEntry?.text?.isNotBlank() == true) 1 else 0) +
+            (if (nextEntry?.text?.isNotBlank() == true) 1 else 0)
+}
+
 private const val FRAME_LYRICS_POLL_MS = 100L
-private const val FRAME_LYRICS_FADE_MS = 350
+private const val FRAME_LYRICS_FADE_MS = 180
+private const val FRAME_LYRICS_SLIDE_MS = 500
 private const val FRAME_LYRICS_FETCH_DELAY_MS = 500L
 private const val FRAME_KTV_FALLBACK_MS = 3000L
 

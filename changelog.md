@@ -4,6 +4,30 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.48
+
+### 中文
+
+- 修正數位相框歌詞滑動時新舊動畫窗口共用最新當前句，導致焦點歌詞像固定不動的問題；改為各窗口使用自己的歌詞索引與內容，依顯示行數移動一行，並降低淡化速度、延長滑動時間。正常播放向上滾動，倒退時反向。
+- 版本 code 278；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Fixed photo frame lyric scrolling where both animation windows used the latest current line, making the focused lyric appear stationary. Each window now renders its own indexed lyric content, moves by one visible line, fades less quickly, and scrolls longer. Playback scrolls upward; backward seeking reverses the direction.
+- Version code 278; no database schema change or data migration.
+
+## 13.7.47
+
+### 中文
+
+- 數位相框底部歌詞換行改為輕量滑動過渡（手機、TV、相框 2 共用）：正常播放時新詞由下方滑入、舊詞向上滑出並保留原本淡入淡出，回播倒退時方向相反；仍維持前一句／當前句／後一句三行顯示與 KTV 逐字效果。
+- 版本 code 277；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Photo frame bottom lyrics now use a lightweight slide transition (shared by phone, TV, and frame 2): new lines slide in from below and old lines slide out upward during normal playback, reversed when seeking backward, while keeping the existing fade and the previous/current/next three-line layout with the KTV word-by-word effect.
+- Version code 277; no database schema change or data migration.
+
 ## 13.7.46
 
 ### 中文
