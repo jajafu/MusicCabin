@@ -1610,6 +1610,12 @@ fun BottomSheetPlayer(
 
                             Spacer(modifier = Modifier.width(8.dp))
 
+                            // R.string.pause has no upstream translation (only English in
+                            // values/strings.xml), so Chinese phones show "Pause". Use the
+                            // local paired strings for zh and keep upstream for others.
+                            val isChinese = LocalConfiguration.current.locales[0].language == "zh"
+                            val playLabel = if (isChinese) stringResource(R.string.player_play_zh_tw) else stringResource(R.string.play)
+                            val pauseLabel = if (isChinese) stringResource(R.string.player_pause_zh_tw) else stringResource(R.string.pause)
                             FilledIconButton(
                                 onClick = {
                                     if (isListenTogetherGuest) {
@@ -1659,7 +1665,7 @@ fun BottomSheetPlayer(
                                             if (isListenTogetherGuest) {
                                                 if (isMuted) stringResource(R.string.unmute) else stringResource(R.string.mute)
                                             } else {
-                                                if (effectiveIsPlaying) stringResource(R.string.pause) else stringResource(R.string.play)
+                                                if (effectiveIsPlaying) pauseLabel else playLabel
                                             },
                                         modifier = Modifier.size(32.dp),
                                     )
@@ -1669,7 +1675,7 @@ fun BottomSheetPlayer(
                                             if (isListenTogetherGuest) {
                                                 if (isMuted) stringResource(R.string.unmute) else stringResource(R.string.mute)
                                             } else {
-                                                if (effectiveIsPlaying) stringResource(R.string.pause) else stringResource(R.string.play)
+                                                if (effectiveIsPlaying) pauseLabel else playLabel
                                             },
                                         style = MaterialTheme.typography.titleMedium,
                                     )

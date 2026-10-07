@@ -656,7 +656,9 @@ fun TvScreen(
                 TvButton(stringResource(R.string.previous), false, enabled = ready) {
                     playerConnection?.seekToPrevious()
                 }
-                TvButton(stringResource(if (playing) R.string.pause else R.string.play), false, enabled = ready) {
+                val playLabel = tvLocalizedString(R.string.tv_play, R.string.tv_play_zh_tw)
+                val pauseLabel = tvLocalizedString(R.string.tv_pause, R.string.tv_pause_zh_tw)
+                TvButton(if (playing) pauseLabel else playLabel, false, enabled = ready) {
                     playerConnection?.togglePlayPause()
                 }
                 TvButton(stringResource(R.string.next), false, enabled = ready) {

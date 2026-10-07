@@ -55,6 +55,14 @@
     <string name="tv_back_zh_tw" translatable="false">返回</string>
     <string name="tv_songs_count">%1$d songs</string>
     <string name="tv_songs_count_zh_tw" translatable="false">%1$d 首歌曲</string>
+    <string name="tv_play" translatable="false">Play</string>
+    <string name="tv_play_zh_tw" translatable="false">播放</string>
+    <string name="tv_pause" translatable="false">Pause</string>
+    <string name="tv_pause_zh_tw" translatable="false">暫停</string>
+    <string name="player_play" translatable="false">Play</string>
+    <string name="player_play_zh_tw" translatable="false">播放</string>
+    <string name="player_pause" translatable="false">Pause</string>
+    <string name="player_pause_zh_tw" translatable="false">暫停</string>
     <string name="app_name" translatable="false">MusicCabin</string>
     <string name="shortcut_target_package" translatable="false">com.jajafu.musiccabin</string>
     <string name="musiccabin_about">About MusicCabin</string>

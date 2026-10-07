@@ -4,6 +4,20 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.54
+
+### 中文
+
+- 修正 TV 授權登入後只同步到喜愛歌曲、歌單沒出現的問題：電視收到手機登入時立即把會話寫入記憶體的 YouTube 客戶端，再開始完整同步，不再因 DataStore 觀察者尚未更新而用舊授權去抓收藏歌單；登入後喜愛歌曲與收藏歌單都會同步。
+- 修正中文語系播放／暫停按鈕顯示英文 Pause：上游 `R.string.pause` 只有英文、所有語言都缺翻譯，手機播放器與 TV 底部列都會中招；新增本地播放／暫停中文字串，中文直接顯示「播放」／「暫停」，其他語言維持上游行為，不需等待 Crowdin 翻譯。
+- 版本 code 284；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Fixed TV authorized login syncing liked songs but not playlists: the TV now applies the pushed session to the in-memory YouTube client before starting the full sync instead of racing the DataStore observers with stale auth; both liked songs and saved playlists sync after login.
+- Fixed Play/Pause showing English Pause in Chinese locales: upstream `R.string.pause` is English-only across all locales, affecting both the phone player and the TV bottom bar. Local Play/Pause strings now show 播放/暫停 for Chinese while other locales keep upstream behavior without waiting for Crowdin.
+- Version code 284; no database schema change or data migration.
+
 ## 13.7.53
 
 ### 中文

@@ -8,6 +8,7 @@ package com.metrolist.music.tv
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.utils.parseCookieString
 import com.metrolist.music.App
 import com.metrolist.music.constants.AccountChannelHandleKey
@@ -120,17 +121,29 @@ class TvAuthViewModel @Inject constructor(
     }
 
     private fun persist(bundle: TvAuthBundle): Boolean = runBlocking {
+        val dataSyncId = bundle.dataSyncId.substringBefore("||")
+        val authUser = bundle.authUser.filter(Char::isDigit).ifBlank { "0" }
         val saved = context.safeDataStoreEdit { settings ->
             settings[InnerTubeCookieKey] = bundle.cookie
             settings[VisitorDataKey] = bundle.visitorData
-            settings[DataSyncIdKey] = bundle.dataSyncId.substringBefore("||")
-            settings[InnerTubeAuthUserKey] = bundle.authUser.filter(Char::isDigit).ifBlank { "0" }
+            settings[DataSyncIdKey] = dataSyncId
+            settings[InnerTubeAuthUserKey] = authUser
             settings[AccountNameKey] = bundle.accountName
             settings[AccountEmailKey] = bundle.accountEmail
             settings[AccountChannelHandleKey] = bundle.channelHandle
         }
         if (!saved) return@runBlocking false
         // Single use: stop listening as soon as a session lands, then pull the library.
+        // Push the session into the in-memory YouTube client immediately. DataStore
+        // observers in App update it asynchronously, and a full sync started here
+        // would otherwise run with stale auth — liked songs (playlist LM) can still
+        // succeed while the library call for saved playlists fails.
+        runCatching {
+            YouTube.cookie = bundle.cookie
+            YouTube.visitorData = bundle.visitorData
+            YouTube.dataSyncId = dataSyncId
+            YouTube.authUser = authUser
+        }
         stopReceiver()
         context.dataStore.data.first()
         syncUtils.performFullSync()
