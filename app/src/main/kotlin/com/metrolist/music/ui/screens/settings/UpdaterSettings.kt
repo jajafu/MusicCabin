@@ -77,6 +77,7 @@ fun UpdaterScreen(
     var checkError by remember { mutableStateOf<String?>(null) }
     val failedToCheckUpdatesTemplate = stringResource(R.string.failed_to_check_updates)
     val failedToDownloadTemplate = stringResource(R.string.failed_to_download_update)
+    val downloadingFormat = stringResource(R.string.update_downloading_format)
 
     var isDownloading by remember { mutableStateOf(false) }
     var downloadProgress by remember { mutableFloatStateOf(0f) }
@@ -159,9 +160,9 @@ fun UpdaterScreen(
                         coroutineScope.launch {
                             downloadProgressText = if (total != null && total > 0) {
                                 downloadProgress = (downloaded.toFloat() / total).coerceIn(0f, 1f)
-                                context.getString(R.string.update_downloading_format, (downloaded * 100 / total).toInt())
+                                String.format(downloadingFormat, (downloaded * 100 / total).toInt())
                             } else {
-                                context.getString(R.string.update_downloading_format, 0)
+                                String.format(downloadingFormat, 0)
                             }
                         }
                     }
