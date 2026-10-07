@@ -4,6 +4,18 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.52
+
+### 中文
+
+- 修正 Release 版數位相框「歌詞簡轉繁」沒有轉換的問題：保留 opencc4j 反射建立的轉換器類別，避免 R8 壓縮造成轉換器初始化失敗；未使用的 Jieba 選用依賴也加入建置規則。Debug 與 Release 現在都能正常將簡體歌詞轉為台灣繁體中文。
+- 版本 code 282；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Fixed Release builds where the photo frame Traditional Chinese lyrics option did not convert Simplified lyrics: opencc4j classes created through reflection are now kept from R8 optimization so converter initialization succeeds, and its unused optional Jieba reference is handled in the build rules. Simplified lyrics now convert to Taiwan Traditional Chinese in both Debug and Release builds.
+- Version code 282; no database schema change or data migration.
+
 ## 13.7.51
 
 ### 中文
