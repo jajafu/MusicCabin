@@ -323,6 +323,8 @@
     <string name="view_changelog">View changelog</string>
     <string name="failed_to_check_updates">Failed to check for updates: %s</string>
     <string name="update_download_button">Download update</string>
+    <string name="update_resume_button">Resume download</string>
+    <string name="update_download_paused_desc">Download interrupted. Tap resume to continue where it left off.</string>
     <string name="update_downloading_format">Downloading… %1$d%%</string>
     <string name="update_downloaded_desc">Download finished. Install now to update.</string>
     <string name="update_install_button">Install update</string>
@@ -460,6 +462,8 @@
     <string name="tv_update_current_zh_tw" translatable="false">已安裝版本：%1$s</string>
     <string name="tv_update_download">Download update</string>
     <string name="tv_update_download_zh_tw" translatable="false">下載更新</string>
+    <string name="tv_update_resume">Resume download</string>
+    <string name="tv_update_resume_zh_tw" translatable="false">繼續下載</string>
     <string name="tv_update_downloading">Downloading… %1$d%%</string>
     <string name="tv_update_downloading_zh_tw" translatable="false">正在下載… %1$d%%</string>
     <string name="tv_update_downloaded">Download finished</string>

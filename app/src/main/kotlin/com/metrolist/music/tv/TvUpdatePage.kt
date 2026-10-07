@@ -63,6 +63,7 @@ class TvUpdateState {
     var progressText by mutableStateOf<String?>(null)
     var downloadedFile: File? by mutableStateOf(null)
     var downloadError by mutableStateOf<String?>(null)
+    var hasPartialDownload by mutableStateOf(false)
     var canInstall by mutableStateOf(false)
 
     fun refreshInstallPermission(context: Context) {
@@ -99,6 +100,8 @@ class TvUpdateState {
                                 staged.delete()
                             }
                             downloadedFile = if (staged.exists() && staged.length() > 0) staged else null
+                            hasPartialDownload = downloadedFile == null &&
+                                Updater.partialDownloadLength(staged) > 0
                             // Drop APKs staged for other versions so the cache does not grow per release.
                             Updater.removeOtherStagedApks(staged)
                         }
@@ -123,12 +126,19 @@ class TvUpdateState {
         scope.launch {
             isDownloading = true
             downloadError = null
-            progress = 0f
-            progressText = null
+            val dest = Updater.updateApkFile(context, releaseInfo.versionName)
+            val expectedTotal = Updater.getAssetForCurrentVariant(releaseInfo)?.size?.takeIf { it > 0 }
+            val resumedFrom = Updater.partialDownloadLength(dest)
+            if (expectedTotal != null && resumedFrom > 0) {
+                progress = (resumedFrom.toFloat() / expectedTotal).coerceIn(0f, 1f)
+                progressText = downloadingText((resumedFrom * 100 / expectedTotal).toInt())
+            } else {
+                progress = 0f
+                progressText = null
+            }
             val result = withContext(Dispatchers.IO) {
-                val dest = Updater.updateApkFile(context, releaseInfo.versionName)
                 var lastProgressUpdateAt = 0L
-                Updater.downloadApk(url, dest) { downloaded, total ->
+                Updater.downloadApk(url, dest, expectedTotal = expectedTotal) { downloaded, total ->
                     val now = SystemClock.elapsedRealtime()
                     val isComplete = total != null && downloaded >= total
                     if (isComplete || now - lastProgressUpdateAt >= PROGRESS_UPDATE_INTERVAL_MILLIS) {
@@ -149,12 +159,15 @@ class TvUpdateState {
             isDownloading = false
             result.onSuccess {
                 downloadedFile = it
+                hasPartialDownload = false
                 progress = 1f
                 progressText = null
             }.onFailure {
                 downloadError = failedText(it.message ?: "Unknown error")
                 downloadedFile = null
-                progressText = null
+                // Keep the partial file so the next tap resumes instead of restarting.
+                hasPartialDownload = Updater.partialDownloadLength(dest) > 0
+                if (!hasPartialDownload) progressText = null
             }
         }
     }
@@ -359,7 +372,11 @@ fun TvUpdatePage(
                         }
                     } else {
                         TvButton(
-                            text = tvLocalizedString(R.string.tv_update_download, R.string.tv_update_download_zh_tw),
+                            text = if (state.hasPartialDownload || state.downloadError != null) {
+                                tvLocalizedString(R.string.tv_update_resume, R.string.tv_update_resume_zh_tw)
+                            } else {
+                                tvLocalizedString(R.string.tv_update_download, R.string.tv_update_download_zh_tw)
+                            },
                             selected = true,
                             modifier = Modifier.focusRequester(actionButtonFocus),
                             // Stay focusable while downloading so focus waits on

@@ -84,6 +84,7 @@ fun UpdaterScreen(
     var downloadProgressText by remember { mutableStateOf<String?>(null) }
     var downloadedFile by remember { mutableStateOf<File?>(null) }
     var downloadError by remember { mutableStateOf<String?>(null) }
+    var hasPartialDownload by remember { mutableStateOf(false) }
     var canInstall by remember { mutableStateOf(false) }
 
     val coroutineScope = rememberCoroutineScope()
@@ -97,11 +98,21 @@ fun UpdaterScreen(
             Updater.getDownloadUrlForCurrentVariant(releaseInfo) != null
         if (!downloadable) {
             downloadedFile = null
+            hasPartialDownload = false
             return
         }
         val staged = Updater.updateApkFile(context, releaseInfo.versionName)
         Updater.removeOtherStagedApks(staged)
         downloadedFile = if (staged.exists() && staged.length() > 0) staged else null
+        hasPartialDownload = downloadedFile == null && Updater.partialDownloadLength(staged) > 0
+        if (hasPartialDownload && !isDownloading) {
+            val expected = Updater.getAssetForCurrentVariant(releaseInfo)?.size?.takeIf { it > 0 }
+            if (expected != null) {
+                val partial = Updater.partialDownloadLength(staged)
+                downloadProgress = (partial.toFloat() / expected).coerceIn(0f, 1f)
+                downloadProgressText = String.format(downloadingFormat, (partial * 100 / expected).toInt())
+            }
+        }
     }
 
     LaunchedEffect(Unit) {
@@ -147,12 +158,19 @@ fun UpdaterScreen(
         coroutineScope.launch {
             isDownloading = true
             downloadError = null
-            downloadProgress = 0f
-            downloadProgressText = null
+            val dest = Updater.updateApkFile(context, releaseInfo.versionName)
+            val expectedTotal = Updater.getAssetForCurrentVariant(releaseInfo)?.size?.takeIf { it > 0 }
+            val resumedFrom = Updater.partialDownloadLength(dest)
+            if (expectedTotal != null && resumedFrom > 0) {
+                downloadProgress = (resumedFrom.toFloat() / expectedTotal).coerceIn(0f, 1f)
+                downloadProgressText = String.format(downloadingFormat, (resumedFrom * 100 / expectedTotal).toInt())
+            } else {
+                downloadProgress = 0f
+                downloadProgressText = null
+            }
             val result = withContext(Dispatchers.IO) {
-                val dest = Updater.updateApkFile(context, releaseInfo.versionName)
                 var lastProgressUpdateAt = 0L
-                Updater.downloadApk(url, dest) { downloaded, total ->
+                Updater.downloadApk(url, dest, expectedTotal = expectedTotal) { downloaded, total ->
                     val now = SystemClock.elapsedRealtime()
                     val isComplete = total != null && downloaded >= total
                     if (isComplete || now - lastProgressUpdateAt >= 200) {
@@ -172,12 +190,15 @@ fun UpdaterScreen(
             isDownloading = false
             result.onSuccess {
                 downloadedFile = it
+                hasPartialDownload = false
                 downloadProgress = 1f
                 downloadProgressText = null
             }.onFailure {
                 downloadError = String.format(failedToDownloadTemplate, it.message ?: "Unknown error")
                 downloadedFile = null
-                downloadProgressText = null
+                // Keep the partial file and its progress so the next tap resumes.
+                hasPartialDownload = Updater.partialDownloadLength(dest) > 0
+                if (!hasPartialDownload) downloadProgressText = null
             }
         }
     }
@@ -330,7 +351,12 @@ fun UpdaterScreen(
                                 .fillMaxWidth()
                                 .padding(horizontal = 16.dp),
                     ) {
-                        Text(stringResource(R.string.update_download_button))
+                        Text(
+                            stringResource(
+                                if (hasPartialDownload || downloadError != null) R.string.update_resume_button
+                                else R.string.update_download_button,
+                            ),
+                        )
                     }
                     if (isDownloading || downloadProgressText != null) {
                         Spacer(Modifier.height(12.dp))
@@ -360,6 +386,15 @@ fun UpdaterScreen(
                             color = MaterialTheme.colorScheme.error,
                             modifier = Modifier.padding(horizontal = 16.dp),
                         )
+                        if (hasPartialDownload) {
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = stringResource(R.string.update_download_paused_desc),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 16.dp),
+                            )
+                        }
                     }
                 } else {
                     Text(

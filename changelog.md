@@ -4,6 +4,20 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.53
+
+### 中文
+
+- 更新器下載支援斷點續傳：下載中斷（例如鎖屏後斷線、網速慢逾時）會保留已下載的部分，下次點下載自動從中斷處接續並重試，不需重頭開始；按鈕會顯示「繼續下載」並提示可接續。
+- 補上更新頁缺失的繁中／簡中翻譯：下載更新、繼續下載、下載進度、下载完成提示、安裝更新、允許安裝未知應用說明與按鈕、下載失敗訊息；TV 端下載按鈕同步支援「繼續下載」。
+- 版本 code 283；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Updater downloads now resume after interruption: an interrupted download (e.g. connection drop after screen lock or slow-network timeout) keeps the downloaded part, and the next tap resumes from where it stopped with retries instead of restarting. The button switches to Resume download with a hint that progress is kept.
+- Fill in the missing Traditional/Simplified Chinese translations on the update screen: download, resume, progress, finished, install, allow-installs guidance and button, and the download-failure message; the TV download button also supports resume.
+- Version code 283; no database schema change or data migration.
+
 ## 13.7.52
 
 ### 中文

@@ -261,6 +261,15 @@
     <string name="check_for_updates_title">請檢查更新</string>
     <string name="checking_for_updates">正在檢查更新…</string>
     <string name="check_for_updates_button">請檢查更新</string>
+    <string name="update_download_button">下載更新</string>
+    <string name="update_resume_button">繼續下載</string>
+    <string name="update_download_paused_desc">下載中斷。點繼續下載可從中斷處接續，不需重頭開始。</string>
+    <string name="update_downloading_format">正在下載… %1$d%%</string>
+    <string name="update_downloaded_desc">下載完成，立即安裝以更新。</string>
+    <string name="update_install_button">安裝更新</string>
+    <string name="update_allow_install_button">允許此應用程式安裝應用程式</string>
+    <string name="update_allow_install_desc">Android 預設會封鎖來自應用程式的安裝。請開啟設定並允許此應用程式，然後返回安裝。</string>
+    <string name="failed_to_download_update">下載更新失敗：%s</string>
     <string name="hide_changelog">隱藏更新日誌</string>
     <string name="view_changelog">查看更新日誌</string>
     <string name="set_as_default">設定為預設值</string>

@@ -538,6 +538,15 @@
     <string name="update_settings">更新设置</string>
     <string name="check_for_updates_title">检查更新</string>
     <string name="check_for_updates_button">检查更新</string>
+    <string name="update_download_button">下载更新</string>
+    <string name="update_resume_button">继续下载</string>
+    <string name="update_download_paused_desc">下载中断。点继续下载可从中断处接续，无需从头开始。</string>
+    <string name="update_downloading_format">正在下载… %1$d%%</string>
+    <string name="update_downloaded_desc">下载完成，立即安装以更新。</string>
+    <string name="update_install_button">安装更新</string>
+    <string name="update_allow_install_button">允许此应用安装应用</string>
+    <string name="update_allow_install_desc">Android 默认会阻止来自应用的安装。请打开设置并允许此应用，然后返回安装。</string>
+    <string name="failed_to_download_update">下载更新失败：%s</string>
     <string name="checking_for_updates">正在检查更新…</string>
     <string name="latest_version_format">最新版本：%s</string>
     <string name="hide_changelog">隐藏更新日志</string>

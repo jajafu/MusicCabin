@@ -15,10 +15,16 @@ import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.EOFException
 import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -48,6 +54,7 @@ object Updater {
     
     private const val CHECK_INTERVAL_MILLIS = 2 * 60 * 60 * 1000L // 2 hours
     private const val STAGED_APK_PREFIX = "MusicCabin-"
+    private const val MAX_REDIRECTS = 5
     const val GITHUB_RELEASES_URL = "https://github.com/jajafu/MusicCabin/releases"
     private const val GITHUB_API_BASE = "https://api.github.com/repos/jajafu/MusicCabin"
 
@@ -210,14 +217,21 @@ object Updater {
         }
 
     /**
+     * Get the matching asset for the current app variant.
+     * Returns null if no matching asset is found.
+     */
+    fun getAssetForCurrentVariant(releaseInfo: ReleaseInfo): ReleaseAsset? {
+        val (currentArch, currentVariant) = getCurrentAppVariant()
+
+        return releaseInfo.assets
+            .find { it.architecture == currentArch && it.variant == currentVariant }
+    }
+
+    /**
      * Get the download URL for the correct app variant
      */
     fun getDownloadUrlForCurrentVariant(releaseInfo: ReleaseInfo): String? {
-        val (currentArch, currentVariant) = getCurrentAppVariant()
-        
-        return releaseInfo.assets
-            .find { it.architecture == currentArch && it.variant == currentVariant }
-            ?.downloadUrl
+        return getAssetForCurrentVariant(releaseInfo)?.downloadUrl
     }
 
     /**
@@ -296,56 +310,215 @@ object Updater {
     }
 
     /**
-     * Download an APK with progress callbacks. Runs on IO dispatcher.
+     * Partial file used while an APK download is in progress. It is kept across
+     * failures so the next attempt can resume with an HTTP Range request instead
+     * of starting over (e.g. after the screen locks and the connection drops).
+     */
+    fun partialApkFile(destFile: File): File =
+        File(destFile.parentFile, "${destFile.name}.part")
+
+    /**
+     * Bytes already downloaded for [destFile], or 0 when nothing is staged yet.
+     */
+    fun partialDownloadLength(destFile: File): Long {
+        val part = partialApkFile(destFile)
+        return if (part.exists()) part.length().coerceAtLeast(0L) else 0L
+    }
+
+    /**
+     * Download an APK with progress callbacks and resume support. Runs on IO dispatcher.
      * onProgress receives (downloadedBytes, totalBytesOrNull).
+     *
+     * An interrupted download keeps its `.part` file. The next call sends
+     * `Range: bytes=<downloaded>-` and appends to it, so a lock-screen
+     * disconnect or a slow network only pauses instead of restarting.
+     * Transient network errors are retried with backoff up to [maxRetries];
+     * after that the error is returned and the caller can retry (resume) later.
      */
     suspend fun downloadApk(
         url: String,
         destFile: File,
+        expectedTotal: Long? = null,
+        maxRetries: Int = 5,
         onProgress: (downloaded: Long, total: Long?) -> Unit = { _, _ -> },
     ): Result<File> = withContext(Dispatchers.IO) {
-        val tmpFile = File(destFile.parentFile, "${destFile.name}.part")
-        runCatching {
-            var connection: HttpURLConnection? = null
-            try {
-                connection = (URL(url).openConnection() as HttpURLConnection).apply {
-                    instanceFollowRedirects = true
-                    connectTimeout = 30_000
-                    readTimeout = 30_000
-                    setRequestProperty("Accept", "application/octet-stream")
-                    connect()
-                }
-                val code = connection.responseCode
-                if (code !in 200..299) throw IllegalStateException("Download failed: HTTP $code")
-                val total = connection.contentLengthLong.takeIf { it > 0 }
-                connection.inputStream.use { input ->
-                    tmpFile.outputStream().use { output ->
-                        val buffer = ByteArray(64 * 1024)
-                        var downloaded = 0L
-                        while (true) {
-                            val read = input.read(buffer)
-                            if (read < 0) break
-                            output.write(buffer, 0, read)
-                            downloaded += read
-                            onProgress(downloaded, total)
-                        }
-                        output.flush()
-                    }
-                }
-                if (tmpFile.length() == 0L) throw IllegalStateException("Downloaded file is empty")
-                if (destFile.exists()) destFile.delete()
-                if (!tmpFile.renameTo(destFile)) {
-                    tmpFile.copyTo(destFile, overwrite = true)
-                    tmpFile.delete()
-                }
-                destFile
-            } finally {
-                connection?.disconnect()
-            }
-        }.onFailure {
-            // Never leave a half-written staging file behind.
-            runCatching { tmpFile.delete() }
+        // Already staged APK for this version: nothing to download.
+        if (destFile.exists() && destFile.length() > 0 &&
+            (expectedTotal == null || expectedTotal <= 0 || destFile.length() >= expectedTotal)
+        ) {
+            onProgress(destFile.length(), expectedTotal?.takeIf { it > 0 })
+            return@withContext Result.success(destFile)
         }
+        val tmpFile = partialApkFile(destFile)
+        var attempt = 0
+        var lastError: Throwable? = null
+        while (true) {
+            ensureActive()
+            try {
+                return@withContext Result.success(
+                    downloadOnce(url, destFile, tmpFile, expectedTotal, onProgress),
+                )
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                // Keep the partial file so the user can resume after cancellation.
+                throw e
+            } catch (e: IOException) {
+                lastError = e
+            } catch (e: IllegalStateException) {
+                lastError = e
+            }
+            attempt++
+            if (attempt > maxRetries) {
+                return@withContext Result.failure(
+                    lastError ?: IllegalStateException("Download failed"),
+                )
+            }
+            // Brief backoff before resuming; the partial file is preserved.
+            delay((1000L * attempt).coerceAtMost(8000L))
+        }
+        @Suppress("UNREACHABLE_CODE")
+        Result.failure(lastError ?: IllegalStateException("Download failed"))
+    }
+
+    private suspend fun downloadOnce(
+        url: String,
+        destFile: File,
+        tmpFile: File,
+        expectedTotal: Long?,
+        onProgress: (downloaded: Long, total: Long?) -> Unit,
+    ): File {
+        currentCoroutineContext().ensureActive()
+        var existing = if (tmpFile.exists()) tmpFile.length().coerceAtLeast(0L) else 0L
+        // Drop obviously stale partials (e.g. server published a new binary
+        // under the same name) once the known size is exceeded.
+        if (expectedTotal != null && expectedTotal > 0 && existing > expectedTotal) {
+            tmpFile.delete()
+            existing = 0L
+        }
+        var currentUrl = url
+        var redirects = 0
+        while (true) {
+            currentCoroutineContext().ensureActive()
+            val connection = openDownloadConnection(currentUrl, existing)
+            try {
+                when (connection.responseCode) {
+                    HttpURLConnection.HTTP_PARTIAL -> {
+                        val total = parseResumedTotal(connection, existing)
+                            ?: expectedTotal?.takeIf { it > 0 }
+                        copyToPartial(connection, tmpFile, append = existing > 0, baseOffset = existing, total = total, onProgress = onProgress)
+                        return finishPartial(tmpFile, destFile, expectedTotal)
+                    }
+                    HttpURLConnection.HTTP_OK -> {
+                        if (existing > 0) {
+                            // Server ignored the Range request: restart from scratch.
+                            tmpFile.delete()
+                            existing = 0L
+                        }
+                        val total = connection.contentLengthLong.takeIf { it > 0 }
+                            ?: expectedTotal?.takeIf { it > 0 }
+                        copyToPartial(connection, tmpFile, append = false, baseOffset = 0L, total = total, onProgress = onProgress)
+                        return finishPartial(tmpFile, destFile, expectedTotal)
+                    }
+                    416 -> {
+                        if (existing > 0) {
+                            // Range beyond EOF (e.g. stale partial): restart once.
+                            tmpFile.delete()
+                            existing = 0L
+                            continue
+                        }
+                        throw IllegalStateException("Download failed: HTTP 416")
+                    }
+                    HttpURLConnection.HTTP_MOVED_PERM,
+                    HttpURLConnection.HTTP_MOVED_TEMP,
+                    HttpURLConnection.HTTP_SEE_OTHER,
+                    307, 308 -> {
+                        if (redirects++ >= MAX_REDIRECTS) {
+                            throw IllegalStateException("Download failed: too many redirects")
+                        }
+                        val location = connection.getHeaderField("Location")
+                            ?: throw IllegalStateException("Download failed: redirect without location")
+                        connection.disconnect()
+                        currentUrl = URL(URL(currentUrl), location).toString()
+                        // Reopen below with the same Range offset.
+                        continue
+                    }
+                    else -> throw IllegalStateException("Download failed: HTTP ${connection.responseCode}")
+                }
+            } finally {
+                // finishPartial renames on success; disconnect is safe in all paths.
+                runCatching { connection.disconnect() }
+            }
+        }
+    }
+
+    private fun openDownloadConnection(url: String, existing: Long): HttpURLConnection {
+        // Follow redirects manually so the Range header survives GitHub's
+        // release redirect (github.com -> objects.githubusercontent.com).
+        val connection = (URL(url).openConnection() as HttpURLConnection).apply {
+            instanceFollowRedirects = false
+            connectTimeout = 30_000
+            readTimeout = 30_000
+            setRequestProperty("Accept", "application/octet-stream")
+            setRequestProperty("User-Agent", "MusicCabin-Updater")
+            if (existing > 0) setRequestProperty("Range", "bytes=$existing-")
+        }
+        connection.connect()
+        return connection
+    }
+
+    private fun parseResumedTotal(connection: HttpURLConnection, existing: Long): Long? {
+        // Prefer Content-Range ("bytes 100-199/12345"), fall back to remaining + offset.
+        val contentRange = connection.getHeaderField("Content-Range")
+        if (contentRange != null) {
+            val slash = contentRange.lastIndexOf('/')
+            if (slash >= 0) {
+                contentRange.substring(slash + 1).trim().toLongOrNull()
+                    ?.takeIf { it > 0 }?.let { return it }
+            }
+        }
+        val remaining = connection.contentLengthLong.takeIf { it > 0 } ?: return null
+        return existing + remaining
+    }
+
+    private fun copyToPartial(
+        connection: HttpURLConnection,
+        tmpFile: File,
+        append: Boolean,
+        baseOffset: Long,
+        total: Long?,
+        onProgress: (downloaded: Long, total: Long?) -> Unit,
+    ) {
+        tmpFile.parentFile?.mkdirs()
+        connection.inputStream.use { input ->
+            FileOutputStream(tmpFile, append).use { output ->
+                val buffer = ByteArray(64 * 1024)
+                var downloaded = baseOffset
+                onProgress(downloaded, total)
+                while (true) {
+                    val read = input.read(buffer)
+                    if (read < 0) break
+                    output.write(buffer, 0, read)
+                    downloaded += read
+                    onProgress(downloaded, total)
+                }
+                output.flush()
+            }
+        }
+        if (tmpFile.length() == 0L) throw IllegalStateException("Downloaded file is empty")
+        if (total != null && total > 0 && tmpFile.length() < total) {
+            throw EOFException("Download incomplete: ${tmpFile.length()}/$total bytes")
+        }
+    }
+
+    private fun finishPartial(tmpFile: File, destFile: File, expectedTotal: Long?): File {
+        if (expectedTotal != null && expectedTotal > 0 && tmpFile.length() < expectedTotal) {
+            throw EOFException("Download incomplete: ${tmpFile.length()}/$expectedTotal bytes")
+        }
+        if (destFile.exists()) destFile.delete()
+        if (!tmpFile.renameTo(destFile)) {
+            tmpFile.copyTo(destFile, overwrite = true)
+            tmpFile.delete()
+        }
+        return destFile
     }
 
     // minSdk is 26, so the API 26 unknown-sources APIs are always available.
