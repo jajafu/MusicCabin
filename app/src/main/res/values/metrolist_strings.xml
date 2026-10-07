@@ -1174,6 +1174,10 @@
     <string name="photo_frame_ktv_desc">Frame lyrics prefer word-synced LyricsPlus and Paxsenix sources. Other cached lyrics are refetched, falling back to whole-line display.</string>
     <string name="photo_frame_ktv_zh_tw" translatable="false">KTV 模式</string>
     <string name="photo_frame_ktv_desc_zh_tw" translatable="false">相框歌詞優先使用 LyricsPlus 與 Paxsenix 的逐字歌詞，其他快取歌詞會重新抓取，抓不到則退回整句顯示。</string>
+    <string name="photo_frame_s2t">Convert lyrics to Traditional Chinese</string>
+    <string name="photo_frame_s2t_desc">Automatically convert Simplified Chinese frame lyrics to Taiwan Traditional Chinese. Lyrics in other languages are left unchanged.</string>
+    <string name="photo_frame_s2t_zh_tw" translatable="false">歌詞簡轉繁</string>
+    <string name="photo_frame_s2t_desc_zh_tw" translatable="false">自動將簡體中文的相框歌詞轉為台灣繁體中文，其他語言的歌詞保持不變。</string>
     <string name="photo_frame_sources">Photos: %1$d</string>
     <string name="photo_frame_rescan">Rescan sources</string>
     <string name="photo_frame_clear">Clear selection</string>

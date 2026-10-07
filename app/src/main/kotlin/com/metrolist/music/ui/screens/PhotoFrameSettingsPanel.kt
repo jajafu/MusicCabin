@@ -213,6 +213,13 @@ internal fun PhotoFrameSettingsPanel(
                                 FrameSettingSwitch(frameTransferString(R.string.photo_frame_ktv, R.string.photo_frame_ktv_zh_tw), state.settings.ktvMode, enabled) { onSettings(state.settings.copy(ktvMode = it)) }
                             },
                         ),
+                        Material3SettingsItem(
+                            title = { Text(frameTransferString(R.string.photo_frame_s2t, R.string.photo_frame_s2t_zh_tw)) },
+                            description = { Text(frameTransferString(R.string.photo_frame_s2t_desc, R.string.photo_frame_s2t_desc_zh_tw)) },
+                            trailingContent = {
+                                FrameSettingSwitch(frameTransferString(R.string.photo_frame_s2t, R.string.photo_frame_s2t_zh_tw), state.settings.s2tEnabled, enabled) { onSettings(state.settings.copy(s2tEnabled = it)) }
+                            },
+                        ),
                     ),
                 )
             }

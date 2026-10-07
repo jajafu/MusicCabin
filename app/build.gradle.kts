@@ -118,8 +118,8 @@ android {
         applicationId = applicationIdOverride ?: baseApplicationId
         minSdk = 26
         targetSdk = 36
-        versionCode = 274
-        versionName = "13.7.44"
+        versionCode = 275
+        versionName = "13.7.45"
         buildConfigField("boolean", "PHOTO_FRAME_V2_AVAILABLE", "false")
         buildConfigField("boolean", "DRIVE_OAUTH_AVAILABLE", "false")
 
@@ -416,6 +416,8 @@ dependencies {
     implementation(libs.room.ktx)
 
     implementation(libs.apache.lang3)
+
+    implementation(libs.opencc4j)
 
     implementation(libs.hilt)
     implementation(libs.jsoup)

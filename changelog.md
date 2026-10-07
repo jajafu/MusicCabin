@@ -4,6 +4,18 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.45
+
+### 中文
+
+- 數位相框「顯示」設定新增「歌詞簡轉繁」（手機、TV、相框 2 共用）：開啟後以離線 opencc4j 字典將簡體中文相框歌詞轉為台灣繁體中文，不需網路與 API key；歌詞載入完成（含重新選擇歌詞）後，有至少 2 個簡體特徵字且多於繁體特徵字才轉換，其他語言保持不變。只替換顯示文字並保留時間軸與逐字時間，KTV 逐字掃光不受影響，原始歌詞仍存於資料庫，關閉即還原。
+- 版本 code 275；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Photo frame Display settings gain a Traditional Chinese lyrics option (shared by phone, TV, and frame 2): when enabled, Simplified Chinese frame lyrics are converted offline to Taiwan Traditional Chinese via the opencc4j dictionary with no network or API key needed. After lyrics finish loading (including reselected lyrics), conversion only runs when at least 2 Simplified-specific characters are found and they outnumber Traditional-specific ones; other languages are untouched. Only display text is replaced while timestamps and word timings are preserved, so the KTV sweep keeps working; the original lyrics stay in the database and turning the option off restores them.
+- Version code 275; no database schema change or data migration.
+
 ## 13.7.44
 
 ### 中文

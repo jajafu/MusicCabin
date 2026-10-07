@@ -280,6 +280,9 @@ internal fun TvPhotoFrameSettingsPanel(
                                 item { SettingsToggle(tvLocalizedString(R.string.photo_frame_ktv, R.string.photo_frame_ktv_zh_tw), state.settings.ktvMode, !busy) {
                                     viewModel.updateSettings(state.settings.copy(ktvMode = !state.settings.ktvMode))
                                 } }
+                                item { SettingsToggle(tvLocalizedString(R.string.photo_frame_s2t, R.string.photo_frame_s2t_zh_tw), state.settings.s2tEnabled, !busy) {
+                                    viewModel.updateSettings(state.settings.copy(s2tEnabled = !state.settings.s2tEnabled))
+                                } }
                             }
                         }
                         val visibleError = error ?: state.error
