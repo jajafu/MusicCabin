@@ -48,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -146,6 +147,7 @@ fun AppearanceSettings(
             defaultValue = true,
         )
     val iconContext = LocalContext.current
+    val isChinese = LocalConfiguration.current.locales[0].language == "zh"
     val onEnableDynamicIconChange: (Boolean) -> Unit = { newValue ->
         onEnableDynamicIconPrefChange(newValue)
         IconUtils.setIcon(iconContext, newValue)
@@ -805,7 +807,7 @@ fun AppearanceSettings(
                 modifier = Modifier.padding(16.dp),
             ) {
                 Text(
-                    text = stringResource(R.string.ui_scale_max),
+                    text = if (isChinese) stringResource(R.string.ui_scale_max_zh_tw) else stringResource(R.string.ui_scale_max),
                     style = MaterialTheme.typography.headlineSmall,
                     modifier = Modifier.padding(bottom = 16.dp),
                 )
@@ -817,7 +819,7 @@ fun AppearanceSettings(
                 )
 
                 Text(
-                    text = stringResource(R.string.ui_scale_max_desc),
+                    text = if (isChinese) stringResource(R.string.ui_scale_max_desc_zh_tw) else stringResource(R.string.ui_scale_max_desc),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 16.dp),
@@ -1839,11 +1841,11 @@ fun AppearanceSettings(
                     ),
                     Material3SettingsItem(
                         icon = painterResource(R.drawable.trending_up),
-                        title = { Text(stringResource(R.string.ui_scale_max)) },
+                        title = { Text(if (isChinese) stringResource(R.string.ui_scale_max_zh_tw) else stringResource(R.string.ui_scale_max)) },
                         description = {
                             Text(
                                 stringResource(
-                                    R.string.ui_scale_summary_auto,
+                                    if (isChinese) R.string.ui_scale_summary_auto_zh_tw else R.string.ui_scale_summary_auto,
                                     uiScaleLabel(adaptiveScaleMax),
                                 ),
                             )

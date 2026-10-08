@@ -68,12 +68,18 @@ const val FRAME_TEXT_BASELINE_SCALE = 1f
 const val FRAME_LYRICS_BASELINE_SCALE = 1f
 
 /**
- * Phone-size scale for the control row. The fork's previous 64.dp / 48.dp buttons were sized for
- * the old doubled text baseline, so at 1x they looked oversized next to 32sp clock text; these
- * keep a 48.dp minimum touch target while matching the stock Material control sizes.
+ * Phone-size scale for the control row. Buttons are 40dp (80dp at 2x uiScale)
+ * with 32dp glyphs; the tighter padding keeps the icon strip compact while
+ * the scaled-up size on head units and TVs stays an easy touch target.
  */
-const val FRAME_ICON_BUTTON_BASELINE_DP = 48f
+const val FRAME_ICON_BUTTON_BASELINE_DP = 40f
 const val FRAME_ICON_BASELINE_DP = 32f
+
+/**
+ * Horizontal gap between control-row icons. Tightened from the previous 8dp
+ * so the icon strip fits in one row at 1x.
+ */
+const val FRAME_ICON_SPACING_DP = 3f
 
 /**
  * Vertical gap between the information row (clock/song/artist) and the control row.

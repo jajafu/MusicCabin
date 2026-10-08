@@ -175,8 +175,11 @@
     <string name="tertiary_color_style">Tertiary color</string>
     <string name="display_density">Display density</string>
     <string name="ui_scale_summary_auto">Auto, up to %1$s</string>
+    <string name="ui_scale_summary_auto_zh_tw" translatable="false">自動，最高 %1$s</string>
     <string name="ui_scale_max">Auto scale limit</string>
+    <string name="ui_scale_max_zh_tw" translatable="false">自動縮放上限</string>
     <string name="ui_scale_max_desc">Grows from 1x at 360dp to this limit at 720dp; applies to the mini-player and photo frame</string>
+    <string name="ui_scale_max_desc_zh_tw" translatable="false">從 360dp 的 1x 放大到 720dp 的此上限；套用於迷你播放器與數位相框</string>
     <string name="restart">Restart</string>
     <string name="restart_required">Restart required!</string>
     <string name="density_restart_message">The display density change will take effect after restarting the app. Restart now?</string>

@@ -244,9 +244,9 @@ internal fun TvPhotoFrameSettingsPanel(
                                         }
                                     }
                                 }
-                                item { Text(stringResource(R.string.ui_scale_max), style = MaterialTheme.typography.titleMedium) }
+                                item { Text(tvLocalizedString(R.string.ui_scale_max, R.string.ui_scale_max_zh_tw), style = MaterialTheme.typography.titleMedium) }
                                 item {
-                                    Text(stringResource(R.string.ui_scale_max_desc), style = MaterialTheme.typography.bodyMedium,
+                                    Text(tvLocalizedString(R.string.ui_scale_max_desc, R.string.ui_scale_max_desc_zh_tw), style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                                 item {
@@ -262,7 +262,7 @@ internal fun TvPhotoFrameSettingsPanel(
                                     }
                                 }
                                 item {
-                                    Text(stringResource(R.string.ui_scale_summary_auto, uiScaleLabel(uiScaleMax)),
+                                    Text(tvLocalizedString(R.string.ui_scale_summary_auto, R.string.ui_scale_summary_auto_zh_tw, uiScaleLabel(uiScaleMax)),
                                         style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
                                 }
                                 item { SettingsToggle(stringResource(R.string.photo_frame_fill), state.settings.crop, !busy) {

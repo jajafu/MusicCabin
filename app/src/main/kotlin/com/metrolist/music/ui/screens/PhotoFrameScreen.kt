@@ -80,6 +80,7 @@ import com.metrolist.music.photo.FrameLyricsSourcePicker
 import com.metrolist.music.photo.FRAME_CONTROL_ICON_LIFT_DP
 import com.metrolist.music.photo.FRAME_ICON_BASELINE_DP
 import com.metrolist.music.photo.FRAME_ICON_BUTTON_BASELINE_DP
+import com.metrolist.music.photo.FRAME_ICON_SPACING_DP
 import com.metrolist.music.photo.FRAME_ROW_SPACING_DP
 import com.metrolist.music.photo.FRAME_TEXT_BASELINE_SCALE
 import com.metrolist.music.photo.FramePlaybackCommand
@@ -357,7 +358,7 @@ private fun FrameOverlayContent(
         }
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp * uiScale),
+            horizontalArrangement = Arrangement.spacedBy(FRAME_ICON_SPACING_DP.dp * uiScale),
             verticalArrangement = Arrangement.spacedBy(FRAME_ROW_SPACING_DP.dp * uiScale),
         ) {
             FrameIcon(R.drawable.skip_previous, R.string.photo_frame_previous, uiScale, enabled = canControl && canPrevious) { connection?.seekToPrevious() }

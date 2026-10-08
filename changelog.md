@@ -4,6 +4,22 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.55
+
+### 中文
+
+- 修正 TV 更新日誌文字看不到的問題：更新日誌與下載進度文字未指定顏色，預設黑色在深色背景上無法閱讀；改為白色文字。
+- 收緊數位相框操作列：圖示間距由 8dp 縮為 3dp，按鈕由 48dp 縮為 40dp（圖示本體維持 32dp），三種相框（手機／車機、TV、Drive）共用同一組基準；2X 縮放下按鈕仍有 80dp，觸控不受影響。
+- 補上外觀設定「自動縮放上限」的中文：標題、說明與自動摘要在中文語系直接顯示本地中文字串，不需等待 Crowdin 翻譯；TV 相框設定同步支援中文。
+- 版本 code 285；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Fixed unreadable TV changelog text: changelog and download progress text used the default black color on the dark background; now shown in white.
+- Tightened the photo frame control row: icon spacing reduced from 8dp to 3dp and buttons from 48dp to 40dp (glyphs stay 32dp), shared by all three frame variants (phone/head-unit, TV, Drive); buttons are still 80dp at 2x uiScale so touch is unaffected.
+- Added Chinese for the appearance Auto scale limit: title, description and auto summary now show local Chinese strings in Chinese locales without waiting for Crowdin; the TV frame settings show Chinese too.
+- Version code 285; no database schema change or data migration.
+
 ## 13.7.54
 
 ### 中文

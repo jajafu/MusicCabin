@@ -311,7 +311,11 @@ fun TvUpdatePage(
             item {
                 Column(Modifier.fillMaxWidth().padding(horizontal = 4.dp)) {
                     state.progressText?.let {
-                        Text(it, style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            it,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
                     }
                     LinearProgressIndicator(
                         progress = { state.progress },
@@ -402,6 +406,7 @@ fun TvUpdatePage(
                     Text(
                         text = state.changelog!!,
                         style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.padding(8.dp),
                     )
                 }
