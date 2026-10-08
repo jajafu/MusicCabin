@@ -218,7 +218,7 @@ fun BoxScope.FrameLyricsOverlay(
             .windowInsetsPadding(
                 WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal),
             )
-            .padding(horizontal = 24.dp * uiScale, vertical = 12.dp * uiScale),
+            .padding(horizontal = 24.dp * uiScale, vertical = 6.dp * uiScale),
         contentAlignment = Alignment.Center,
     ) {
         AnimatedContent(

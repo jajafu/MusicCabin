@@ -138,7 +138,6 @@ import com.metrolist.music.constants.EnableLandscapeScalingKey
 import com.metrolist.music.constants.ExperimentalLyricsKey
 import com.metrolist.music.constants.LastSeenVersionKey
 import com.metrolist.music.constants.ListenTogetherInTopBarKey
-import com.metrolist.music.constants.ListenTogetherUsernameKey
 import com.metrolist.music.constants.LyricsProviderOrderKey
 import com.metrolist.music.constants.MiniPlayerBottomSpacing
 import com.metrolist.music.constants.NavigationBarAnimationSpec
@@ -1074,17 +1073,6 @@ class MainActivity : ComponentActivity() {
                                                     contentDescription = stringResource(R.string.stats),
                                                 )
                                             }
-                                            if (listenTogetherInTopBar) {
-                                                IconButton(onClick = {
-                                                    ensureListenTogetherManager()
-                                                    navController.navigate("listen_together_from_topbar")
-                                                }) {
-                                                    Icon(
-                                                        painter = painterResource(R.drawable.group_outlined),
-                                                        contentDescription = stringResource(R.string.together),
-                                                    )
-                                                }
-                                            }
                                             IconButton(onClick = { showAccountDialog = true }) {
                                                 BadgedBox(badge = {
                                                     if (Updater.isUpdateAvailable(BuildConfig.VERSION_NAME, latestVersionName)) {
@@ -1542,23 +1530,6 @@ class MainActivity : ComponentActivity() {
             return
         }
         val coroutineScope = lifecycle.coroutineScope
-
-        val listenCode =
-            uri.getQueryParameter("code")
-                ?: uri.getQueryParameter("room")
-                ?: uri.pathSegments.getOrNull(1)
-        val isListenLink = uri.pathSegments.firstOrNull() == "listen" || uri.host?.equals("listen", ignoreCase = true) == true
-        if (!listenCode.isNullOrBlank() && isListenLink) {
-            coroutineScope.launch {
-                val manager = ensureListenTogetherManager()
-                val username =
-                    withContext(Dispatchers.IO) {
-                        dataStore.get(ListenTogetherUsernameKey, "")
-                    }.ifBlank { "Guest" }
-                manager.joinRoom(listenCode, username)
-            }
-            return
-        }
 
         when (val path = uri.pathSegments.firstOrNull()) {
             "playlist" -> {

@@ -239,7 +239,7 @@ fun TvPhotoFrameScreen(onExit: () -> Unit, viewModel: TvPhotoFrameViewModel = hi
             Column(
                 Modifier.align(Alignment.TopCenter).fillMaxWidth()
                     .background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.8f), Color.Black.copy(alpha = 0.55f), Color.Transparent)))
-                    .windowInsetsPadding(WindowInsets.safeDrawing).verticalScroll(rememberScrollState()).padding(16.dp * uiScale),
+                    .windowInsetsPadding(WindowInsets.safeDrawing).verticalScroll(rememberScrollState()).padding(8.dp * uiScale),
                 verticalArrangement = Arrangement.spacedBy(8.dp * uiScale),
             ) {
                 FrameOverlayContent(

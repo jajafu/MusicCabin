@@ -4,6 +4,42 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.62
+
+### 中文
+
+- 隱藏設定中的「串流來源」入口；各來源維持預設全部啟用，播放解析行為不變。曾手動關閉來源的舊設定會保留（不動資料），只是無法再從 UI 調整。
+- 版本 code 292；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Hide the Stream sources entry in Settings; all sources stay enabled by default with no change to stream-resolution behavior. Previously saved per-source toggles are preserved (no data change) but can no longer be adjusted from the UI.
+- Version code 292; no database schema change or data migration.
+
+## 13.7.61
+
+### 中文
+
+- 隱藏設定 → 帳號下的「整合」入口（一起聽、Discord、LastFM），並移除頂部列一起聽捷徑、播放器選單的一起聽項目及邀請連結自動加入房間；相關程式保留但不再被觸發，不會連接第三方伺服器。已登入 LastFM 或已啟用 Discord 的舊設定會維持原狀（不動資料），只是無法再從 UI 登出或停用。
+- 版本 code 291；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Hide the Settings → Account → Integrations entry (Listen Together, Discord, LastFM), and remove the top-bar Listen Together shortcut, the player-menu Listen Together item, and invite-link auto-join. The underlying code is retained but unreachable, so the app no longer contacts third-party servers. Previously saved LastFM logins or Discord enablement are left untouched (only the UI to sign out or disable is gone).
+- Version code 291; no database schema change or data migration.
+
+## 13.7.60
+
+### 中文
+
+- 相框 KTV 頂部控制層與底部歌詞的外層留白減半，讓照片顯示面積更大。
+- 版本 code 290；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Halved the outer top padding of the photo frame KTV control overlay and the outer bottom padding of the lyrics overlay to show more of the photo.
+- Version code 290; no database schema change or data migration.
+
 ## 13.7.59
 
 ### 中文

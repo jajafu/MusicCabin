@@ -418,18 +418,6 @@ fun AccountSettings(
                 .clip(RoundedCornerShape(16.dp))
                 .background(MaterialTheme.colorScheme.surfaceContainer)
         ) {
-            PreferenceEntry(
-                title = { Text(stringResource(R.string.integrations)) },
-                icon = { Icon(painterResource(R.drawable.integration), null) },
-                onClick = {
-                    onClose()
-                    navController.navigate("settings/integrations")
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surfaceContainer)
-            )
-
             Spacer(Modifier.height(4.dp))
 
             PreferenceEntry(
