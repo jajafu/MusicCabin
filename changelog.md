@@ -4,6 +4,22 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.59
+
+### 中文
+
+- 重新開啟 LrcLib 歌詞來源，並將歌詞提供者預設優先順序改為 Paxsenix、LyricsPlus、KuGou、Better Lyrics、LrcLib；YouTube 字幕與 YouTube Music 維持在可調整來源之後作為回退來源。
+- 修正 LyricsPlus 查詢歌曲時長的單位，避免把已是秒數的 YouTube Music 時長再次除以 1000。
+- 手動切換歌詞來源時，所有提供者單次最多查詢 8 秒，整體最多 25 秒；LyricsPlus 不再因 KuGou 等其他來源回傳超過兩筆候選而被跳過。
+- 版本 code 289；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Re-enabled LrcLib and changed the default lyrics-provider priority to Paxsenix, LyricsPlus, KuGou, Better Lyrics, and LrcLib; YouTube Subtitles and YouTube Music remain after the configurable providers as fallbacks.
+- Fixed the LyricsPlus duration parameter so the already-second-based YouTube Music duration is not divided by 1000 again.
+- Manual lyrics-source searches now allow up to 8 seconds per provider and 25 seconds overall; LyricsPlus is no longer skipped when KuGou or other providers return more than two candidates.
+- Version code 289; no database schema change or data migration.
+
 ## 13.7.58
 
 ### 中文

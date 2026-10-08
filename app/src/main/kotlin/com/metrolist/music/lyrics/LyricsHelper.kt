@@ -178,26 +178,32 @@ constructor(
 
         val allResult = mutableListOf<LyricsResult>()
         currentLyricsJob = CoroutineScope(SupervisorJob()).launch {
-            val cleanedTitle = LyricsUtils.cleanTitleForSearch(songTitle)
-            val preferences = context.dataStore.data.first()
-            val allProviders = resolveLyricsProviders(preferences)
-            val enabledProviders = allProviders.filter { it.isEnabled(preferences) }
+            val completed = withTimeoutOrNull(MAX_LYRICS_FETCH_MS) {
+                val cleanedTitle = LyricsUtils.cleanTitleForSearch(songTitle)
+                val preferences = context.dataStore.data.first()
+                val allProviders = resolveLyricsProviders(preferences)
+                val enabledProviders = allProviders.filter { it.isEnabled(preferences) }
 
-            val otherProviders = enabledProviders.filter { it.name != "LyricsPlus" }
-            val lyricsPlusProvider = enabledProviders.find { it.name == "LyricsPlus" }
+                val otherProviders = enabledProviders.filter { it.name != "LyricsPlus" }
+                val lyricsPlusProvider = enabledProviders.find { it.name == "LyricsPlus" }
 
-            val callbackMutex = Any()
+                val callbackMutex = Any()
 
-            val otherJobs = otherProviders.map { provider ->
-                launch {
+                val fetchProviderResults: suspend (LyricsProvider) -> Unit = { provider ->
                     try {
-                        provider.getAllLyrics(context, mediaId, cleanedTitle, songArtists, duration, album) { lyrics ->
-                            val filteredLyrics = LyricsUtils.filterLyricsCreditLines(lyrics)
-                            val result = LyricsResult(provider.name, filteredLyrics)
-                            synchronized(callbackMutex) {
-                                allResult += result
-                                callback(result)
+                        val providerCompleted = withTimeoutOrNull(PER_PROVIDER_TIMEOUT_MS) {
+                            provider.getAllLyrics(context, mediaId, cleanedTitle, songArtists, duration, album) { lyrics ->
+                                val filteredLyrics = LyricsUtils.filterLyricsCreditLines(lyrics)
+                                val result = LyricsResult(provider.name, filteredLyrics)
+                                synchronized(callbackMutex) {
+                                    allResult += result
+                                    callback(result)
+                                }
                             }
+                            true
+                        }
+                        if (providerCompleted == null) {
+                            Timber.tag("LyricsHelper").w("${provider.name} all-lyrics search timed out")
                         }
                     } catch (e: CancellationException) {
                         throw e
@@ -205,30 +211,24 @@ constructor(
                         reportException(e)
                     }
                 }
-            }
-            otherJobs.forEach { it.join() }
 
-            val otherLyricsCount = allResult.count { it.providerName != "LyricsPlus" }
-            if (lyricsPlusProvider != null && otherLyricsCount <= 2) {
-                launch {
-                    try {
-                        lyricsPlusProvider.getAllLyrics(context, mediaId, cleanedTitle, songArtists, duration, album) { lyrics ->
-                            val filteredLyrics = LyricsUtils.filterLyricsCreditLines(lyrics)
-                            val result = LyricsResult(lyricsPlusProvider.name, filteredLyrics)
-                            synchronized(callbackMutex) {
-                                allResult += result
-                                callback(result)
-                            }
-                        }
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (e: Exception) {
-                        reportException(e)
-                    }
-                }.join()
-            }
+                val otherJobs = otherProviders.map { provider ->
+                    launch { fetchProviderResults(provider) }
+                }
+                otherJobs.forEach { it.join() }
 
-            cache.put(cacheKey, allResult)
+                // Always query LyricsPlus when enabled; KuGou can return many candidates
+                // and must not suppress another provider from the manual source list.
+                lyricsPlusProvider?.let { provider ->
+                    fetchProviderResults(provider)
+                }
+
+                cache.put(cacheKey, allResult)
+                true
+            }
+            if (completed == null) {
+                Timber.tag("LyricsHelper").w("All-lyrics search timed out")
+            }
         }
 
         currentLyricsJob?.join()
