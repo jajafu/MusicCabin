@@ -114,7 +114,9 @@ internal fun PhotoFrameV2SettingsPanel(
                             LinearProgressIndicator(Modifier.fillMaxWidth())
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(stringResource(R.string.photo_frame_scanning, state.scanCount), Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
-                                TextButton(onClick = onCancelScan, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.photo_frame_cancel)) }
+                                OutlinedButton(onClick = onCancelScan, modifier = Modifier.heightIn(min = 48.dp)) {
+                                    Text(stringResource(R.string.photo_frame_cancel))
+                                }
                             }
                         }
                     }
@@ -159,7 +161,6 @@ internal fun PhotoFrameV2SettingsPanel(
                                 Material3SettingsItem(
                                     icon = painterResource(R.drawable.lyrics),
                                     title = { Text(stringResource(R.string.photo_frame_lyrics)) },
-                                    description = { Text(stringResource(R.string.photo_frame_lyrics_desc)) },
                                     enabled = enabled,
                                     trailingContent = {
                                         FrameSettingSwitch(R.string.photo_frame_lyrics, state.settings.showLyrics, enabled) { onSettings(state.settings.copy(showLyrics = it)) }
@@ -167,17 +168,7 @@ internal fun PhotoFrameV2SettingsPanel(
                                 ),
                                 Material3SettingsItem(
                                     icon = painterResource(R.drawable.lyrics),
-                                    title = { Text(frameV2String(FrameV2Text.KtvMode)) },
-                                    description = { Text(frameV2String(FrameV2Text.KtvModeDesc)) },
-                                    enabled = enabled,
-                                    trailingContent = {
-                                        FrameSettingSwitch(frameV2String(FrameV2Text.KtvMode), state.settings.ktvMode, enabled) { onSettings(state.settings.copy(ktvMode = it)) }
-                                    },
-                                ),
-                                Material3SettingsItem(
-                                    icon = painterResource(R.drawable.lyrics),
                                     title = { Text(frameV2String(FrameV2Text.S2tMode)) },
-                                    description = { Text(frameV2String(FrameV2Text.S2tModeDesc)) },
                                     enabled = enabled,
                                     trailingContent = {
                                         FrameSettingSwitch(frameV2String(FrameV2Text.S2tMode), state.settings.s2tEnabled, enabled) { onSettings(state.settings.copy(s2tEnabled = it)) }
@@ -201,8 +192,13 @@ internal fun PhotoFrameV2SettingsPanel(
                             FilledTonalButton(onClick = onRescan, enabled = enabled, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
                                 Text(stringResource(R.string.photo_frame_rescan))
                             }
-                            TextButton(onClick = { confirmClear = true }, enabled = enabled, modifier = Modifier.weight(1f).heightIn(min = 48.dp),
-                                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) {
+                            OutlinedButton(
+                                onClick = { confirmClear = true },
+                                enabled = enabled,
+                                modifier = Modifier.weight(1f).heightIn(min = 48.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
+                            ) {
                                 Text(stringResource(R.string.photo_frame_clear))
                             }
                         }
@@ -249,10 +245,22 @@ internal fun PhotoFrameV2SettingsPanel(
             title = { Text(stringResource(R.string.photo_frame_clear)) },
             text = { Text(stringResource(R.string.photo_frame_clear_confirm)) },
             confirmButton = {
-                TextButton(onClick = { confirmClear = false; onClear() }, enabled = enabled) { Text(stringResource(R.string.photo_frame_clear)) }
+                Button(
+                    onClick = { confirmClear = false; onClear() },
+                    enabled = enabled,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError,
+                    ),
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) {
+                    Text(stringResource(R.string.photo_frame_clear))
+                }
             },
             dismissButton = {
-                TextButton(onClick = { confirmClear = false }) { Text(stringResource(R.string.photo_frame_cancel)) }
+                OutlinedButton(onClick = { confirmClear = false }, modifier = Modifier.heightIn(min = 48.dp)) {
+                    Text(stringResource(R.string.photo_frame_cancel))
+                }
             },
         )
     }

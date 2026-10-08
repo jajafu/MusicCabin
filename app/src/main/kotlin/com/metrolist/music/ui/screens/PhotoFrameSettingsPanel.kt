@@ -1,5 +1,6 @@
 package com.metrolist.music.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -25,10 +27,10 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -54,7 +56,6 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.metrolist.music.R
 import com.metrolist.music.photo.FrameCatalogState
 import com.metrolist.music.photo.FrameError
-import com.metrolist.music.photo.FrameSelectionType
 import com.metrolist.music.photo.FrameSettings
 import com.metrolist.music.photo.FramePhotoQrCode
 import com.metrolist.music.photo.FramePhotoReceiver
@@ -157,7 +158,13 @@ internal fun PhotoFrameSettingsPanel(
                             transfer.count))
                         Text(frameTransferString(R.string.frame_transfer_stored, R.string.frame_transfer_stored_zh_tw,
                             receivedCount))
-                        TextButton(onClick = { confirmClearReceived = true }, enabled = enabled && receivedCount > 0) {
+                        OutlinedButton(
+                            onClick = { confirmClearReceived = true },
+                            enabled = enabled && receivedCount > 0,
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
+                            modifier = Modifier.heightIn(min = 48.dp),
+                        ) {
                             Text(frameTransferString(R.string.tv_photo_pair_clear, R.string.tv_photo_pair_clear_zh_tw))
                         }
                     }
@@ -167,7 +174,9 @@ internal fun PhotoFrameSettingsPanel(
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     LinearProgressIndicator(Modifier.fillMaxWidth())
                     Text(stringResource(R.string.photo_frame_scanning, state.scanCount))
-                    TextButton(onClick = onCancelScan) { Text(stringResource(R.string.photo_frame_cancel)) }
+                    OutlinedButton(onClick = onCancelScan, modifier = Modifier.heightIn(min = 48.dp)) {
+                        Text(stringResource(R.string.photo_frame_cancel))
+                    }
                 }
             }
             if (error != null) item {
@@ -209,21 +218,12 @@ internal fun PhotoFrameSettingsPanel(
                         ),
                         Material3SettingsItem(
                             title = { Text(stringResource(R.string.photo_frame_lyrics)) },
-                            description = { Text(stringResource(R.string.photo_frame_lyrics_desc)) },
                             trailingContent = {
                                 FrameSettingSwitch(R.string.photo_frame_lyrics, state.settings.showLyrics, enabled) { onSettings(state.settings.copy(showLyrics = it)) }
                             },
                         ),
                         Material3SettingsItem(
-                            title = { Text(frameTransferString(R.string.photo_frame_ktv, R.string.photo_frame_ktv_zh_tw)) },
-                            description = { Text(frameTransferString(R.string.photo_frame_ktv_desc, R.string.photo_frame_ktv_desc_zh_tw)) },
-                            trailingContent = {
-                                FrameSettingSwitch(frameTransferString(R.string.photo_frame_ktv, R.string.photo_frame_ktv_zh_tw), state.settings.ktvMode, enabled) { onSettings(state.settings.copy(ktvMode = it)) }
-                            },
-                        ),
-                        Material3SettingsItem(
                             title = { Text(frameTransferString(R.string.photo_frame_s2t, R.string.photo_frame_s2t_zh_tw)) },
-                            description = { Text(frameTransferString(R.string.photo_frame_s2t_desc, R.string.photo_frame_s2t_desc_zh_tw)) },
                             trailingContent = {
                                 FrameSettingSwitch(frameTransferString(R.string.photo_frame_s2t, R.string.photo_frame_s2t_zh_tw), state.settings.s2tEnabled, enabled) { onSettings(state.settings.copy(s2tEnabled = it)) }
                             },
@@ -235,10 +235,16 @@ internal fun PhotoFrameSettingsPanel(
                 Text(frameTransferString(R.string.frame_transfer_local_count, R.string.frame_transfer_local_count_zh_tw,
                     localPhotoCount), style = MaterialTheme.typography.titleMedium)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TextButton(onClick = onRescan, enabled = enabled && localSources.isNotEmpty()) {
+                    OutlinedButton(onClick = onRescan, enabled = enabled && localSources.isNotEmpty(), modifier = Modifier.heightIn(min = 48.dp)) {
                         Text(stringResource(R.string.photo_frame_rescan))
                     }
-                    TextButton(onClick = { confirmClear = true }, enabled = enabled && state.sources.isNotEmpty()) {
+                    OutlinedButton(
+                        onClick = { confirmClear = true },
+                        enabled = enabled && state.sources.isNotEmpty(),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
+                        modifier = Modifier.heightIn(min = 48.dp),
+                    ) {
                         Text(frameTransferString(R.string.frame_transfer_clear_all, R.string.frame_transfer_clear_all_zh_tw))
                     }
                 }
@@ -246,21 +252,6 @@ internal fun PhotoFrameSettingsPanel(
             items(localSources, key = { "${it.type}:${it.uri}" }) { source ->
                 ListItem(
                     headlineContent = { Text(source.name, maxLines = 2, overflow = TextOverflow.Ellipsis) },
-                    overlineContent = {
-                        Text(stringResource(if (source.type == FrameSelectionType.FOLDER) R.string.photo_frame_folder else R.string.photo_frame_photo))
-                    },
-                    supportingContent = {
-                        Text(
-                            when {
-                                source.needsPermission -> stringResource(R.string.photo_frame_permission)
-                                source.unavailable -> stringResource(R.string.photo_frame_unreadable)
-                                source.type == FrameSelectionType.FOLDER && !source.scanned -> stringResource(R.string.photo_frame_not_scanned)
-                                source.unreadableCount > 0 -> stringResource(R.string.photo_frame_failed_photos, source.unreadableCount, source.photoCount)
-                                source.photoCount == 0 -> stringResource(R.string.photo_frame_no_images)
-                                else -> stringResource(R.string.photo_frame_sources, source.photoCount)
-                            },
-                        )
-                    },
                     trailingContent = {
                         Row {
                             IconButton(onClick = { onRemove(source.uri) }, enabled = enabled) {
@@ -289,12 +280,22 @@ internal fun PhotoFrameSettingsPanel(
             text = { Text(frameTransferString(R.string.frame_transfer_clear_all_confirm,
                 R.string.frame_transfer_clear_all_confirm_zh_tw)) },
             confirmButton = {
-                TextButton(onClick = { confirmClear = false; onClear() }, enabled = enabled) {
+                Button(
+                    onClick = { confirmClear = false; onClear() },
+                    enabled = enabled,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError,
+                    ),
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) {
                     Text(frameTransferString(R.string.frame_transfer_clear_all, R.string.frame_transfer_clear_all_zh_tw))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { confirmClear = false }) { Text(stringResource(R.string.photo_frame_cancel)) }
+                OutlinedButton(onClick = { confirmClear = false }, modifier = Modifier.heightIn(min = 48.dp)) {
+                    Text(stringResource(R.string.photo_frame_cancel))
+                }
             },
         )
     }
@@ -304,12 +305,22 @@ internal fun PhotoFrameSettingsPanel(
             title = { Text(frameTransferString(R.string.tv_photo_pair_clear, R.string.tv_photo_pair_clear_zh_tw)) },
             text = { Text(frameTransferString(R.string.frame_transfer_clear_confirm, R.string.frame_transfer_clear_confirm_zh_tw)) },
             confirmButton = {
-                TextButton(onClick = { confirmClearReceived = false; onClearReceived() }, enabled = enabled) {
+                Button(
+                    onClick = { confirmClearReceived = false; onClearReceived() },
+                    enabled = enabled,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError,
+                    ),
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) {
                     Text(frameTransferString(R.string.tv_photo_pair_clear, R.string.tv_photo_pair_clear_zh_tw))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { confirmClearReceived = false }) { Text(stringResource(R.string.photo_frame_cancel)) }
+                OutlinedButton(onClick = { confirmClearReceived = false }, modifier = Modifier.heightIn(min = 48.dp)) {
+                    Text(stringResource(R.string.photo_frame_cancel))
+                }
             },
         )
     }

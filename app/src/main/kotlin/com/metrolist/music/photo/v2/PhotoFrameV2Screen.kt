@@ -265,7 +265,7 @@ fun PhotoFrameV2Screen(
             CircularProgressIndicator(Modifier.align(Alignment.Center), color = Color.White)
         }
         if (state.settings.showLyrics && !showSettings && !showMediaBrowser) {
-            FrameLyricsOverlay(textColor = Color.White.copy(alpha = 0.85f), uiScale = uiScale, ktvOnly = state.settings.ktvMode, s2tEnabled = state.settings.s2tEnabled)
+            FrameLyricsOverlay(textColor = Color.White.copy(alpha = 0.85f), uiScale = uiScale, s2tEnabled = state.settings.s2tEnabled)
         }
         if (showControls || empty) {
             Column(

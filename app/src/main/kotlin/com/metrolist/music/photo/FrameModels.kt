@@ -28,13 +28,10 @@ data class FrameSettings(
     val crop: Boolean = true,
     val showClock: Boolean = true,
     val showSongInfo: Boolean = true,
-    val showLyrics: Boolean = false,
-    val ktvMode: Boolean = false,
-    val s2tEnabled: Boolean = false,
+    val showLyrics: Boolean = true,
+    val s2tEnabled: Boolean = true,
 ) {
-    internal fun validated() = copy(
-        intervalSeconds = intervalSeconds.takeIf { it in setOf(5, 10, 15, 30, 60) } ?: 10,
-    )
+    internal fun validated() = copy(intervalSeconds = intervalSeconds.takeIf { it in setOf(5, 10, 15, 30, 60) } ?: 10)
 }
 
 enum class FrameError { STORAGE, PERMISSION, UNREADABLE, INVALID_IMAGE, MANIFEST }

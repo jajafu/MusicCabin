@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <string name="tv_photo_frame_title" translatable="false">Photo frame</string>
-    <string name="tv_photo_frame_title_zh_tw" translatable="false">數位相框</string>
+    <string name="tv_photo_frame_title" translatable="false">Photo frame KTV</string>
+    <string name="tv_photo_frame_title_zh_tw" translatable="false">相框KTV</string>
     <string name="tv_photo_local_title" translatable="false">Local photos</string>
     <string name="tv_photo_local_title_zh_tw" translatable="false">本地照片</string>
     <string name="tv_photo_play_local" translatable="false">Play local photos</string>
@@ -1143,8 +1143,8 @@
     <string name="stream_source_web_creator_desc">Creator web client.</string>
     <string name="stream_source_android_creator">ANDROID_CREATOR</string>
     <string name="stream_source_android_creator_desc">Android creator client. Off by default; needs DroidGuard.</string>
-    <string name="photo_frame">Photo frame</string>
-    <string name="photo_frame_settings">Photo frame settings</string>
+    <string name="photo_frame">Photo frame KTV</string>
+    <string name="photo_frame_settings">Photo frame KTV settings</string>
     <string name="photo_frame_local_only">Choose photos on this device or a connected USB drive. Use only while parked.</string>
     <string name="photo_frame_pick_photos">Choose photos</string>
     <string name="photo_browser_browse_device">Browse device</string>
@@ -1191,21 +1191,12 @@
     <string name="photo_frame_clock">Show clock</string>
     <string name="photo_frame_song_info">Show song information</string>
     <string name="photo_frame_lyrics">Show lyrics</string>
-    <string name="photo_frame_lyrics_desc">Show the current lyric line along the bottom edge.</string>
-    <string name="photo_frame_ktv">KTV mode</string>
-    <string name="photo_frame_ktv_desc">Frame lyrics prefer word-synced LyricsPlus and Paxsenix sources. Other cached lyrics are refetched, falling back to whole-line display.</string>
-    <string name="photo_frame_ktv_zh_tw" translatable="false">KTV 模式</string>
-    <string name="photo_frame_ktv_desc_zh_tw" translatable="false">相框歌詞優先使用 LyricsPlus 與 Paxsenix 的逐字歌詞，其他快取歌詞會重新抓取，抓不到則退回整句顯示。</string>
     <string name="photo_frame_s2t">Convert lyrics to Traditional Chinese</string>
-    <string name="photo_frame_s2t_desc">Automatically convert Simplified Chinese frame lyrics to Taiwan Traditional Chinese. Lyrics in other languages are left unchanged.</string>
     <string name="photo_frame_s2t_zh_tw" translatable="false">歌詞簡轉繁</string>
-    <string name="photo_frame_s2t_desc_zh_tw" translatable="false">自動將簡體中文的相框歌詞轉為台灣繁體中文，其他語言的歌詞保持不變。</string>
     <string name="photo_frame_sources">Photos: %1$d</string>
     <string name="photo_frame_rescan">Rescan sources</string>
     <string name="photo_frame_clear">Clear selection</string>
     <string name="photo_frame_clear_confirm">Remove all selected photos and folders from the frame? Your original files will not be deleted.</string>
-    <string name="photo_frame_folder">Folder</string>
-    <string name="photo_frame_photo">Photo</string>
     <string name="photo_frame_permission">Access needs renewal. Please select this photo or folder again.</string>
     <string name="photo_frame_unreadable">Some photos cannot be read. Check the USB connection, then rescan or select them again.</string>
     <string name="photo_frame_not_scanned">Not scanned yet. Tap Rescan sources.</string>
@@ -1234,8 +1225,8 @@
     <string name="musiccabin_support_contributor">Support %1$s</string>
 
     <!-- Photo frame 2 uses paired resources here to keep the experiment self-contained. -->
-    <string name="photo_frame_v2_title" translatable="false">Photo frame 2</string>
-    <string name="photo_frame_v2_title_zh_tw" translatable="false">數位相框 2</string>
+    <string name="photo_frame_v2_title" translatable="false">Photo frame KTV 2</string>
+    <string name="photo_frame_v2_title_zh_tw" translatable="false">相框KTV2</string>
     <string name="photo_frame_v2_entry_description" translatable="false">Play a Google Drive folder with image caching</string>
     <string name="photo_frame_v2_entry_description_zh_tw" translatable="false">Google Drive 資料夾輪播與圖片快取</string>
     <string name="photo_frame_v2_scope" translatable="false">Choose a Drive folder to play its photos randomly. Downloads are automatic and reuse the app’s image cache. Use only while parked.</string>

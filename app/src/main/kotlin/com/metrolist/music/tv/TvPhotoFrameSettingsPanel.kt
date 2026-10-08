@@ -24,7 +24,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -174,8 +173,13 @@ internal fun TvPhotoFrameSettingsPanel(
                                             modifier = Modifier.weight(1f).heightIn(min = 56.dp).tvFrameFocus()) {
                                             Text(stringResource(R.string.photo_frame_rescan))
                                         }
-                                        TextButton(onClick = { confirmClearLocal = true }, enabled = localSources.isNotEmpty() && !busy,
-                                            modifier = Modifier.weight(1f).heightIn(min = 56.dp).tvFrameFocus()) {
+                                        OutlinedButton(
+                                            onClick = { confirmClearLocal = true },
+                                            enabled = localSources.isNotEmpty() && !busy,
+                                            modifier = Modifier.weight(1f).heightIn(min = 56.dp).tvFrameFocus(),
+                                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
+                                        ) {
                                             Text(stringResource(R.string.photo_frame_clear))
                                         }
                                     }
@@ -222,9 +226,13 @@ internal fun TvPhotoFrameSettingsPanel(
                                     }
                                 }
                                 item {
-                                    TextButton(onClick = { confirmClearImported = true }, enabled = importedCount > 0,
+                                    OutlinedButton(
+                                        onClick = { confirmClearImported = true },
+                                        enabled = importedCount > 0,
                                         modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).tvFrameFocus(),
-                                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) {
+                                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
+                                    ) {
                                         Text(tvLocalizedString(R.string.tv_photo_pair_clear, R.string.tv_photo_pair_clear_zh_tw))
                                     }
                                 }
@@ -276,9 +284,6 @@ internal fun TvPhotoFrameSettingsPanel(
                                 } }
                                 item { SettingsToggle(stringResource(R.string.photo_frame_lyrics), state.settings.showLyrics, !busy) {
                                     viewModel.updateSettings(state.settings.copy(showLyrics = !state.settings.showLyrics))
-                                } }
-                                item { SettingsToggle(tvLocalizedString(R.string.photo_frame_ktv, R.string.photo_frame_ktv_zh_tw), state.settings.ktvMode, !busy) {
-                                    viewModel.updateSettings(state.settings.copy(ktvMode = !state.settings.ktvMode))
                                 } }
                                 item { SettingsToggle(tvLocalizedString(R.string.photo_frame_s2t, R.string.photo_frame_s2t_zh_tw), state.settings.s2tEnabled, !busy) {
                                     viewModel.updateSettings(state.settings.copy(s2tEnabled = !state.settings.s2tEnabled))
@@ -332,10 +337,23 @@ private fun SettingsToggle(label: String, selected: Boolean, enabled: Boolean, o
 @Composable
 private fun ConfirmClearDialog(title: String, message: String, onDismiss: () -> Unit, onConfirm: () -> Unit) {
     AlertDialog(onDismissRequest = onDismiss, title = { Text(title) }, text = { Text(message) },
-        confirmButton = { TextButton(onClick = onConfirm, modifier = Modifier.tvFrameFocus()) { Text(title) } },
-        dismissButton = { TextButton(onClick = onDismiss, modifier = Modifier.tvFrameFocus()) {
-            Text(stringResource(R.string.photo_frame_cancel))
-        } })
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                modifier = Modifier.heightIn(min = 48.dp).tvFrameFocus(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error,
+                    contentColor = MaterialTheme.colorScheme.onError,
+                ),
+            ) {
+                Text(title)
+            }
+        },
+        dismissButton = {
+            OutlinedButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp).tvFrameFocus()) {
+                Text(stringResource(R.string.photo_frame_cancel))
+            }
+        })
 }
 
 private fun Modifier.tvFrameFocus(): Modifier = composed {

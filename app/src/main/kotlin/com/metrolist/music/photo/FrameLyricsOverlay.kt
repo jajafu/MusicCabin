@@ -115,7 +115,6 @@ fun BoxScope.FrameLyricsOverlay(
     textColor: Color = Color.White,
     modifier: Modifier = Modifier,
     uiScale: Float = rememberAdaptiveUiScale(),
-    ktvOnly: Boolean = false,
     s2tEnabled: Boolean = false,
 ) {
     val connection = LocalPlayerConnection.current ?: return
@@ -128,9 +127,8 @@ fun BoxScope.FrameLyricsOverlay(
 
     // The service only pre-fetches lyrics when the player's own lyrics pane is enabled, so the
     // frame has to request them once per track or the layer stays blank.
-    LaunchedEffect(metadata?.id, lyricsEntity, ktvOnly) {
+    LaunchedEffect(metadata?.id, lyricsEntity) {
         val current = metadata ?: return@LaunchedEffect
-        if (!ktvOnly && lyricsEntity != null) return@LaunchedEffect
         delay(FRAME_LYRICS_FETCH_DELAY_MS)
         withContext(Dispatchers.IO) {
             runCatching {
@@ -138,13 +136,6 @@ fun BoxScope.FrameLyricsOverlay(
                     context.applicationContext,
                     LyricsHelperEntryPoint::class.java,
                 ).lyricsHelper()
-                if (!ktvOnly) {
-                    val fetched = helper.getLyrics(current)
-                    connection.database.query {
-                        upsert(LyricsEntity(current.id, fetched.lyrics, fetched.provider))
-                    }
-                    return@runCatching
-                }
                 val manualPick = context.isManualLyrics(current.id)
                 val cached = lyricsEntity?.lyrics
                 if (!cached.isNullOrBlank() && cached != LyricsEntity.LYRICS_NOT_FOUND &&
@@ -266,11 +257,12 @@ fun BoxScope.FrameLyricsOverlay(
                 if (previousLine.isNotEmpty()) {
                     AutoResizeText(
                         text = previousLine,
+                        modifier = Modifier.fillMaxWidth(),
                         fontSizeRange = FontSizeRange(min = minFontSize, max = maxFontSize),
                         color = sideColor,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        textAlign = TextAlign.Center,
+                        textAlign = frameLyricsTextAlign(lyricWindow.previousEntry),
                         style = style,
                     )
                 }
@@ -281,22 +273,33 @@ fun BoxScope.FrameLyricsOverlay(
                     lyricsOffset = lyricsOffset,
                     textColor = textColor,
                     maxFontSize = maxFontSize,
+                    textAlign = frameLyricsTextAlign(lyricWindow.currentEntry),
                 )
                 val nextLine = lyricWindow.nextEntry?.text?.trim().orEmpty()
                 if (nextLine.isNotEmpty()) {
                     AutoResizeText(
                         text = nextLine,
+                        modifier = Modifier.fillMaxWidth(),
                         fontSizeRange = FontSizeRange(min = minFontSize, max = maxFontSize),
                         color = sideColor,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        textAlign = TextAlign.Center,
+                        textAlign = frameLyricsTextAlign(lyricWindow.nextEntry),
                         style = style,
                     )
                 }
             }
         }
     }
+}
+
+/** Always apply the lyric provider's voice placement in the photo frame. */
+private fun frameLyricsTextAlign(entry: LyricsEntry?): TextAlign = when {
+    entry?.isBackground == true -> TextAlign.Center
+    entry?.agent == "v1" -> TextAlign.Left
+    entry?.agent == "v2" -> TextAlign.Right
+    entry?.agent == "v1000" -> TextAlign.Center
+    else -> TextAlign.Center
 }
 
 private data class FrameLyricsWindow(
@@ -330,6 +333,7 @@ private fun FrameKtvCurrentLine(
     lyricsOffset: Long,
     textColor: Color,
     maxFontSize: androidx.compose.ui.unit.TextUnit,
+    textAlign: TextAlign,
 ) {
     val connection = LocalPlayerConnection.current ?: return
     val item = entry ?: return
@@ -347,13 +351,13 @@ private fun FrameKtvCurrentLine(
         lyricStyle = androidx.compose.ui.text.TextStyle(
             fontSize = maxFontSize,
             fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-            textAlign = TextAlign.Center,
+            textAlign = textAlign,
             fontFamily = MaterialTheme.typography.bodyLarge.fontFamily,
         ),
         lineColor = textColor,
         expressiveAccent = textColor,
         isBackground = item.isBackground,
         focusedAlpha = textColor.alpha * FRAME_KTV_UNSUNG_ALPHA,
-        alignment = TextAlign.Center,
+        alignment = textAlign,
     )
 }

@@ -4,6 +4,44 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.58
+
+### 中文
+
+- 統一相框、相框 KTV2、TV 相框與照片瀏覽器的主要操作：重新掃描、取消掃描、關閉及重試改用實體外框按鈕；清除操作使用錯誤色按鈕，確認清除使用醒目的錯誤色實體按鈕，提升觸控與遙控器操作的辨識度。
+- 版本 code 288；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Unified the primary actions in the photo frame, Photo frame KTV 2, TV photo frame, and photo browser: rescan, cancel scan, close, and retry now use visible outlined buttons; clear actions use error-colored buttons, with destructive confirmation shown as a prominent error-colored filled button for clearer touch and remote-control interaction.
+- Version code 288; no database schema change or data migration.
+
+## 13.7.57
+
+### 中文
+
+- 簡化數位相框設定中的照片清單：每筆選取項目只保留檔案名稱與刪除按鈕，移除多餘的「照片／資料夾」標籤及照片數量／狀態摘要；頁面上方的照片總數仍保留。
+- 清理同步移除的多語言字串；版本 code 287，無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Simplified the photo list in Photo frame settings: each selected item now keeps only its file name and remove button, removing the redundant Photo/Folder label and photo-count/status summary while retaining the total count at the top.
+- Cleaned up the removed localized strings; version code 287, with no database schema change or data migration.
+
+## 13.7.56
+
+### 中文
+
+- 數位相框固定啟用歌詞聲部定位：`v1` 歌詞靠左、`v2` 歌詞靠右、`v1000` 與背景聲部置中；前一句、目前句及後一句都依各自聲部排列，且不受歌詞頁設定開關影響。
+- 將原「數位相框」重新命名為「相框KTV」，GMS 的 Drive 相框 2 命名為「相框KTV2」，英文名稱同步改為 Photo frame KTV／Photo frame KTV 2。
+- 相框設定移除 KTV 模式開關並固定使用 KTV 歌詞來源與渲染；「顯示歌詞」及「歌詞簡轉繁」的新預設值改為開啟，並移除這兩個選項下方的說明文字。既有使用者保存的顯示歌詞與簡轉繁選擇不被覆蓋。
+- 版本 code 286；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Photo frame lyrics now always respect voice-agent positioning: `v1` lines align left, `v2` lines align right, and `v1000` plus background vocals stay centered. The previous, current, and next lines each use their own voice placement, independent of the lyrics-page setting toggle.
+- Version code 286; no database schema change or data migration.
+
 ## 13.7.55
 
 ### 中文
@@ -108,6 +146,8 @@ This file records project-specific features, fixes, and build changes in `MusicC
 ### English
 
 - Fixed photo frame lyric scrolling where both animation windows used the latest current line, making the focused lyric appear stationary. Each window now renders its own indexed lyric content, moves by one visible line, fades less quickly, and scrolls longer. Playback scrolls upward; backward seeking reverses the direction.
+- Renamed the original Photo frame to Photo frame KTV and the GMS Drive frame 2 to Photo frame KTV 2; Traditional Chinese labels are now 相框KTV and 相框KTV2.
+- Removed the KTV mode switch from frame settings and always use the KTV lyric source and renderer. New defaults for Show lyrics and Convert lyrics to Traditional Chinese are enabled, and their supporting descriptions have been removed. Existing saved Show lyrics and conversion choices are preserved.
 - Version code 278; no database schema change or data migration.
 
 ## 13.7.47

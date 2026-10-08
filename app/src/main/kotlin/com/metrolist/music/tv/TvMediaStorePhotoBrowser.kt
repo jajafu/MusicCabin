@@ -47,7 +47,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -487,7 +486,7 @@ private fun MediaStoreStorageDiagnosticsDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp).tvBrowserFocus()) {
+            OutlinedButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp).tvBrowserFocus()) {
                 Text(stringResource(R.string.close))
             }
         },
@@ -607,7 +606,7 @@ private fun MediaStoreAlbumControls(
                 Modifier.weight(1f),
                 color = MaterialTheme.colorScheme.error,
             )
-            TextButton(onClick = onRetry, modifier = Modifier.heightIn(min = 48.dp).tvBrowserFocus()) {
+            OutlinedButton(onClick = onRetry, modifier = Modifier.heightIn(min = 48.dp).tvBrowserFocus()) {
                 Text(stringResource(R.string.retry))
             }
         }
