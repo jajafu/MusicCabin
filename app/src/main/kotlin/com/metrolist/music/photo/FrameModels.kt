@@ -15,6 +15,12 @@ data class FrameSource(
     val unavailable: Boolean = false,
     val scanned: Boolean = false,
     val unreadableCount: Int = 0,
+    // Decoded bounds recorded at import; 0 means unknown. Lets stable transfer
+    // imports skip revalidation and lets playback pick a screen-matching photo
+    // without trial decodes. Bounds ignore EXIF rotation, so they are only a
+    // hint: the decoded bitmap stays authoritative for pairing.
+    val width: Int = 0,
+    val height: Int = 0,
 )
 
 @Serializable
@@ -45,6 +51,9 @@ data class FrameCatalogState(
     val error: FrameError? = null,
     val initialized: Boolean = false,
 )
+
+internal fun FrameSource.cachedOrientation(): FramePhotoOrientation =
+    FramePhotoOrientation.of(width, height)
 
 internal fun mergeFramePhotos(sources: List<FrameSource>, indexed: List<FramePhoto>): List<FramePhoto> {
     val available = sources.filterNot { it.needsPermission || it.unavailable }

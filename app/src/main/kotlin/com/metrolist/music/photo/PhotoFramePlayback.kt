@@ -15,7 +15,11 @@ import kotlin.random.Random
 internal const val FRAME_HISTORY_LIMIT = 200
 
 /** Holds URI strings only; image ownership belongs to the visible screen. */
-internal class FrameShuffleQueue(uris: List<String>, private val random: Random = Random.Default) {
+internal class FrameShuffleQueue(
+    uris: List<String>,
+    private val random: Random = Random.Default,
+    preferredFirst: String? = null,
+) {
     private val photos = uris.distinct()
     private val failed = mutableSetOf<String>()
     private var round = emptyList<FrameQueueEntry>()
@@ -23,6 +27,12 @@ internal class FrameShuffleQueue(uris: List<String>, private val random: Random 
     private var index = 0
     private var previous: String? = null
     private var lastReadable: String? = null
+    // A screen-matching photo pinned from cached bounds: shown once up front
+    // so the first slide needs no trial decodes, then excluded from the first
+    // shuffled round so it is not repeated. Later rounds stay fully shuffled.
+    private val pinned: String? = preferredFirst?.takeIf { it in photos }
+    private var pendingPin: String? = pinned
+    private var excludePinnedFromNextRound = pinned != null
     private val history = mutableListOf<FrameQueueEntry>()
     private var historyIndex = -1
 
@@ -44,12 +54,23 @@ internal class FrameShuffleQueue(uris: List<String>, private val random: Random 
                 return next
             }
         }
+        pendingPin?.let { pin ->
+            pendingPin = null
+            if (pin !in failed) {
+                roundNumber = 0
+                return recordEntry(FrameQueueEntry(pin, 0))
+            }
+            excludePinnedFromNextRound = false
+        }
         while (true) {
             if (index >= round.size) {
                 val available = photos.filterNot { it in failed }
                 if (available.isEmpty()) return null
                 roundNumber++
-                round = available.shuffled(random).map { FrameQueueEntry(it, roundNumber) }.toMutableList().apply {
+                val firstRound = excludePinnedFromNextRound
+                excludePinnedFromNextRound = false
+                val candidates = if (firstRound && available.size > 1) available.filterNot { it == pinned } else available
+                round = candidates.shuffled(random).map { FrameQueueEntry(it, roundNumber) }.toMutableList().apply {
                     if (size > 1 && first().uri == previous) {
                         val swap = random.nextInt(1, size)
                         this[0] = this[swap].also { this[swap] = this[0] }
@@ -59,18 +80,22 @@ internal class FrameShuffleQueue(uris: List<String>, private val random: Random 
             }
             val next = round[index++]
             if (next.uri !in failed) {
-                history += next
-                while (history.size > FRAME_HISTORY_LIMIT) {
-                    history.removeAt(0)
-                }
-                historyIndex = history.lastIndex
-                previous = next.uri
-                return next
+                return recordEntry(next)
             }
         }
     }
 
     fun next(): String? = nextEntry()?.uri
+
+    private fun recordEntry(next: FrameQueueEntry): FrameQueueEntry {
+        history += next
+        while (history.size > FRAME_HISTORY_LIMIT) {
+            history.removeAt(0)
+        }
+        historyIndex = history.lastIndex
+        previous = next.uri
+        return next
+    }
 
     fun previous(currentUri: String? = null): String? {
         currentUri?.let { uri ->
@@ -147,8 +172,12 @@ internal data class FramePlaybackState<T>(
 )
 
 /** A pause checkpoint contains no decoded images and can survive a background interval. */
-internal class FramePlaybackSession(uris: List<String>, random: Random = Random.Default) {
-    val queue = FrameShuffleQueue(uris, random)
+internal class FramePlaybackSession(
+    uris: List<String>,
+    random: Random = Random.Default,
+    preferredFirst: String? = null,
+) {
+    val queue = FrameShuffleQueue(uris, random, preferredFirst)
     val empty = uris.isEmpty()
     val single = uris.distinct().size == 1
     var currentUris: List<String> = emptyList()
@@ -336,6 +365,111 @@ internal class PhotoFramePlayback<T : Any>(
                 }
             }
         }
+        /**
+         * Builds only the first slide with at most two readable decodes: a photo
+         * matching the screen shows alone, two pairable photos show as a pair,
+         * and a mismatched second photo shows alone while the first waits in
+         * [FramePlaybackSession.deferredPhotos]. Unreadable photos never count
+         * toward the budget. Later slides keep the exhaustive pair search above.
+         */
+        suspend fun buildFirstSlide(): FrameSlide<T>? {
+            if (session.buildingPrimary != null || session.buildingPartner != null) return buildNextSlide()
+            session.pendingUris?.let { pending ->
+                loadSlideByUris(pending)?.let { slide ->
+                    session.pendingUris = slide.uris
+                    return slide
+                }
+                session.pendingUris = null
+            }
+            var primary: FrameImage<T>? = null
+            var resolvedPrimary: FramePhotoCandidate? = null
+            while (primary == null) {
+                currentCoroutineContext().ensureActive()
+                val candidate = if (session.deferredPhotos.isNotEmpty()) {
+                    session.deferredPhotos.removeAt(0)
+                } else {
+                    val entry = queue.nextEntry() ?: return null
+                    FramePhotoCandidate(entry.uri, FramePhotoOrientation.UNKNOWN, entry.round)
+                }
+                session.pendingUris = listOf(candidate.uri)
+                val loaded = loadCandidate(candidate) ?: continue
+                val (frame, resolved) = loaded
+                if (!resolved.orientation.needsPairing(isLandscape())) {
+                    session.buildingPrimary = null
+                    session.buildingPartner = null
+                    session.pendingUris = listOf(frame.uri)
+                    return FrameSlide(listOf(frame))
+                }
+                primary = frame
+                resolvedPrimary = resolved
+                session.buildingPrimary = resolved
+            }
+            val first = requireNotNull(primary)
+            val firstCandidate = requireNotNull(resolvedPrimary)
+            while (true) {
+                currentCoroutineContext().ensureActive()
+                val deferredMatch = session.deferredPhotos.indexOfFirst {
+                    it.uri != first.uri && canPair(firstCandidate.orientation, it.orientation)
+                }
+                if (deferredMatch >= 0) {
+                    val partnerCandidate = session.deferredPhotos.removeAt(deferredMatch)
+                    session.buildingPartner = partnerCandidate
+                    val loaded = loadCandidate(partnerCandidate)
+                    if (loaded == null) {
+                        session.buildingPartner = null
+                        continue
+                    }
+                    val (partner, resolvedPartner) = loaded
+                    session.buildingPrimary = null
+                    session.buildingPartner = null
+                    if (canPair(firstCandidate.orientation, resolvedPartner.orientation)) {
+                        session.pendingUris = listOf(first.uri, partner.uri)
+                        return FrameSlide(listOf(first, partner))
+                    }
+                    return if (!resolvedPartner.orientation.needsPairing(isLandscape())) {
+                        session.deferredPhotos += firstCandidate
+                        session.pendingUris = listOf(partner.uri)
+                        FrameSlide(listOf(partner))
+                    } else {
+                        session.deferredPhotos += resolvedPartner
+                        session.pendingUris = listOf(first.uri)
+                        FrameSlide(listOf(first))
+                    }
+                }
+                val entry = queue.nextEntry()
+                if (entry == null || entry.uri == first.uri) {
+                    session.buildingPrimary = null
+                    session.buildingPartner = null
+                    session.pendingUris = listOf(first.uri)
+                    return FrameSlide(listOf(first))
+                }
+                session.pendingUris = listOf(first.uri)
+                session.buildingPartner = FramePhotoCandidate(entry.uri, FramePhotoOrientation.UNKNOWN, entry.round)
+                val loaded = loadCandidate(session.buildingPartner!!)
+                if (loaded == null) {
+                    session.buildingPartner = null
+                    continue
+                }
+                val (partner, resolvedPartner) = loaded
+                session.buildingPrimary = null
+                session.buildingPartner = null
+                if (canPair(firstCandidate.orientation, resolvedPartner.orientation)) {
+                    session.pendingUris = listOf(first.uri, partner.uri)
+                    return FrameSlide(listOf(first, partner))
+                }
+                // The second photo ends the wait: show its single when it fits
+                // the screen, otherwise show the first alone. Either way the
+                // other photo waits in deferredPhotos for a later pair.
+                session.deferredPhotos += firstCandidate
+                if (!resolvedPartner.orientation.needsPairing(isLandscape())) {
+                    session.pendingUris = listOf(partner.uri)
+                    return FrameSlide(listOf(partner))
+                }
+                session.deferredPhotos += resolvedPartner
+                session.pendingUris = listOf(first.uri)
+                return FrameSlide(listOf(first))
+            }
+        }
         fun recordSlide(slide: FrameSlide<T>) {
             val pendingHistory = session.pendingHistoryIndex
                 ?.takeIf { session.slideHistory.getOrNull(it) == slide.uris }
@@ -391,7 +525,7 @@ internal class PhotoFramePlayback<T : Any>(
 
         var current = session.currentUris.takeIf { it.isNotEmpty() }?.let { loadSlideByUris(it) }
         if (current == null) {
-            current = buildNextSlide()
+            current = if (session.slideHistory.isEmpty()) buildFirstSlide() else buildNextSlide()
             session.pendingUris = null
         }
         if (current == null) {

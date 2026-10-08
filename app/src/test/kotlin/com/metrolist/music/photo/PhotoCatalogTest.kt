@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.mutablePreferencesOf
 import androidx.datastore.preferences.core.stringPreferencesKey
 import java.io.File
 import java.io.FileNotFoundException
+import java.io.IOException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -155,8 +156,48 @@ class PhotoCatalogTest {
         assertEquals(photos, catalog.state.value.photos)
     }
 
+    @Test
+    fun `transfer import records bounds and skips revalidation on reopen`() = runBlocking {
+        val uri = deviceFileUri(temporary.newFile("sent.jpg"))
+        val catalog = catalog(isTransferImport = { true }, boundsReader = { 800 to 600 })
+        catalog.addPhotos(listOf(uri))
+        assertEquals(800, catalog.state.value.sources.single().width)
+        assertEquals(600, catalog.state.value.sources.single().height)
+
+        // A later start must trust the index: even if documents break, the photo stays.
+        documents.readError = IOException("Media provider gone")
+        val reopened = catalog(isTransferImport = { true }, boundsReader = { 800 to 600 })
+        reopened.initialize()
+        assertEquals(800, reopened.state.value.sources.single().width)
+        assertEquals(1, reopened.state.value.photos.size)
+        assertFalse(reopened.state.value.sources.single().unavailable)
+    }
+
+    @Test
+    fun `missing transfer file is reported without opening documents`() = runBlocking {
+        val file = temporary.newFile("gone.jpg")
+        val uri = deviceFileUri(file)
+        val catalog = catalog(isTransferImport = { true }, boundsReader = { 800 to 600 })
+        catalog.addPhotos(listOf(uri))
+        assertTrue(file.delete())
+
+        documents.readError = IOException("Documents must not be consulted")
+        val reopened = catalog(isTransferImport = { true }, boundsReader = { error("Bounds must not be re-read") })
+        reopened.initialize()
+        assertTrue(reopened.state.value.sources.single().unavailable)
+        assertTrue(reopened.state.value.photos.isEmpty())
+    }
+
     private fun manifest() = PhotoFrameManifest(File(temporary.root, "index.json"))
-    private fun catalog() = PhotoCatalog({ preferences }, { documents }, ::manifest)
+
+    // Device-shaped file URI (forward slashes): the app stores file.toUri()
+    // strings and re-parses them on later starts, which only round-trips with
+    // hierarchical paths. Windows backslash URIs do not survive that trip.
+    private fun deviceFileUri(file: File) = Uri.parse("file://" + file.toURI().toString().removePrefix("file:"))
+    private fun catalog(
+        isTransferImport: (String) -> Boolean = { false },
+        boundsReader: (String) -> Pair<Int, Int> = { 0 to 0 },
+    ) = PhotoCatalog({ preferences }, { documents }, ::manifest, isTransferImport, boundsReader)
 
     private suspend fun catalogWithLegacyFolder(): PhotoCatalog {
         documents.granted.add(folder)

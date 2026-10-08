@@ -1,6 +1,8 @@
 package com.metrolist.music.photo
 
 import android.content.Context
+import android.content.ContentResolver
+import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.core.net.toUri
 import androidx.datastore.core.DataStore
@@ -34,12 +36,16 @@ class PhotoCatalog internal constructor(
     private val preferencesFactory: () -> DataStore<Preferences>,
     private val documentsFactory: () -> FrameDocumentAccess,
     private val manifestFactory: () -> PhotoFrameManifest,
+    private val isTransferImport: (String) -> Boolean = { false },
+    private val boundsReader: (String) -> Pair<Int, Int> = { 0 to 0 },
 ) {
     @Inject
     constructor(@ApplicationContext context: Context) : this(
         { context.dataStore },
         { AndroidFrameDocumentAccess(context, allowReceivedImports = true) },
         { PhotoFrameManifest(File(context.filesDir, "photo_frame/index-v1.json")) },
+        { uri -> FramePhotoReceiver.isImportedUri(context, uri) },
+        framePhotoBoundsReader(context),
     )
 
     private val preferences by lazy(preferencesFactory)
@@ -65,7 +71,8 @@ class PhotoCatalog internal constructor(
             try {
                 documents.persistRead(uri)
                 val photo = documents.picked(uri)
-                sources[uri.toString()] = FrameSource(uri.toString(), photo.name, FrameSelectionType.PICKED_PHOTO, photoCount = 1, scanned = true)
+                val (width, height) = readBounds(uri.toString())
+                sources[uri.toString()] = FrameSource(uri.toString(), photo.name, FrameSelectionType.PICKED_PHOTO, photoCount = 1, scanned = true, width = width, height = height)
                 failedPhotos.remove(uri.toString())
             } catch (error: Exception) {
                 rethrowCancellation(error)
@@ -148,6 +155,14 @@ class PhotoCatalog internal constructor(
         mutableState.update { it.copy(sources = affected, error = FrameError.UNREADABLE) }
     }
 
+    private fun readBounds(uriString: String): Pair<Int, Int> = try {
+        boundsReader(uriString).let { (width, height) ->
+            if (width > 0 && height > 0) width to height else 0 to 0
+        }
+    } catch (_: Exception) {
+        0 to 0
+    }
+
     private suspend fun initializeLocked() {
         val stored = preferences.data.first()
         var damaged = false
@@ -168,6 +183,12 @@ class PhotoCatalog internal constructor(
         folderPhotos = read.manifest.photos.filter { it.sourceUri in folderUris }
         scannedFolders = read.manifest.scannedFolders.intersect(folderUris)
         val checked = sources.map { validate(it) }
+        if (checked.zip(sources).any { (new, old) -> new.width != old.width || new.height != old.height }) {
+            // Persist the one-time bounds backfill so later starts trust the index.
+            withContext(NonCancellable) {
+                preferences.edit { it[SourcesKey] = json.encodeToString(checked) }
+            }
+        }
         mutableState.value = FrameCatalogState(
             sources = checked,
             photos = mergeFramePhotos(checked, folderPhotos),
@@ -182,8 +203,7 @@ class PhotoCatalog internal constructor(
         )
     }
 
-    private suspend fun validate(source: FrameSource): FrameSource {
-        currentCoroutineContext().ensureActive()
+    private suspend fun validate(source: FrameSource): FrameSource {        currentCoroutineContext().ensureActive()
         val uri = source.uri.toUri()
         val count = if (source.type == FrameSelectionType.PICKED_PHOTO) 1 else folderPhotos.count { it.sourceUri == source.uri }
         val base = source.copy(photoCount = count, needsPermission = false, unavailable = false, unreadableCount = 0, scanned = source.type == FrameSelectionType.PICKED_PHOTO || source.uri in scannedFolders)
@@ -191,8 +211,25 @@ class PhotoCatalog internal constructor(
             if (source.type == FrameSelectionType.FOLDER) {
                 if (!documents.hasPersistedRead(uri)) return base.copy(needsPermission = true)
                 base.copy(name = documents.folder(uri).name)
+            } else if (source.width > 0 && source.height > 0 && isTransferImport(source.uri)) {
+                // Phone-sent copies live in our own directory: they are only
+                // appended or cleared as a whole, so a cheap existence check
+                // replaces the full document probe once bounds were recorded.
+                val exists = try {
+                    uri.path?.let(::File)?.exists() == true
+                } catch (_: Exception) {
+                    false
+                }
+                base.copy(unavailable = !exists)
             } else {
-                base.copy(name = documents.picked(uri).name)
+                val photo = documents.picked(uri)
+                // One-time backfill for imports predating bounds recording.
+                val (width, height) = if (source.width > 0 && source.height > 0) {
+                    source.width to source.height
+                } else {
+                    readBounds(source.uri)
+                }
+                base.copy(name = photo.name, width = width, height = height)
             }
         } catch (error: Exception) {
             rethrowCancellation(error)
@@ -301,5 +338,27 @@ class PhotoCatalog internal constructor(
     private companion object {
         val SourcesKey = stringPreferencesKey("photo_frame_sources_v1")
         val SettingsKey = stringPreferencesKey("photo_frame_settings_v1")
+    }
+}
+
+/**
+ * Reads image bounds without decoding pixels. Returns zeros when the image
+ * cannot be opened. Bounds ignore EXIF rotation, so callers must treat the
+ * resulting orientation as a hint only.
+ */
+internal fun framePhotoBoundsReader(context: Context): (String) -> Pair<Int, Int> = { uriString ->
+    try {
+        val uri = uriString.toUri()
+        val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        if (uri.scheme == ContentResolver.SCHEME_FILE) {
+            BitmapFactory.decodeFile(uri.path, options)
+        } else {
+            context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, options) }
+        }
+        val width = options.outWidth.takeIf { it > 0 } ?: 0
+        val height = options.outHeight.takeIf { it > 0 } ?: 0
+        width to height
+    } catch (_: Exception) {
+        0 to 0
     }
 }

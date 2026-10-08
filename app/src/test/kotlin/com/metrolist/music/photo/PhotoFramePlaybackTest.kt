@@ -288,46 +288,141 @@ class PhotoFramePlaybackTest {
         }
 
     @Test
-    fun `pair search skips mismatched photos to find a later matching orientation`() = runBlocking {
+    fun `first slide shows the second single instead of skipping it to pair`() = runBlocking {
         val portraits = listOf("portrait-a", "portrait-b")
         val landscape = "landscape-a"
         val pool = listOf(portraits[0], landscape, portraits[1])
         val seed = seedForQueueOrder(pool, pool)
         val session = FramePlaybackSession(pool, Random(seed))
         val engine = orientedEngine()
-        var firstSlide: List<String>? = null
 
-        try {
-            engine.play(
-                session, 0,
-                isLandscape = { true },
-                orientationOf = ::orientationOf,
-            ) { state ->
-                if (state.incoming == null && state.current != null) {
-                    firstSlide = state.current.uris
-                    throw CancellationException("First slide captured")
-                }
-            }
-        } catch (_: CancellationException) {
-            // Stop after the first slide has been committed.
-        }
+        // The first slide decodes at most two readable photos: the mismatched
+        // landscape shows alone so a weak TV paints fast; the first portrait
+        // waits deferred and pairs on the next slide.
+        val shown = collectSlides(engine, session, 2, true, ::orientationOf)
 
-        assertEquals(portraits.toSet(), firstSlide?.toSet())
-        assertEquals(listOf(landscape), session.deferredPhotos.map { it.uri })
+        assertEquals(listOf(listOf(landscape), portraits), shown)
+        assertTrue(session.deferredPhotos.isEmpty())
     }
 
     @Test
-    fun `cancelled pair search retains deferred candidate and resumes pairing`() = runBlocking {
-        val first = "portrait-a"
-        val deferred = "landscape-a"
-        val partner = "portrait-b"
-        val pool = listOf(first, deferred, partner)
+    fun `first slide shows a screen-matching photo with a single decode`() = runBlocking {
+        val pool = listOf("landscape-a", "portrait-b", "portrait-c")
         val session = FramePlaybackSession(pool, Random(seedForQueueOrder(pool, pool)))
-        val candidateLoading = CompletableDeferred<Unit>()
+        val loads = mutableListOf<String>()
+        val engine = PhotoFramePlayback<String>(
+            load = { uri: String -> loads += uri; uri },
+            onUnreadable = {},
+            transitionMillis = 0,
+        )
+        val shown = collectSlides(engine, session, 1, true, ::orientationOf)
+
+        assertEquals(listOf(listOf("landscape-a")), shown)
+        assertEquals(listOf("landscape-a"), loads)
+    }
+
+    @Test
+    fun `first slide pairs two pairable photos with two decodes`() = runBlocking {
+        val pool = listOf("portrait-a", "portrait-b", "landscape-c")
+        val session = FramePlaybackSession(pool, Random(seedForQueueOrder(pool, pool)))
+        val loads = mutableListOf<String>()
+        val engine = PhotoFramePlayback<String>(
+            load = { uri: String -> loads += uri; uri },
+            onUnreadable = {},
+            transitionMillis = 0,
+        )
+        val shown = collectSlides(engine, session, 1, true, ::orientationOf)
+
+        assertEquals(listOf(listOf("portrait-a", "portrait-b")), shown)
+        assertEquals(listOf("portrait-a", "portrait-b"), loads)
+    }
+
+    @Test
+    fun `first slide never decodes more than two readable photos`() = runBlocking {
+        // The exhaustive search would skip the landscape to pair the two
+        // portraits with three decodes; the fast first slide stops at two.
+        val pool = listOf("portrait-a", "landscape-b", "portrait-c", "landscape-d")
+        val session = FramePlaybackSession(pool, Random(seedForQueueOrder(pool, pool)))
+        val loads = mutableListOf<String>()
+        val engine = PhotoFramePlayback<String>(
+            load = { uri: String -> loads += uri; uri },
+            onUnreadable = {},
+            transitionMillis = 0,
+        )
+        val shown = collectSlides(engine, session, 1, true, ::orientationOf)
+
+        assertEquals(listOf(listOf("landscape-b")), shown)
+        assertEquals(listOf("portrait-a", "landscape-b"), loads)
+    }
+
+    @Test
+    fun `preferred first photo opens the slideshow without repeating in its round`() = runBlocking {
+        val pool = listOf("a", "b", "c", "d")
+        val session = FramePlaybackSession(pool, Random(0), preferredFirst = "c")
+        val shown = collectSlides(orientedEngine(), session, 4, true, ::orientationOf)
+
+        assertEquals(listOf("c"), shown.first())
+        assertEquals(pool.toSet(), shown.flatten().toSet())
+        assertEquals(1, shown.flatten().count { it == "c" })
+    }
+
+    @Test
+    fun `unknown preferred photo leaves shuffle order untouched`() {
+        val pool = listOf("a", "b", "c")
+        val plain = FrameShuffleQueue(pool, Random(42)).let { queue -> List(pool.size) { queue.next() } }
+        val pinned = FrameShuffleQueue(pool, Random(42), preferredFirst = "missing")
+            .let { queue -> List(pool.size) { queue.next() } }
+        assertEquals(plain, pinned)
+    }
+
+    @Test
+    fun `single photo with preferred pin still shows alone`() = runBlocking {
+        var loads = 0
+        val engine = PhotoFramePlayback<String>(
+            load = { uri: String -> loads++; uri },
+            onUnreadable = {},
+            transitionMillis = 0,
+        )
+        var state: FramePlaybackState<String>? = null
+        engine.play(
+            FramePlaybackSession(listOf("a"), preferredFirst = "a"), 60_000,
+            isLandscape = { true },
+            orientationOf = { FramePhotoOrientation.UNKNOWN },
+        ) { state = it }
+        assertEquals(listOf("a"), state!!.current!!.uris)
+        assertEquals(1, loads)
+    }
+
+    @Test
+    fun `single portrait photo shows alone with one decode`() = runBlocking {
+        val loads = mutableListOf<String>()
+        val engine = PhotoFramePlayback<String>(
+            load = { uri: String -> loads += uri; uri },
+            onUnreadable = {},
+            transitionMillis = 0,
+        )
+        var state: FramePlaybackState<String>? = null
+        engine.play(
+            FramePlaybackSession(listOf("portrait-a")), 60_000,
+            isLandscape = { true },
+            orientationOf = ::orientationOf,
+        ) { state = it }
+        assertEquals(listOf("portrait-a"), state!!.current!!.uris)
+        assertEquals(listOf("portrait-a"), loads)
+    }
+
+    @Test
+    fun `cancelled first-slide search retains candidates and resumes pairing`() = runBlocking {
+        val first = "portrait-a"
+        val second = "landscape-a"
+        val partner = "portrait-b"
+        val pool = listOf(first, second, partner)
+        val session = FramePlaybackSession(pool, Random(seedForQueueOrder(pool, pool)))
+        val secondLoading = CompletableDeferred<Unit>()
         val interrupted = PhotoFramePlayback<String>(
             load = { uri ->
-                if (uri == partner) {
-                    candidateLoading.complete(Unit)
+                if (uri == second) {
+                    secondLoading.complete(Unit)
                     awaitCancellation()
                 }
                 uri
@@ -341,12 +436,12 @@ class PhotoFramePlaybackTest {
                 orientationOf = ::orientationOf,
             ) { error("The interrupted slide must not be published") }
         }
-        candidateLoading.await()
+        secondLoading.await()
         interruptedJob.cancelAndJoin()
 
         assertEquals(first, session.buildingPrimary?.uri)
-        assertEquals(partner, session.buildingPartner?.uri)
-        assertEquals(listOf(deferred), session.deferredPhotos.map { it.uri })
+        assertEquals(second, session.buildingPartner?.uri)
+        assertTrue(session.deferredPhotos.isEmpty())
 
         val resumedSlide = CompletableDeferred<List<String>>()
         val resumeEngine = orientedEngine()
@@ -365,7 +460,7 @@ class PhotoFramePlaybackTest {
             // The restored first slide is sufficient for this checkpoint.
         }
         assertEquals(setOf(first, partner), resumedSlide.await().toSet())
-        assertEquals(listOf(deferred), session.deferredPhotos.map { it.uri })
+        assertEquals(listOf(second), session.deferredPhotos.map { it.uri })
 
         val nextSlide = CompletableDeferred<List<String>>()
         val finalJob = launch {
@@ -377,13 +472,13 @@ class PhotoFramePlaybackTest {
                 if (state.incoming == null && state.current != null) {
                     if (state.current.uris == listOf(first, partner)) {
                         session.request(FramePlaybackCommand.NEXT)
-                    } else if (state.current.uris == listOf(deferred)) {
+                    } else if (state.current.uris == listOf(second)) {
                         nextSlide.complete(state.current.uris)
                     }
                 }
             }
         }
-        assertEquals(listOf(deferred), nextSlide.await())
+        assertEquals(listOf(second), nextSlide.await())
         finalJob.cancelAndJoin()
     }
 

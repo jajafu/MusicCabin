@@ -118,8 +118,8 @@ android {
         applicationId = applicationIdOverride ?: baseApplicationId
         minSdk = 26
         targetSdk = 36
-        versionCode = 292
-        versionName = "13.7.62"
+        versionCode = 294
+        versionName = "13.7.64"
         buildConfigField("boolean", "PHOTO_FRAME_V2_AVAILABLE", "false")
         buildConfigField("boolean", "DRIVE_OAUTH_AVAILABLE", "false")
 

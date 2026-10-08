@@ -93,7 +93,9 @@ import com.metrolist.music.photo.FRAME_ROW_SPACING_DP
 import com.metrolist.music.photo.FRAME_TEXT_BASELINE_SCALE
 import com.metrolist.music.photo.FrameLyricsOverlay
 import com.metrolist.music.photo.FrameLyricsSourcePicker
+import com.metrolist.music.photo.FramePhotoOrientation
 import com.metrolist.music.photo.FramePhotoReceiver
+import com.metrolist.music.photo.cachedOrientation
 import com.metrolist.music.photo.FramePlaybackCommand
 import com.metrolist.music.photo.FramePlaybackState
 import com.metrolist.music.photo.FramePlaybackSession
@@ -168,14 +170,26 @@ fun TvPhotoFrameScreen(onExit: () -> Unit, viewModel: TvPhotoFrameViewModel = hi
         val factor = (1920f / maxOf(constraints.maxWidth, constraints.maxHeight).coerceAtLeast(1)).coerceAtMost(1f)
         val width = (constraints.maxWidth * factor).toInt().coerceAtLeast(1)
         val height = (constraints.maxHeight * factor).toInt().coerceAtLeast(1)
+        val isLandscape = constraints.maxWidth > constraints.maxHeight
         val uris = remember(state.photos, source) {
             state.photos.filter { photo ->
                 val imported = FramePhotoReceiver.isImportedUri(context, photo.uri)
                 if (source == TvPhotoFrameViewModel.Source.TRANSFER) imported else !imported
             }.map { it.uri }
         }
-        val session = remember(uris, generation) { FramePlaybackSession(uris) }
-        val isLandscape = constraints.maxWidth > constraints.maxHeight
+        // Play a cached screen-matching photo first so the opening slide needs
+        // no trial decodes; bounds are only a hint and the decoded bitmap
+        // still governs pairing, with a graceful fallback when stale.
+        val preferredFirst = remember(state.photos, source, isLandscape) {
+            val want = if (isLandscape) FramePhotoOrientation.LANDSCAPE else FramePhotoOrientation.PORTRAIT
+            val orientationBySource = state.sources.associate { it.uri to it.cachedOrientation() }
+            state.photos.firstOrNull { photo ->
+                val imported = FramePhotoReceiver.isImportedUri(context, photo.uri)
+                val matchesSource = if (source == TvPhotoFrameViewModel.Source.TRANSFER) imported else !imported
+                matchesSource && orientationBySource[photo.sourceUri] == want
+            }?.uri
+        }
+        val session = remember(uris, generation, preferredFirst) { FramePlaybackSession(uris, preferredFirst = preferredFirst) }
         val landscapeNow by rememberUpdatedState(isLandscape)
         // TV screens are large; scale overlay text and icons with the short edge.
         val uiScale = rememberFrameUiScale()

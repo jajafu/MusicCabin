@@ -4,6 +4,30 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.64
+
+### 中文
+
+- 手機傳入的相框照片只在首次問候一次：收到時記下長寬，之後開機只檢查檔案還在不在，不再逐張重新掃描；開播直接挑符合螢幕方向的照片，首幀不需試解。
+- 版本 code 294；無資料庫 schema 變更，升級不需遷移資料。舊索引會在下次開啟時自動補上長寬，之後同樣加速。
+
+### English
+
+- Phone-sent frame photos are now greeted only once: dimensions are recorded on receipt, and later starts only check the files still exist instead of rescanning every photo. Playback opens with a screen-matching photo right away, with no trial decodes for the first slide.
+- Version code 294; no database schema change or data migration. Existing indexes backfill their dimensions on the next launch and speed up the same way after that.
+
+## 13.7.63
+
+### 中文
+
+- 相框首張照片加速顯示：首幀最多解碼兩張可讀照片就開播（符合螢幕方向的單張直接播，兩張可湊對就播一對，第二張方向不合就播第二張單張），不再為了湊對連續解碼多張；被跳過的照片保留待播，下一輪照舊湊對輪播。
+- 版本 code 293；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Faster first photo in the photo frame: the opening slide now decodes at most two readable photos before showing (a screen-matching single shows alone, two pairable photos show as a pair, and a mismatched second photo shows alone as its single), instead of decoding through many photos to complete a pair. Skipped photos stay queued and pair normally from the next slide.
+- Version code 293; no database schema change or data migration.
+
 ## 13.7.62
 
 ### 中文
