@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.metrolist.music.photo.FrameError
+import com.metrolist.music.photo.FrameSelectionType
 import com.metrolist.music.photo.FrameSettings
 import com.metrolist.music.photo.PhotoCatalog
 import com.metrolist.music.photo.FramePhotoReceiver
@@ -60,17 +61,32 @@ class TvPhotoFrameViewModel @Inject constructor(
     fun initialize() {
         if (operation?.isActive == true) return
         runOperation {
+            val saved = context.dataStore.data.first()
+            if (!sourceLoaded) {
+                // Apply a saved source before validation so first paint isn't
+                // gated on it: the trusted index published mid-initialize can
+                // already feed playback while checks continue in background.
+                Source.entries.firstOrNull { it.name == saved[SourceKey] }?.let {
+                    mutableSource.value = it
+                    sourceLoaded = true
+                }
+            }
             catalog.initialize()
             migratePreviousTvPhotos()
             if (!sourceLoaded) {
-                val saved = context.dataStore.data.first()
-                mutableSource.value = Source.entries.firstOrNull { it.name == saved[SourceKey] }
-                    ?: when {
-                        saved[PreviousSourceKey] == "DRIVE" -> Source.TRANSFER
-                        state.value.sources.none { !FramePhotoReceiver.isImportedUri(context, it.uri) } &&
-                            state.value.sources.any { FramePhotoReceiver.isImportedUri(context, it.uri) } -> Source.TRANSFER
-                        else -> Source.LOCAL
+                mutableSource.value = when {
+                    saved[PreviousSourceKey] == "DRIVE" -> Source.TRANSFER
+                    else -> {
+                        var hasImported = false
+                        var hasLocal = false
+                        for (source in state.value.sources) {
+                            if (FramePhotoReceiver.isImportedUri(context, source.uri)) hasImported = true
+                            else hasLocal = true
+                            if (hasImported && hasLocal) break
+                        }
+                        if (!hasLocal && hasImported) Source.TRANSFER else Source.LOCAL
                     }
+                }
                 sourceLoaded = true
             }
         }
@@ -89,16 +105,29 @@ class TvPhotoFrameViewModel @Inject constructor(
         previousTvCatalog.initialize()
         val legacy = previousTvCatalog.state.value
         if (!legacy.initialized) return
-        val empty = state.value.sources.isEmpty()
-        catalog.importSources(legacy.sources)
         val received = FramePhotoReceiver.importsDirectory(context).listFiles().orEmpty()
             .filter { it.isFile && it.extension.equals("jpg", ignoreCase = true) }
             .map { it.toUri() }
-        if (received.isNotEmpty()) catalog.addPhotos(received)
-        val expected = legacy.sources.map { it.uri } + received.map { it.toString() }
-        if (!expected.all { uri -> state.value.sources.any { it.uri == uri } }) return
+        if (legacy.sources.isEmpty() && received.isEmpty()) {
+            // Nothing to migrate: record that so every cold start doesn't
+            // retry the whole import. Uninitialized legacy keeps retrying,
+            // which costs only one failed read and never abandons data.
+            context.dataStore.edit { it[MigratedKey] = true }
+            return
+        }
+        val empty = state.value.sources.isEmpty()
+        catalog.importSources(legacy.sources)
+        val alreadyHave = state.value.sources.mapTo(hashSetOf()) { it.uri }
+        val newReceived = received.filter { it.toString() !in alreadyHave }
+        if (newReceived.isNotEmpty()) catalog.addPhotos(newReceived)
+        // Received files are best-effort: a permanently unreadable copy must
+        // not block the flag forever. Legacy entries must all land, so a
+        // transient failure can still be retried on the next start.
+        if (!legacy.sources.all { legacySource -> state.value.sources.any { it.uri == legacySource.uri } }) return
         if (empty && legacy.sources.isNotEmpty()) catalog.updateSettings(legacy.settings)
-        catalog.rescan()
+        // Folder children only materialize through a scan; picked photos are
+        // already validated above, so skip the redundant full rescan otherwise.
+        if (legacy.sources.any { it.type == FrameSelectionType.FOLDER }) catalog.rescan()
         context.dataStore.edit { it[MigratedKey] = true }
         mutableGeneration.value++
     }

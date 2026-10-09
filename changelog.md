@@ -4,6 +4,48 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.67
+
+### 中文
+
+- 已存的相框來源在驗證前先生效：信任索引發布後首圖可直接開解，不再等完整驗證、搬家與來源判定跑完。
+- 搬家旗只在舊目錄成功初始化後寫入：初始化失敗保留下次重試（僅一次失敗讀取的成本），確認無物可搬才記旗，避免舊照片被靜默跳過。
+- 還原傳圖 Coil 磁碟快取為關閉：磁碟快取只存來源位元組，省不掉冷解碼，反而多佔電視儲存。
+- 版本 code 297；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Apply the saved frame source before validation: the first slide can decode from the trusted index without waiting for full validation, migration, and source detection.
+- Write the migration flag only after the legacy catalog initializes: failed initializations keep retrying (costing a single failed read) and the flag is set only when there is confirmed nothing to migrate, so old photos are never silently skipped.
+- Revert Coil disk cache to disabled for transferred photos: the disk layer stores source bytes and cannot skip the cold decode while duplicating files on TV storage.
+- Version code 297; no database schema change or data migration.
+
+## 13.7.66
+
+### 中文
+
+- 相框索引先信任發布再背景驗證：開機先拿存檔名單開播第一張，不再等全部檢查完；授權失效或檔案遺失在驗證完成後修正。
+- 舊相框搬家只跑一次：無物可搬直接記旗，已收到的傳圖不再重複加入，只有資料夾來源才重掃，損壞的傳圖不再卡住旗標。
+- 版本 code 296；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Publish the trusted frame index before background validation: playback opens with the saved list right away instead of waiting for every check; revoked grants or missing files are corrected once validation finishes.
+- Run the legacy frame migration only once: flag it done when there is nothing to migrate, skip already-imported transfers, rescan only for folder sources, and stop corrupt transfers from blocking the flag.
+- Version code 296; no database schema change or data migration.
+
+## 13.7.65
+
+### 中文
+
+- TV 相框進場清理多餘掃描：傳圖根目錄 canonical 化只算一次並重用，照片清單與首張釘選合併為一次遍歷（含來源長寬 key，不再因索引回填而釘選失效），無照片時不啟動播放協程，來源判斷改為單次遍歷。
+- 版本 code 295；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Clean up redundant TV frame entry scans: the transfer root is canonicalized once and reused, the photo list and first-slide pin are computed in a single pass (keyed on source dimensions so backfills no longer stale the pin), no playback coroutine starts with an empty library, and source detection uses one pass.
+- Version code 295; no database schema change or data migration.
+
 ## 13.7.64
 
 ### 中文

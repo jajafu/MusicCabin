@@ -156,8 +156,11 @@ private const val DirectRootCacheMillis = 5_000L
 internal fun isFileWithinRoot(file: File, root: File): Boolean {
     val checkedFile = runCatching { file.canonicalFile }.getOrNull() ?: return false
     val checkedRoot = runCatching { root.canonicalFile }.getOrNull() ?: return false
-    return checkedFile == checkedRoot || checkedFile.path.startsWith(checkedRoot.path + File.separator)
+    return isFileWithinCanonicalRoot(checkedFile, checkedRoot)
 }
+
+internal fun isFileWithinCanonicalRoot(canonicalFile: File, canonicalRoot: File): Boolean =
+    canonicalFile == canonicalRoot || canonicalFile.path.startsWith(canonicalRoot.path + File.separator)
 
 // Keep the existing directory so TV upgrades can reuse received photos without copying them.
 internal fun framePhotoImportsDirectory(context: Context) = File(context.filesDir, "photo_frame_v2/tv_imports")

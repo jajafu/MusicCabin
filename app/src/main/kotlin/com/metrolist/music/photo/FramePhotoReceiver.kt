@@ -162,11 +162,29 @@ internal class FramePhotoReceiver(
         const val PORT = 38747
         const val MAX_BYTES = 2 * 1024 * 1024
         const val MAX_EDGE = 4096
+        // filesDir never moves within a process, so canonicalize the imports
+        // root once instead of on every isImportedUri() call. Each call still
+        // canonicalizes its own file, which is required for correctness.
+        @Volatile private var cachedRootPath: String? = null
+        @Volatile private var cachedRoot: File? = null
         fun importsDirectory(context: Context) = framePhotoImportsDirectory(context)
+        fun canonicalImportsRoot(context: Context): File {
+            val key = importsDirectory(context).absolutePath
+            cachedRoot?.takeIf { cachedRootPath == key }?.let { return it }
+            synchronized(this) {
+                cachedRoot?.takeIf { cachedRootPath == key }?.let { return it }
+                val canonical = runCatching { importsDirectory(context).canonicalFile }
+                    .getOrNull() ?: importsDirectory(context).absoluteFile
+                cachedRoot = canonical
+                cachedRootPath = key
+                return canonical
+            }
+        }
         fun isImportedUri(context: Context, uri: String): Boolean {
             val parsed = Uri.parse(uri)
-            val file = parsed.path?.let(::File) ?: return false
-            return parsed.scheme == "file" && isFileWithinRoot(file, importsDirectory(context))
+            if (parsed.scheme != "file") return false
+            val file = parsed.path?.let(::File)?.let { runCatching { it.canonicalFile }.getOrNull() } ?: return false
+            return isFileWithinCanonicalRoot(file, canonicalImportsRoot(context))
         }
 
         private fun privateAddress(context: Context): Inet4Address? {

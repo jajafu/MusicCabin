@@ -9,10 +9,14 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import java.io.File
 import java.io.FileNotFoundException
 import java.io.IOException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
@@ -188,6 +192,34 @@ class PhotoCatalogTest {
         assertTrue(reopened.state.value.photos.isEmpty())
     }
 
+    @Test
+    fun `initialize publishes trusted index before validation finishes`() = runBlocking {
+        val gate = CompletableDeferred<Unit>()
+        documents.pickedGate = gate
+        preferences.updateData {
+            mutablePreferencesOf(
+                stringPreferencesKey("photo_frame_sources_v1") to Json.encodeToString(
+                    listOf(FrameSource(image.toString(), "one", FrameSelectionType.PICKED_PHOTO)),
+                ),
+            )
+        }
+        val catalog = catalog()
+        val job = launch { catalog.initialize() }
+        try {
+            withTimeout(10_000) {
+                catalog.state.first { it.initialized && it.photos.isNotEmpty() }
+            }
+            // Trust first: listed as available before the document probe completes.
+            assertFalse(catalog.state.value.sources.single().unavailable)
+        } finally {
+            gate.complete(Unit)
+        }
+        job.join()
+        // Truth after: probe succeeded, name refreshed, still available.
+        assertEquals("photo", catalog.state.value.sources.single().name)
+        assertFalse(catalog.state.value.sources.single().unavailable)
+    }
+
     private fun manifest() = PhotoFrameManifest(File(temporary.root, "index.json"))
 
     // Device-shaped file URI (forward slashes): the app stores file.toUri()
@@ -228,6 +260,7 @@ class PhotoCatalogTest {
         var scanError: Exception? = null
         var scanCalls = 0
         var childCount = 1
+        var pickedGate: CompletableDeferred<Unit>? = null
 
         override fun hasPersistedRead(uri: Uri) = uri in granted
         override fun persistRead(uri: Uri): Boolean {
@@ -236,6 +269,7 @@ class PhotoCatalogTest {
         }
 
         override suspend fun picked(uri: Uri): FrameDocument {
+            pickedGate?.await()
             readError?.let { throw it }
             return FrameDocument(uri.toString(), "photo", "image/jpeg")
         }

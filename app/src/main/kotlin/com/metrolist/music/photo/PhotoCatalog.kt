@@ -182,6 +182,17 @@ class PhotoCatalog internal constructor(
         val folderUris = sources.filter { it.type == FrameSelectionType.FOLDER }.mapTo(hashSetOf()) { it.uri }
         folderPhotos = read.manifest.photos.filter { it.sourceUri in folderUris }
         scannedFolders = read.manifest.scannedFolders.intersect(folderUris)
+        // Publish the stored index first so first paint isn't gated on
+        // validation: playback can start decoding while the checks below run.
+        // Corrections (revoked grants, missing files) land right after.
+        val trusted = sources.map { trustedBase(it) }
+        mutableState.value = FrameCatalogState(
+            sources = trusted,
+            photos = mergeFramePhotos(trusted, folderPhotos),
+            settings = settings,
+            error = if (damaged || read.damaged) FrameError.MANIFEST else null,
+            initialized = true,
+        )
         val checked = sources.map { validate(it) }
         if (checked.zip(sources).any { (new, old) -> new.width != old.width || new.height != old.height }) {
             // Persist the one-time bounds backfill so later starts trust the index.
@@ -203,10 +214,17 @@ class PhotoCatalog internal constructor(
         )
     }
 
+    private fun trustedBase(source: FrameSource): FrameSource = source.copy(
+        photoCount = if (source.type == FrameSelectionType.PICKED_PHOTO) 1 else folderPhotos.count { it.sourceUri == source.uri },
+        needsPermission = false,
+        unavailable = false,
+        unreadableCount = 0,
+        scanned = source.type == FrameSelectionType.PICKED_PHOTO || source.uri in scannedFolders,
+    )
+
     private suspend fun validate(source: FrameSource): FrameSource {        currentCoroutineContext().ensureActive()
         val uri = source.uri.toUri()
-        val count = if (source.type == FrameSelectionType.PICKED_PHOTO) 1 else folderPhotos.count { it.sourceUri == source.uri }
-        val base = source.copy(photoCount = count, needsPermission = false, unavailable = false, unreadableCount = 0, scanned = source.type == FrameSelectionType.PICKED_PHOTO || source.uri in scannedFolders)
+        val base = trustedBase(source)
         return try {
             if (source.type == FrameSelectionType.FOLDER) {
                 if (!documents.hasPersistedRead(uri)) return base.copy(needsPermission = true)

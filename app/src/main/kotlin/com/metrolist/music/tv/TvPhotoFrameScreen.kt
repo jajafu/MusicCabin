@@ -171,23 +171,18 @@ fun TvPhotoFrameScreen(onExit: () -> Unit, viewModel: TvPhotoFrameViewModel = hi
         val width = (constraints.maxWidth * factor).toInt().coerceAtLeast(1)
         val height = (constraints.maxHeight * factor).toInt().coerceAtLeast(1)
         val isLandscape = constraints.maxWidth > constraints.maxHeight
-        val uris = remember(state.photos, source) {
-            state.photos.filter { photo ->
-                val imported = FramePhotoReceiver.isImportedUri(context, photo.uri)
-                if (source == TvPhotoFrameViewModel.Source.TRANSFER) imported else !imported
-            }.map { it.uri }
-        }
-        // Play a cached screen-matching photo first so the opening slide needs
-        // no trial decodes; bounds are only a hint and the decoded bitmap
+        // One pass over the catalog: the filtered URIs for playback and the
+        // cached screen-matching photo pinned first so the opening slide needs
+        // no trial decodes. Bounds are only a hint and the decoded bitmap
         // still governs pairing, with a graceful fallback when stale.
-        val preferredFirst = remember(state.photos, source, isLandscape) {
+        val (uris, preferredFirst) = remember(state.photos, state.sources, source, isLandscape) {
             val want = if (isLandscape) FramePhotoOrientation.LANDSCAPE else FramePhotoOrientation.PORTRAIT
             val orientationBySource = state.sources.associate { it.uri to it.cachedOrientation() }
-            state.photos.firstOrNull { photo ->
+            val filtered = state.photos.filter { photo ->
                 val imported = FramePhotoReceiver.isImportedUri(context, photo.uri)
-                val matchesSource = if (source == TvPhotoFrameViewModel.Source.TRANSFER) imported else !imported
-                matchesSource && orientationBySource[photo.sourceUri] == want
-            }?.uri
+                if (source == TvPhotoFrameViewModel.Source.TRANSFER) imported else !imported
+            }
+            filtered.map { it.uri } to filtered.firstOrNull { orientationBySource[it.sourceUri] == want }?.uri
         }
         val session = remember(uris, generation, preferredFirst) { FramePlaybackSession(uris, preferredFirst = preferredFirst) }
         val landscapeNow by rememberUpdatedState(isLandscape)
@@ -201,7 +196,7 @@ fun TvPhotoFrameScreen(onExit: () -> Unit, viewModel: TvPhotoFrameViewModel = hi
         val fade = remember { Animatable(0f) }
 
         LaunchedEffect(session, width, height, state.settings.intervalSeconds, foreground, showSettings, showMediaBrowser) {
-            if (!foreground || showSettings || showMediaBrowser) return@LaunchedEffect
+            if (uris.isEmpty() || !foreground || showSettings || showMediaBrowser) return@LaunchedEffect
             val playback = PhotoFramePlayback<coil3.Image>(
                 load = { uri ->
                     val photoUri = uri.toUri()
@@ -212,6 +207,9 @@ fun TvPhotoFrameScreen(onExit: () -> Unit, viewModel: TvPhotoFrameViewModel = hi
                         .scale(Scale.FIT)
                         .precision(Precision.EXACT)
                         .memoryCachePolicy(CachePolicy.DISABLED)
+                        // Coil's disk cache stores source bytes, not decoded
+                        // bitmaps, so it cannot skip the cold decode while
+                        // only duplicating immutable transfer files on disk.
                         .diskCachePolicy(CachePolicy.DISABLED)
                         .networkCachePolicy(CachePolicy.DISABLED)
                         .build()
