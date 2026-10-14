@@ -4,6 +4,18 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.69
+
+### 中文
+
+- 相框操作列的更換歌詞來源按鈕改為跟隨「顯示歌詞」設定：未開啟顯示歌詞時隱藏；相框 KTV 的歌詞偏移 −／＋按鈕同樣只在開啟顯示歌詞時顯示。手機、TV 與相框 2 共用此行為。
+- 版本 code 299；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Photo frame control-row lyrics buttons now follow the Show lyrics setting: the switch-lyrics-source button is hidden when Show lyrics is off, as are the frame KTV lyrics-offset −/+ buttons. This applies to the phone, TV, and frame 2 photo frames.
+- Version code 299; no database schema change or data migration.
+
 ## 13.7.68
 
 ### 中文

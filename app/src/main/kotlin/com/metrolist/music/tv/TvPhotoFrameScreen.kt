@@ -259,6 +259,7 @@ fun TvPhotoFrameScreen(onExit: () -> Unit, viewModel: TvPhotoFrameViewModel = hi
                     showClock = state.settings.showClock,
                     clockActive = foreground,
                     showSongInfo = state.settings.showSongInfo,
+                    showLyrics = state.settings.showLyrics,
                     canNavigatePhotos = uris.size > 1,
                     onSettings = { showSettings = true },
                     onPreviousPhoto = { session.request(FramePlaybackCommand.PREVIOUS) },
@@ -339,6 +340,7 @@ private fun FrameOverlayContent(
     showClock: Boolean,
     clockActive: Boolean,
     showSongInfo: Boolean,
+    showLyrics: Boolean,
     canNavigatePhotos: Boolean,
     onSettings: () -> Unit,
     onPreviousPhoto: () -> Unit,
@@ -420,7 +422,9 @@ private fun FrameOverlayContent(
             FrameIcon(R.drawable.skip_next, R.string.photo_frame_next, uiScale, enabled = canControl && canNext) { connection?.seekToNext() }
             FrameIcon(R.drawable.arrow_back, R.string.photo_frame_previous_photo, uiScale, enabled = canNavigatePhotos, onClick = onPreviousPhoto)
             FrameIcon(R.drawable.arrow_forward, R.string.photo_frame_next_photo, uiScale, enabled = canNavigatePhotos, onClick = onNextPhoto)
-            FrameIcon(R.drawable.lyrics, R.string.switch_lyrics_source, uiScale, enabled = canControl, onClick = onSwitchLyrics)
+            if (showLyrics) {
+                FrameIcon(R.drawable.lyrics, R.string.switch_lyrics_source, uiScale, enabled = canControl, onClick = onSwitchLyrics)
+            }
             // Photo selection lives in the in-frame settings dialog; no shortcut here.
             FrameIcon(R.drawable.settings, R.string.photo_frame_settings, uiScale, autoFocus = true, onClick = onSettings)
             FrameIcon(R.drawable.fullscreen, R.string.tv_frame_hide_controls, uiScale, onClick = onHideControls)

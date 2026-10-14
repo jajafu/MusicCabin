@@ -279,6 +279,7 @@ fun PhotoFrameV2Screen(
                     showClock = state.settings.showClock,
                     clockActive = foreground,
                     showSongInfo = state.settings.showSongInfo,
+                    showLyrics = state.settings.showLyrics,
                     canPreviousPhoto = if (source == FrameV2Source.DRIVE) cloudSlides.canPrevious && !cloudSlides.loading else uris.size > 1,
                     canNextPhoto = if (source == FrameV2Source.DRIVE) cloudSlides.photoCount > 1 && !cloudSlides.loading else uris.size > 1,
                     onSettings = { showSettings = true },
@@ -381,6 +382,7 @@ private fun FrameOverlayContent(
     showClock: Boolean,
     clockActive: Boolean,
     showSongInfo: Boolean,
+    showLyrics: Boolean,
     canPreviousPhoto: Boolean,
     canNextPhoto: Boolean,
     onSettings: () -> Unit,
@@ -462,7 +464,9 @@ private fun FrameOverlayContent(
             FrameIcon(R.drawable.skip_next, R.string.photo_frame_next, uiScale, enabled = canControl && canNext) { connection?.seekToNext() }
             FrameIcon(R.drawable.arrow_back, R.string.photo_frame_previous_photo, uiScale, enabled = canPreviousPhoto, onClick = onPreviousPhoto)
             FrameIcon(R.drawable.arrow_forward, R.string.photo_frame_next_photo, uiScale, enabled = canNextPhoto, onClick = onNextPhoto)
-            FrameIcon(R.drawable.lyrics, R.string.switch_lyrics_source, uiScale, enabled = canControl, onClick = onSwitchLyrics)
+            if (showLyrics) {
+                FrameIcon(R.drawable.lyrics, R.string.switch_lyrics_source, uiScale, enabled = canControl, onClick = onSwitchLyrics)
+            }
             FrameIcon(R.drawable.settings, R.string.photo_frame_settings, uiScale, onClick = onSettings)
             FrameIcon(R.drawable.close, R.string.photo_frame_exit, uiScale, onClick = onExit)
         }
