@@ -271,7 +271,7 @@ fun PhotoFrameV2Screen(
             Column(
                 Modifier.align(Alignment.TopCenter).fillMaxWidth()
                     .background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.65f), Color.Black.copy(alpha = 0.3f), Color.Transparent)))
-                    .windowInsetsPadding(WindowInsets.safeDrawing).verticalScroll(rememberScrollState()).padding(8.dp * uiScale),
+                    .windowInsetsPadding(WindowInsets.safeDrawing).verticalScroll(rememberScrollState()).padding(start = 4.dp * uiScale, end = 4.dp * uiScale, top = 4.dp * uiScale, bottom = 0.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp * uiScale),
             ) {
                 FrameOverlayContent(
@@ -475,7 +475,7 @@ private fun FrameIcon(icon: Int, label: Int, uiScale: Float, enabled: Boolean = 
         onClick = onClick,
         enabled = enabled,
         modifier = Modifier.size(FRAME_ICON_BUTTON_BASELINE_DP.dp * uiScale),
-        colors = IconButtonDefaults.iconButtonColors(contentColor = Color.White.copy(alpha = 0.85f), disabledContentColor = Color.White.copy(alpha = 0.38f)),
+        colors = IconButtonDefaults.iconButtonColors(contentColor = Color.White.copy(alpha = 0.7f), disabledContentColor = Color.White.copy(alpha = 0.38f)),
     ) {
         Icon(
             painterResource(icon),

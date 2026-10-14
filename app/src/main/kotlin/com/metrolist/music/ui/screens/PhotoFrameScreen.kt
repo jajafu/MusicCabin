@@ -36,6 +36,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -92,7 +93,9 @@ import com.metrolist.music.ui.component.FontSizeRange
 import com.metrolist.music.ui.component.rememberFrameUiScale
 import com.metrolist.music.viewmodels.PhotoFrameViewModel
 import java.util.Date
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun PhotoFrameScreen(navController: NavHostController, viewModel: PhotoFrameViewModel = hiltViewModel()) {
@@ -109,6 +112,8 @@ fun PhotoFrameScreen(navController: NavHostController, viewModel: PhotoFrameView
     var showControls by rememberSaveable { mutableStateOf(true) }
     var showLyricsPicker by rememberSaveable { mutableStateOf(false) }
     val frameMetadata = LocalPlayerConnection.current?.mediaMetadata?.collectAsStateWithLifecycle()?.value
+    val framePlayerConnection = LocalPlayerConnection.current
+    val pickerScope = rememberCoroutineScope()
     val exit: () -> Unit = {
         if (!navController.popBackStack()) navController.navigate(Screens.Home.route) { launchSingleTop = true }
     }
@@ -200,7 +205,7 @@ fun PhotoFrameScreen(navController: NavHostController, viewModel: PhotoFrameView
             Column(
                 Modifier.align(Alignment.TopCenter).fillMaxWidth()
                     .background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.8f), Color.Black.copy(alpha = 0.55f), Color.Transparent)))
-                    .windowInsetsPadding(WindowInsets.safeDrawing).verticalScroll(rememberScrollState()).padding(8.dp * uiScale),
+                    .windowInsetsPadding(WindowInsets.safeDrawing).verticalScroll(rememberScrollState()).padding(start = 4.dp * uiScale, end = 4.dp * uiScale, top = 4.dp * uiScale, bottom = 0.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp * uiScale),
             ) {
                 FrameOverlayContent(
@@ -226,6 +231,17 @@ fun PhotoFrameScreen(navController: NavHostController, viewModel: PhotoFrameView
         FrameLyricsSourcePicker(
             metadata = metadata,
             onDismiss = { showLyricsPicker = false },
+            onPickLyric = {
+                // New lyrics replace the old timing, so the previous per-song
+                // offset no longer applies. Atomic reset for the picked track.
+                pickerScope.launch(Dispatchers.IO) {
+                    runCatching {
+                        framePlayerConnection?.database?.query {
+                            resetLyricsOffset(metadata.id)
+                        }
+                    }
+                }
+            },
         )
     }
     if (showMediaBrowser) {
@@ -309,6 +325,21 @@ private fun FrameOverlayContent(
     val role = LocalListenTogetherManager.current?.role?.collectAsStateWithLifecycle()?.value
     val ready = connection?.service?.isPlayerReady?.collectAsStateWithLifecycle()?.value == true
     val canControl = ready && metadata != null && role != RoomRole.GUEST
+    // Same per-song offset as the lyrics page dialog: ±50ms per tap, clamped to ±3000ms.
+    // Atomic DB update so rapid taps never lose increments.
+    val currentSong = connection?.currentSong?.collectAsStateWithLifecycle()?.value
+    val frameScope = rememberCoroutineScope()
+    fun adjustLyricsOffset(deltaMs: Int) {
+        val songId = currentSong?.song?.id ?: return
+        frameScope.launch(Dispatchers.IO) {
+            runCatching {
+                connection?.database?.query {
+                    shiftLyricsOffset(songId, deltaMs)
+                }
+            }
+        }
+    }
+    val canAdjustOffset = canControl && currentSong != null
     val titleStyle = MaterialTheme.typography.titleLarge.copy(
         platformStyle = PlatformTextStyle(includeFontPadding = false),
         lineHeight = TextUnit.Unspecified,
@@ -372,6 +403,8 @@ private fun FrameOverlayContent(
             FrameIcon(R.drawable.arrow_back, R.string.photo_frame_previous_photo, uiScale, enabled = canNavigatePhotos, onClick = onPreviousPhoto)
             FrameIcon(R.drawable.arrow_forward, R.string.photo_frame_next_photo, uiScale, enabled = canNavigatePhotos, onClick = onNextPhoto)
             FrameIcon(R.drawable.lyrics, R.string.switch_lyrics_source, uiScale, enabled = canControl, onClick = onSwitchLyrics)
+            FrameIcon(R.drawable.remove, R.string.lyrics_offset_decrease, uiScale, enabled = canAdjustOffset, onClick = { adjustLyricsOffset(-50) })
+            FrameIcon(R.drawable.add, R.string.lyrics_offset_increase, uiScale, enabled = canAdjustOffset, onClick = { adjustLyricsOffset(50) })
             // Photo selection already lives in the in-frame settings sheet; no shortcut here.
             FrameIcon(R.drawable.settings, R.string.photo_frame_settings, uiScale, onClick = onSettings)
             FrameIcon(R.drawable.close, R.string.photo_frame_exit, uiScale, onClick = onExit)
@@ -385,7 +418,7 @@ private fun FrameIcon(icon: Int, label: Int, uiScale: Float, enabled: Boolean = 
         onClick = onClick,
         enabled = enabled,
         modifier = Modifier.size(FRAME_ICON_BUTTON_BASELINE_DP.dp * uiScale),
-        colors = IconButtonDefaults.iconButtonColors(contentColor = Color.White, disabledContentColor = Color.White.copy(alpha = 0.38f)),
+        colors = IconButtonDefaults.iconButtonColors(contentColor = Color.White.copy(alpha = 0.7f), disabledContentColor = Color.White.copy(alpha = 0.38f)),
     ) {
         Icon(
             painterResource(icon),

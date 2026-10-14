@@ -1613,6 +1613,25 @@ interface DatabaseDao : AndroidAutoDao {
     @Query("UPDATE song SET totalPlayTime = totalPlayTime + :playTime WHERE id = :songId")
     fun incrementTotalPlayTime(songId: String, playTime: Long)
 
+    /**
+     * Atomically shift the per-song lyrics offset, clamped to ±3000ms.
+     * Single-column update so rapid taps never lose increments and other
+     * columns (e.g. totalPlayTime) are never reverted from a stale snapshot.
+     */
+    @Query(
+        """
+        UPDATE song SET lyricsOffset = CASE
+            WHEN lyricsOffset + :delta > 3000 THEN 3000
+            WHEN lyricsOffset + :delta < -3000 THEN -3000
+            ELSE lyricsOffset + :delta END
+        WHERE id = :songId
+        """,
+    )
+    fun shiftLyricsOffset(songId: String, delta: Int)
+
+    @Query("UPDATE song SET lyricsOffset = 0 WHERE id = :songId")
+    fun resetLyricsOffset(songId: String)
+
     @Query("UPDATE playCount SET count = count + 1 WHERE song = :songId AND year = :year AND month = :month")
     fun incrementPlayCount(songId: String, year: Int, month: Int)
 

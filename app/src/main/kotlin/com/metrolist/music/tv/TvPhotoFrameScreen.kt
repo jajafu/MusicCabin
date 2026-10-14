@@ -251,7 +251,7 @@ fun TvPhotoFrameScreen(onExit: () -> Unit, viewModel: TvPhotoFrameViewModel = hi
             Column(
                 Modifier.align(Alignment.TopCenter).fillMaxWidth()
                     .background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.8f), Color.Black.copy(alpha = 0.55f), Color.Transparent)))
-                    .windowInsetsPadding(WindowInsets.safeDrawing).verticalScroll(rememberScrollState()).padding(8.dp * uiScale),
+                    .windowInsetsPadding(WindowInsets.safeDrawing).verticalScroll(rememberScrollState()).padding(start = 4.dp * uiScale, end = 4.dp * uiScale, top = 4.dp * uiScale, bottom = 0.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp * uiScale),
             ) {
                 FrameOverlayContent(
@@ -441,7 +441,7 @@ private fun FrameIcon(icon: Int, label: Int, uiScale: Float, enabled: Boolean = 
             .then(if (autoFocus) Modifier.focusRequester(requester) else Modifier)
             .onFocusChanged { focused = it.isFocused }
             .then(if (focused) Modifier.border(3.dp, Color.White, androidx.compose.foundation.shape.RoundedCornerShape(12.dp)) else Modifier),
-        colors = IconButtonDefaults.iconButtonColors(contentColor = Color.White, disabledContentColor = Color.White.copy(alpha = 0.38f)),
+        colors = IconButtonDefaults.iconButtonColors(contentColor = Color.White.copy(alpha = 0.7f), disabledContentColor = Color.White.copy(alpha = 0.38f)),
     ) {
         Icon(
             painterResource(icon),

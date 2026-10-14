@@ -77,6 +77,7 @@ private fun Modifier.tvPickerFocus(): Modifier = composed {
 fun FrameLyricsSourcePicker(
     metadata: MediaMetadata,
     onDismiss: () -> Unit,
+    onPickLyric: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val connection = LocalPlayerConnection.current
@@ -218,6 +219,7 @@ fun FrameLyricsSourcePicker(
                                     )
                                 }
                             }
+                            onPickLyric()
                             onDismiss()
                         }
                         .padding(12.dp)

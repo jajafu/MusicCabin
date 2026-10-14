@@ -4,6 +4,22 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.68
+
+### 中文
+
+- 相框頂部控制層外層留白頂部為 4dp、底部歸零；操作列圖示取消上移、改為在觸控區內垂直置中，上下留白一致；操作列圖示透明度改為 70%。
+- 相框 KTV 操作列歌詞圖示後新增歌詞偏移 −／＋按鈕，每次 50ms（範圍 ±3000ms），與歌詞頁的歌詞偏移功能共用同一首歌的偏移值；偏移以資料庫原子單欄更新寫入，快速連點不會遺失次數，也不會覆寫播放時間等其他欄位，上限夾取由 SQL 執行。
+- 相框 KTV 更換歌詞來源後，該首歌的歌詞偏移歸零（只套用於相框 KTV；歌詞頁與其他相框頁的既有偏移保留）。
+- 版本 code 298；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Photo frame top overlay outer padding is now 4dp on top and zero at the bottom; control-row icons are now vertically centered in their touch targets instead of lifted, with equal top and bottom insets; control-row icon opacity set to 70%.
+- Photo frame KTV control row gains lyrics-offset −/+ buttons after the lyrics icon, adjusting by 50ms per tap (±3000ms range) and sharing the same per-song offset as the lyrics page dialog; the offset is written with an atomic single-column database update, so rapid taps never lose increments and other columns (e.g. play time) are never reverted from a stale snapshot, with clamping done in SQL.
+- Switching the lyrics source in Photo frame KTV resets that song's lyrics offset to zero (frame KTV only; offsets elsewhere are preserved).
+- Version code 298; no database schema change or data migration.
+
 ## 13.7.67
 
 ### 中文

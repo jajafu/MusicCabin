@@ -86,8 +86,8 @@ const val FRAME_ICON_SPACING_DP = 3f
  */
 const val FRAME_ROW_SPACING_DP = 2.5f
 
-/** Lift control glyphs within their unchanged touch targets to reduce the visible row gap. */
-const val FRAME_CONTROL_ICON_LIFT_DP = 5f
+/** No vertical lift: control glyphs stay centered in their touch targets. */
+const val FRAME_CONTROL_ICON_LIFT_DP = 0f
 
 /**
  * Alpha for the previous/next lyric lines relative to the current line color.
