@@ -16,39 +16,49 @@ MusicCabin 提供一組公開廣播入口，任何語音助手或 App 不用開�
 | 參數 | 說明 |
 | --- | --- |
 | `command` | 下表其中一個動作名字 |
-| `query` | 只有 `play_query` 需要，歌名（可含歌手） |
+| `query` | `play_query`、`play_artist` 需要：前者是歌名（可含歌手），後者只寫歌手名（後面多出來的「的歌」會自動去掉） |
 
 ## 動作一覽
 
 | `command` | 效果 |
 | --- | --- |
-| `play_query` | 照歌名播放。先找本地收藏，再找線上，都找不到就回沒找到 |
+| `play_query` | 照歌名播放。先找線上，再找本地收藏，都找不到就回沒找到 |
+| `play_artist` | 照歌手播放。只講歌手時用，只留歌手對得上的歌（完全相同的排前面），並回真的播了哪首；一首都對不上就播最相關的一首，並照實說沒對上 |
 | `play_liked` | 播放喜愛清單，會回第一首歌名。清單是空的就明確回空的 |
-| `play` | 繼續播，會回目前歌名。沒東西可播就回目前沒歌 |
+| `play` | 繼續播，會回目前歌名。沒東西可播就先播喜愛清單（這時回的狀態跟播喜愛清單一樣），連喜愛都是空的才回請先點歌 |
 | `pause` | 暫停。沒東西可播就回目前沒歌 |
+| `stop` | 停止（聲音停住，清單留著，之後用 `play` 還能繼續）。沒東西可播就回目前沒歌 |
+| `now_playing` | 查現在播什麼，會回歌名加歌手。沒播就回目前沒歌 |
 | `next` | 下一首，會回切過去的歌名。沒有下一首就明確回覆 |
 | `previous` | 上一首，會回切過去的歌名。沒有上一首就明確回覆 |
-| `like` | 收藏目前這首（要先開第二個開關） |
-| `unlike` | 取消收藏目前這首（要先開第二個開關） |
+| `like` | 收藏目前這首（要先開第二個開關）。已經收藏過就直接回已經收藏過了 |
+| `unlike` | 取消收藏目前這首（要先開第二個開關）。本來沒收藏就直接回本來就沒收藏 |
 | `repeat_toggle` | 循環模式開關：關 → 全部循環 → 單曲循環 → 關 |
+| `repeat_off` | 直接關循環 |
+| `repeat_all` | 直接設成全部循環 |
+| `repeat_one` | 直接設成單曲循環 |
+| `repeat_state` | 查目前是哪一種循環，不會切換 |
 
 沒啟動也能用：入口連上播放服務時會自動冷啟動，不用先手動播一首。
 
 ## 回傳結果（有序廣播才有）
 
 - `resultCode`：成功 `OK`，失敗 `CANCELED`
-- `resultData`：一句話說明（會跟著手機語系走，中文或英文）
+- `resultData`：一句話說明（會跟著手機語系走，中文或英文）。提到歌名的訊息在知道歌手時會是「歌名 - 歌手」，直接念出來即可
 - 結果附帶：
-  - `status`：`played` / `playing` / `paused` / `next` / `previous` / `liked` / `unliked` / `repeat` / `not_found` / `empty` / `no_network` / `denied` / `no_song` / `error`
-  - `title`：播了哪首、收藏了哪首（有的話）
-  - `mode`：循環模式結果，`off` / `all` / `one`
+  - `status`：`played` / `playing` / `paused` / `stopped` / `now_playing` / `next` / `previous` / `liked` / `already_liked` / `unliked` / `already_unliked` / `repeat` / `not_found` / `empty` / `no_network` / `denied` / `no_song` / `error`
+  - `title`：歌名（只有歌名，不含歌手）
+  - `artist`：歌手名（有的話）
+  - `artist_matched`：只有 `play_artist` 才有。`true` 表示播的歌歌手有對上，`false` 表示沒對上、播的是最相關的一首
+  - `is_playing`：只有 `now_playing` 才有。當下有沒有真的在播（暫停或停止後查歌會是 `false`）
+  - `mode`：循環模式結果，`off` / `all` / `one`（`repeat_*` 才有）
   - `message`：和 `resultData` 相同的說明文字
 
 ## 隱私開關
 
 | 開關 | 預設 | 管哪些動作 |
 | --- | --- | --- |
-| 允許外部播放控制 | 開 | 播放、暫停、切歌、點歌、喜愛清單、循環模式 |
+| 允許外部播放控制 | 開 | 播放、暫停、停止、查歌、切歌、點歌、喜愛清單、循環模式 |
 | 允許外部改收藏 | 關 | 收藏、取消收藏。打開前會跳提醒：手機上任何 App 都能改收藏 |
 
 ## 範例（adb）
@@ -58,13 +68,29 @@ MusicCabin 提供一組公開廣播入口，任何語音助手或 App 不用開�
 adb shell am broadcast -a com.metrolist.music.action.VOICE_CONTROL \
   --es command play_query --es query "夜曲 周杰倫"
 
+# 只講歌手時照歌手播放
+adb shell am broadcast -a com.metrolist.music.action.VOICE_CONTROL \
+  --es command play_artist --es query "周杰倫"
+
 # 播喜愛清單
 adb shell am broadcast -a com.metrolist.music.action.VOICE_CONTROL \
   --es command play_liked
 
-# 暫停 / 下一首
+# 查現在播什麼
+adb shell am broadcast -a com.metrolist.music.action.VOICE_CONTROL \
+  --es command now_playing
+
+# 暫停 / 停止 / 下一首
 adb shell am broadcast -a com.metrolist.music.action.VOICE_CONTROL \
   --es command pause
 adb shell am broadcast -a com.metrolist.music.action.VOICE_CONTROL \
+  --es command stop
+adb shell am broadcast -a com.metrolist.music.action.VOICE_CONTROL \
   --es command next
+
+# 循環直接指定 / 查目前是哪一種
+adb shell am broadcast -a com.metrolist.music.action.VOICE_CONTROL \
+  --es command repeat_one
+adb shell am broadcast -a com.metrolist.music.action.VOICE_CONTROL \
+  --es command repeat_state
 ```

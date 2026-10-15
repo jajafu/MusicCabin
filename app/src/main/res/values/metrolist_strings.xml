@@ -1487,12 +1487,20 @@
     <string name="voice_favorite_warn_message_zh_tw" translatable="false">手機上的任何應用程式都能收藏或取消收藏你的歌曲。只有信任已安裝的應用程式時才打開。</string>
     <string name="voice_result_played">Playing: %1$s</string>
     <string name="voice_result_played_zh_tw" translatable="false">正在播放：%1$s</string>
+    <string name="voice_result_played_artist">Playing songs by %1$s, starting with: %2$s</string>
+    <string name="voice_result_played_artist_zh_tw" translatable="false">正在播放%1$s的歌，從這首開始：%2$s</string>
+    <string name="voice_result_played_artist_fallback">No songs by %1$s found. Playing the closest match: %2$s</string>
+    <string name="voice_result_played_artist_fallback_zh_tw" translatable="false">找不到%1$s的歌，先播最相關的：%2$s</string>
     <string name="voice_result_played_liked">Playing favorites (%1$d songs), starting with: %2$s</string>
     <string name="voice_result_played_liked_zh_tw" translatable="false">正在播放喜愛清單（共 %1$d 首），從這首開始：%2$s</string>
     <string name="voice_result_playing">Playing</string>
     <string name="voice_result_playing_zh_tw" translatable="false">已開始播放</string>
     <string name="voice_result_paused">Paused</string>
     <string name="voice_result_paused_zh_tw" translatable="false">已暫停</string>
+    <string name="voice_result_stopped">Stopped</string>
+    <string name="voice_result_stopped_zh_tw" translatable="false">已停止</string>
+    <string name="voice_result_now_playing">Now playing: %1$s</string>
+    <string name="voice_result_now_playing_zh_tw" translatable="false">正在播放：%1$s</string>
     <string name="voice_result_next">Skipped to next song: %1$s</string>
     <string name="voice_result_next_zh_tw" translatable="false">已切到下一首：%1$s</string>
     <string name="voice_result_previous">Back to previous song: %1$s</string>
@@ -1503,8 +1511,12 @@
     <string name="voice_result_no_previous_zh_tw" translatable="false">沒有上一首</string>
     <string name="voice_result_liked">Added to favorites: %1$s</string>
     <string name="voice_result_liked_zh_tw" translatable="false">已收藏：%1$s</string>
+    <string name="voice_result_already_liked">Already in favorites: %1$s</string>
+    <string name="voice_result_already_liked_zh_tw" translatable="false">已經收藏過了：%1$s</string>
     <string name="voice_result_unliked">Removed from favorites: %1$s</string>
     <string name="voice_result_unliked_zh_tw" translatable="false">已取消收藏：%1$s</string>
+    <string name="voice_result_already_unliked">Not in favorites: %1$s</string>
+    <string name="voice_result_already_unliked_zh_tw" translatable="false">本來就沒收藏：%1$s</string>
     <string name="voice_result_repeat">Repeat mode: %1$s</string>
     <string name="voice_result_repeat_zh_tw" translatable="false">循環模式：%1$s</string>
     <string name="voice_result_not_found">No song found for \"%1$s\"</string>
@@ -1519,6 +1531,8 @@
     <string name="voice_result_denied_favorite_zh_tw" translatable="false">外部修改收藏已關閉</string>
     <string name="voice_result_no_song">Nothing is playing right now</string>
     <string name="voice_result_no_song_zh_tw" translatable="false">現在沒有播放歌曲</string>
+    <string name="voice_result_no_queue_hint">Nothing to resume. Ask for a song first</string>
+    <string name="voice_result_no_queue_hint_zh_tw" translatable="false">沒有可繼續的歌曲，請先點一首歌</string>
     <string name="voice_result_error">Something went wrong</string>
     <string name="voice_result_error_zh_tw" translatable="false">執行失敗</string>
 </resources>

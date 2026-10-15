@@ -30,10 +30,14 @@ import com.metrolist.music.constants.HideVideoSongsKey
 import com.metrolist.music.constants.MediaSessionConstants
 import com.metrolist.music.db.MusicDatabase
 import com.metrolist.music.extensions.toMediaItem
+import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.playback.AndroidAutoLibrary
 import com.metrolist.music.playback.MusicService
+import com.metrolist.music.playback.cleanVoiceArtistQuery
+import com.metrolist.music.playback.findVoiceArtistMatch
 import com.metrolist.music.playback.orderSearchMetadata
+import com.metrolist.music.playback.rankVoiceArtistSongs
 import com.metrolist.music.playback.rankVoiceSearchSongs
 import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.get
@@ -45,6 +49,7 @@ import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.guava.await
 import kotlinx.coroutines.launch
@@ -154,14 +159,21 @@ class VoiceControlReceiver : BroadcastReceiver() {
         try {
             when (command) {
                 VoiceControl.COMMAND_PLAY_QUERY -> playQuery(context, database, controller, query)
+                VoiceControl.COMMAND_PLAY_ARTIST -> playArtist(context, database, controller, query)
                 VoiceControl.COMMAND_PLAY_LIKED -> playLiked(context, database, controller)
-                VoiceControl.COMMAND_PLAY -> resume(context, controller)
+                VoiceControl.COMMAND_PLAY -> resume(context, database, controller)
                 VoiceControl.COMMAND_PAUSE -> pause(context, controller)
+                VoiceControl.COMMAND_STOP -> stop(context, controller)
+                VoiceControl.COMMAND_NOW_PLAYING -> nowPlaying(context, controller)
                 VoiceControl.COMMAND_NEXT -> skipNext(context, controller)
                 VoiceControl.COMMAND_PREVIOUS -> skipPrevious(context, controller)
                 VoiceControl.COMMAND_LIKE -> setLiked(context, database, controller, liked = true)
                 VoiceControl.COMMAND_UNLIKE -> setLiked(context, database, controller, liked = false)
                 VoiceControl.COMMAND_REPEAT_TOGGLE -> toggleRepeat(context, controller)
+                VoiceControl.COMMAND_REPEAT_OFF -> setRepeat(context, controller, Player.REPEAT_MODE_OFF)
+                VoiceControl.COMMAND_REPEAT_ALL -> setRepeat(context, controller, Player.REPEAT_MODE_ALL)
+                VoiceControl.COMMAND_REPEAT_ONE -> setRepeat(context, controller, Player.REPEAT_MODE_ONE)
+                VoiceControl.COMMAND_REPEAT_STATE -> queryRepeat(context, controller)
                 else -> finishWith(
                     Activity.RESULT_CANCELED,
                     VoiceControl.STATUS_ERROR,
@@ -193,7 +205,44 @@ class VoiceControlReceiver : BroadcastReceiver() {
             )
             return
         }
-        // Same search flow as the car/voice path: local first, then online.
+        searchAndPlay(context, database, controller, query, artistMode = false)
+    }
+
+    /**
+     * 只講歌手時的點歌：先把「的歌」「歌」這類尾巴清掉，再用乾淨的歌手名去找，
+     * 找到就播該歌手的歌，並回真的播了哪一首。
+     */
+    private suspend fun playArtist(
+        context: Context,
+        database: MusicDatabase,
+        controller: MediaController,
+        query: String,
+    ) {
+        val artist = cleanVoiceArtistQuery(query)
+        if (artist.isBlank()) {
+            finishWith(
+                Activity.RESULT_CANCELED,
+                VoiceControl.STATUS_NOT_FOUND,
+                context.voiceMessage(
+                    R.string.voice_result_not_found,
+                    R.string.voice_result_not_found_zh_tw,
+                    query,
+                ),
+                null,
+            )
+            return
+        }
+        searchAndPlay(context, database, controller, artist, artistMode = true)
+    }
+
+    private suspend fun searchAndPlay(
+        context: Context,
+        database: MusicDatabase,
+        controller: MediaController,
+        query: String,
+        artistMode: Boolean,
+    ) {
+        // 跟車機語音同一套找法：線上結果排前面，後面補本地收藏。
         val library = AndroidAutoLibrary(database) { emptyList() }
         val localSongs = runCatching { library.search(query) }.getOrDefault(emptyList())
 
@@ -239,23 +288,84 @@ class VoiceControlReceiver : BroadcastReceiver() {
             }
             return
         }
-        val items = ordered.map { it.toMediaItem() }
+        val candidates: List<MediaMetadata>
+        val artistMatched: Boolean
+        if (artistMode) {
+            // 只要歌手名對得上的歌，完全相同的排前面；一個都對不上才退回
+            // 全部結果，至少播最相關的一首（這時要照實告訴小助手沒對上）。
+            val ranked = rankVoiceArtistSongs(ordered, query) { meta ->
+                meta.artists.map { it.name }
+            }
+            candidates = ranked.ifEmpty { ordered }
+            artistMatched = ranked.isNotEmpty()
+        } else {
+            candidates = ordered
+            artistMatched = true
+        }
+        val items = candidates.map { it.toMediaItem() }
         controller.setMediaItems(items)
         controller.prepare()
         controller.play()
-        val first = ordered.first()
-        val artist = first.artists.firstOrNull()?.name
-        val title = if (artist.isNullOrBlank()) first.title else "${first.title} - $artist"
-        finishWith(
-            Activity.RESULT_OK,
-            VoiceControl.STATUS_PLAYED,
-            context.voiceMessage(
-                R.string.voice_result_played,
-                R.string.voice_result_played_zh_tw,
-                title,
-            ),
-            Bundle().apply { putString(VoiceControl.EXTRA_TITLE, title) },
-        )
+        val first = candidates.first()
+        // title 欄位只放歌名，歌手走 artist 欄位；但念出來的訊息在知道歌手時
+        // 要帶上「歌名 - 歌手」，因為文件叫小助手直接念訊息、不要自己拼字。
+        val title = first.title
+        val artist = if (artistMode) {
+            findVoiceArtistMatch(first.artists.map { it.name }, query)
+                ?: first.artists.firstOrNull()?.name.orEmpty()
+        } else {
+            first.artists.firstOrNull()?.name.orEmpty()
+        }
+        val spoken = if (artist.isBlank()) title else "$title - $artist"
+        if (artistMode && !artistMatched) {
+            finishWith(
+                Activity.RESULT_OK,
+                VoiceControl.STATUS_PLAYED,
+                context.voiceMessage(
+                    R.string.voice_result_played_artist_fallback,
+                    R.string.voice_result_played_artist_fallback_zh_tw,
+                    query,
+                    spoken,
+                ),
+                Bundle().apply {
+                    putString(VoiceControl.EXTRA_TITLE, title)
+                    putString(VoiceControl.EXTRA_ARTIST, artist)
+                    putBoolean(VoiceControl.EXTRA_ARTIST_MATCHED, false)
+                },
+            )
+            return
+        }
+        if (artistMode) {
+            finishWith(
+                Activity.RESULT_OK,
+                VoiceControl.STATUS_PLAYED,
+                context.voiceMessage(
+                    R.string.voice_result_played_artist,
+                    R.string.voice_result_played_artist_zh_tw,
+                    artist.ifBlank { query },
+                    title,
+                ),
+                Bundle().apply {
+                    putString(VoiceControl.EXTRA_TITLE, title)
+                    putString(VoiceControl.EXTRA_ARTIST, artist)
+                    putBoolean(VoiceControl.EXTRA_ARTIST_MATCHED, true)
+                },
+            )
+        } else {
+            finishWith(
+                Activity.RESULT_OK,
+                VoiceControl.STATUS_PLAYED,
+                context.voiceMessage(
+                    R.string.voice_result_played,
+                    R.string.voice_result_played_zh_tw,
+                    spoken,
+                ),
+                Bundle().apply {
+                    putString(VoiceControl.EXTRA_TITLE, title)
+                    putString(VoiceControl.EXTRA_ARTIST, artist)
+                },
+            )
+        }
     }
 
     private suspend fun playLiked(
@@ -276,7 +386,9 @@ class VoiceControlReceiver : BroadcastReceiver() {
         controller.setMediaItems(songs.map { it.toMediaItem() })
         controller.prepare()
         controller.play()
-        val firstTitle = songs.firstOrNull()?.song?.title.orEmpty()
+        val first = songs.firstOrNull()
+        val firstTitle = first?.song?.title.orEmpty()
+        val firstArtist = first?.orderedArtists?.firstOrNull()?.name.orEmpty()
         finishWith(
             Activity.RESULT_OK,
             VoiceControl.STATUS_PLAYED,
@@ -286,11 +398,87 @@ class VoiceControlReceiver : BroadcastReceiver() {
                 songs.size,
                 firstTitle,
             ),
-            Bundle().apply { putString(VoiceControl.EXTRA_TITLE, firstTitle) },
+            Bundle().apply {
+                putString(VoiceControl.EXTRA_TITLE, firstTitle)
+                putString(VoiceControl.EXTRA_ARTIST, firstArtist)
+            },
         )
     }
 
-    private fun resume(context: Context, controller: MediaController) {
+    private suspend fun resume(context: Context, database: MusicDatabase, controller: MediaController) {
+        if (controller.mediaItemCount == 0) {
+            // 冷啟動時服務還在背後把上次的清單讀回來，先等一下；
+            // 沒等到才當作真的沒歌，不然會蓋掉使用者原本的清單。
+            awaitRestoredQueue(controller)
+        }
+        if (controller.mediaItemCount == 0) {
+            // 沒歌可繼續時直接播喜愛清單；連喜愛都是空的才明確請對方先點歌。
+            val liked = runCatching { database.likedSongsByCreateDateAsc().first() }.getOrDefault(emptyList())
+            if (liked.isNotEmpty()) {
+                controller.setMediaItems(liked.map { it.toMediaItem() })
+                controller.prepare()
+                controller.play()
+                val first = liked.firstOrNull()
+                val firstTitle = first?.song?.title.orEmpty()
+                val firstArtist = first?.orderedArtists?.firstOrNull()?.name.orEmpty()
+                finishWith(
+                    Activity.RESULT_OK,
+                    VoiceControl.STATUS_PLAYED,
+                    context.voiceMessage(
+                        R.string.voice_result_played_liked,
+                        R.string.voice_result_played_liked_zh_tw,
+                        liked.size,
+                        firstTitle,
+                    ),
+                    Bundle().apply {
+                        putString(VoiceControl.EXTRA_TITLE, firstTitle)
+                        putString(VoiceControl.EXTRA_ARTIST, firstArtist)
+                    },
+                )
+                return
+            }
+            finishWith(
+                Activity.RESULT_CANCELED,
+                VoiceControl.STATUS_NO_SONG,
+                context.voiceMessage(
+                    R.string.voice_result_no_queue_hint,
+                    R.string.voice_result_no_queue_hint_zh_tw,
+                ),
+                null,
+            )
+            return
+        }
+        // stop() 之後播放器會回到閒置狀態，要先 prepare()，play() 才會真的出聲。
+        playAfterPossibleStop(controller)
+        val metadata = controller.currentMediaItem?.mediaMetadata
+        val currentTitle = metadata?.title?.toString().orEmpty()
+        val currentArtist = metadata?.artist?.toString().orEmpty()
+        finishWith(
+            Activity.RESULT_OK,
+            VoiceControl.STATUS_PLAYING,
+            context.voiceMessage(R.string.voice_result_playing, R.string.voice_result_playing_zh_tw),
+            Bundle().apply {
+                putString(VoiceControl.EXTRA_TITLE, currentTitle)
+                putString(VoiceControl.EXTRA_ARTIST, currentArtist)
+            },
+        )
+    }
+
+    private suspend fun awaitRestoredQueue(controller: MediaController) {
+        repeat(RESTORE_POLL_TIMES) {
+            if (controller.mediaItemCount > 0) return
+            delay(RESTORE_POLL_INTERVAL_MS)
+        }
+    }
+
+    private fun playAfterPossibleStop(controller: MediaController) {
+        if (controller.playbackState == Player.STATE_IDLE) {
+            controller.prepare()
+        }
+        controller.play()
+    }
+
+    private fun stop(context: Context, controller: MediaController) {
         if (controller.mediaItemCount == 0) {
             finishWith(
                 Activity.RESULT_CANCELED,
@@ -300,13 +488,43 @@ class VoiceControlReceiver : BroadcastReceiver() {
             )
             return
         }
-        controller.play()
-        val currentTitle = controller.currentMediaItem?.mediaMetadata?.title?.toString().orEmpty()
+        // 真正停下來（通知列也會收掉），清單留著，之後用 play 還能繼續播。
+        controller.stop()
         finishWith(
             Activity.RESULT_OK,
-            VoiceControl.STATUS_PLAYING,
-            context.voiceMessage(R.string.voice_result_playing, R.string.voice_result_playing_zh_tw),
-            Bundle().apply { putString(VoiceControl.EXTRA_TITLE, currentTitle) },
+            VoiceControl.STATUS_STOPPED,
+            context.voiceMessage(R.string.voice_result_stopped, R.string.voice_result_stopped_zh_tw),
+            null,
+        )
+    }
+
+    private fun nowPlaying(context: Context, controller: MediaController) {
+        val item = controller.currentMediaItem
+        val title = item?.mediaMetadata?.title?.toString().orEmpty()
+        if (controller.mediaItemCount == 0 || item == null || title.isBlank()) {
+            finishWith(
+                Activity.RESULT_CANCELED,
+                VoiceControl.STATUS_NO_SONG,
+                context.voiceMessage(R.string.voice_result_no_song, R.string.voice_result_no_song_zh_tw),
+                null,
+            )
+            return
+        }
+        val artist = item.mediaMetadata.artist?.toString().orEmpty()
+        val spoken = if (artist.isBlank()) title else "$title - $artist"
+        finishWith(
+            Activity.RESULT_OK,
+            VoiceControl.STATUS_NOW_PLAYING,
+            context.voiceMessage(
+                R.string.voice_result_now_playing,
+                R.string.voice_result_now_playing_zh_tw,
+                spoken,
+            ),
+            Bundle().apply {
+                putString(VoiceControl.EXTRA_TITLE, title)
+                putString(VoiceControl.EXTRA_ARTIST, artist)
+                putBoolean(VoiceControl.EXTRA_IS_PLAYING, controller.isPlaying)
+            },
         )
     }
 
@@ -339,11 +557,13 @@ class VoiceControlReceiver : BroadcastReceiver() {
             )
             return
         }
-        val targetTitle = runCatching {
-            controller.getMediaItemAt(controller.nextMediaItemIndex).mediaMetadata.title?.toString()
-        }.getOrNull().orEmpty()
+        val target = runCatching {
+            controller.getMediaItemAt(controller.nextMediaItemIndex).mediaMetadata
+        }.getOrNull()
+        val targetTitle = target?.title?.toString().orEmpty()
+        val targetArtist = target?.artist?.toString().orEmpty()
         controller.seekToNext()
-        controller.play()
+        playAfterPossibleStop(controller)
         finishWith(
             Activity.RESULT_OK,
             VoiceControl.STATUS_NEXT,
@@ -352,7 +572,10 @@ class VoiceControlReceiver : BroadcastReceiver() {
                 R.string.voice_result_next_zh_tw,
                 targetTitle,
             ),
-            Bundle().apply { putString(VoiceControl.EXTRA_TITLE, targetTitle) },
+            Bundle().apply {
+                putString(VoiceControl.EXTRA_TITLE, targetTitle)
+                putString(VoiceControl.EXTRA_ARTIST, targetArtist)
+            },
         )
     }
 
@@ -366,11 +589,13 @@ class VoiceControlReceiver : BroadcastReceiver() {
             )
             return
         }
-        val targetTitle = runCatching {
-            controller.getMediaItemAt(controller.previousMediaItemIndex).mediaMetadata.title?.toString()
-        }.getOrNull().orEmpty()
+        val target = runCatching {
+            controller.getMediaItemAt(controller.previousMediaItemIndex).mediaMetadata
+        }.getOrNull()
+        val targetTitle = target?.title?.toString().orEmpty()
+        val targetArtist = target?.artist?.toString().orEmpty()
         controller.seekToPrevious()
-        controller.play()
+        playAfterPossibleStop(controller)
         finishWith(
             Activity.RESULT_OK,
             VoiceControl.STATUS_PREVIOUS,
@@ -379,7 +604,10 @@ class VoiceControlReceiver : BroadcastReceiver() {
                 R.string.voice_result_previous_zh_tw,
                 targetTitle,
             ),
-            Bundle().apply { putString(VoiceControl.EXTRA_TITLE, targetTitle) },
+            Bundle().apply {
+                putString(VoiceControl.EXTRA_TITLE, targetTitle)
+                putString(VoiceControl.EXTRA_ARTIST, targetArtist)
+            },
         )
     }
 
@@ -410,23 +638,47 @@ class VoiceControlReceiver : BroadcastReceiver() {
             return
         }
         val title = current.song.title
+        val artist = current.orderedArtists.firstOrNull()?.name.orEmpty()
+        // 已經是目標狀態就直接回「已經收藏過了」，不用再送一次切換。
+        if (current.song.liked == liked) {
+            finishWith(
+                Activity.RESULT_OK,
+                if (liked) VoiceControl.STATUS_ALREADY_LIKED else VoiceControl.STATUS_ALREADY_UNLIKED,
+                if (liked) {
+                    context.voiceMessage(
+                        R.string.voice_result_already_liked,
+                        R.string.voice_result_already_liked_zh_tw,
+                        title,
+                    )
+                } else {
+                    context.voiceMessage(
+                        R.string.voice_result_already_unliked,
+                        R.string.voice_result_already_unliked_zh_tw,
+                        title,
+                    )
+                },
+                Bundle().apply {
+                    putString(VoiceControl.EXTRA_TITLE, title)
+                    putString(VoiceControl.EXTRA_ARTIST, artist)
+                },
+            )
+            return
+        }
         // Only ask the service to toggle when a change is actually needed, so
         // the existing playback logic stays the single writer (it also
         // refreshes the notification and widgets). The command result is
         // checked: a denial must not be reported as success.
-        if (current.song.liked != liked) {
-            val result = runCatching {
-                controller.sendCustomCommand(MediaSessionConstants.CommandToggleLike, Bundle.EMPTY).await()
-            }.getOrNull()
-            if (result?.resultCode != SessionResult.RESULT_SUCCESS) {
-                finishWith(
-                    Activity.RESULT_CANCELED,
-                    VoiceControl.STATUS_ERROR,
-                    context.voiceMessage(R.string.voice_result_error, R.string.voice_result_error_zh_tw),
-                    null,
-                )
-                return
-            }
+        val result = runCatching {
+            controller.sendCustomCommand(MediaSessionConstants.CommandToggleLike, Bundle.EMPTY).await()
+        }.getOrNull()
+        if (result?.resultCode != SessionResult.RESULT_SUCCESS) {
+            finishWith(
+                Activity.RESULT_CANCELED,
+                VoiceControl.STATUS_ERROR,
+                context.voiceMessage(R.string.voice_result_error, R.string.voice_result_error_zh_tw),
+                null,
+            )
+            return
         }
         finishWith(
             Activity.RESULT_OK,
@@ -436,7 +688,10 @@ class VoiceControlReceiver : BroadcastReceiver() {
             } else {
                 context.voiceMessage(R.string.voice_result_unliked, R.string.voice_result_unliked_zh_tw, title)
             },
-            Bundle().apply { putString(VoiceControl.EXTRA_TITLE, title) },
+            Bundle().apply {
+                putString(VoiceControl.EXTRA_TITLE, title)
+                putString(VoiceControl.EXTRA_ARTIST, artist)
+            },
         )
     }
 
@@ -447,7 +702,20 @@ class VoiceControlReceiver : BroadcastReceiver() {
             else -> Player.REPEAT_MODE_OFF
         }
         controller.repeatMode = next
-        val (mode, modeName) = when (next) {
+        finishRepeat(context, next)
+    }
+
+    private fun setRepeat(context: Context, controller: MediaController, mode: Int) {
+        controller.repeatMode = mode
+        finishRepeat(context, mode)
+    }
+
+    private fun queryRepeat(context: Context, controller: MediaController) {
+        finishRepeat(context, controller.repeatMode)
+    }
+
+    private fun finishRepeat(context: Context, mode: Int) {
+        val (modeId, modeName) = when (mode) {
             Player.REPEAT_MODE_ALL -> VoiceControl.MODE_ALL to context.getString(R.string.repeat_mode_all)
             Player.REPEAT_MODE_ONE -> VoiceControl.MODE_ONE to context.getString(R.string.repeat_mode_one)
             else -> VoiceControl.MODE_OFF to context.getString(R.string.repeat_mode_off)
@@ -460,7 +728,7 @@ class VoiceControlReceiver : BroadcastReceiver() {
                 R.string.voice_result_repeat_zh_tw,
                 modeName,
             ),
-            Bundle().apply { putString(VoiceControl.EXTRA_MODE, mode) },
+            Bundle().apply { putString(VoiceControl.EXTRA_MODE, modeId) },
         )
     }
 
@@ -498,5 +766,9 @@ class VoiceControlReceiver : BroadcastReceiver() {
     private companion object {
         const val CONTROLLER_TIMEOUT_MS = 8_000L
         const val RECEIVER_TIMEOUT_MS = 9_000L
+        // 上次的清單是服務在背後讀回來的，通常幾百毫秒內會出現；
+        // 最多等 1 秒，播報入口整體 9 秒的上限還夠用。
+        const val RESTORE_POLL_TIMES = 10
+        const val RESTORE_POLL_INTERVAL_MS = 100L
     }
 }

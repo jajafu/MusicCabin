@@ -4,6 +4,18 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.71
+
+### 中文
+
+- 語音控制補上六個缺口：查現在播什麼（`now_playing`，回歌名加歌手）、照歌手播放（`play_artist`，只講歌手時播該歌手的一首並回真的播了哪首）、沒歌時繼續播先播喜愛清單（都沒有才回請先點歌）、循環可直接指定關／全部／單曲加查目前是哪一種（`repeat_off`、`repeat_all`、`repeat_one`、`repeat_state`）、重複收藏直接回已經收藏過了（`already_liked`／`already_unliked`）、補停止（`stop`，聲音停住、清單留著可再繼續）；動作說明見 `docs/voice-control.md`。
+- 版本 code 301；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Voice control fills six gaps: current-song lookup (`now_playing`, returns title plus artist), play by artist (`play_artist`, plays one song by that artist and reports which one), resume with an empty queue plays favorites first (asks for a song only when favorites are empty too), direct repeat set plus state query (`repeat_off`, `repeat_all`, `repeat_one`, `repeat_state`), repeat likes return `already_liked` / `already_unliked`, and a new `stop` (sound stops, queue kept for resume); see `docs/voice-control.md`.
+- Version code 301; no database schema change or data migration.
+
 ## 13.7.70
 
 ### 中文
