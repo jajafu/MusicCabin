@@ -4,6 +4,22 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.70
+
+### 中文
+
+- 新增語音控制公開入口：任何語音助手不用開畫面也能點歌和控制（傳歌名播放、喜愛清單、播放、暫停、下一首、上一首、收藏、取消收藏、循環模式開關），歌名播放走本地加線上搜尋，沒啟動也能冷啟動播放，每個動作都回明確結果；動作說明見 `docs/voice-control.md`。
+- 隱私設定新增「語音控制」群組：允許外部播放控制（預設開）、允許外部改收藏（預設關，打開前會提醒任何 App 都能改）。
+- TV 相框補上歌詞偏移 −／＋按鈕（每次 50ms，範圍 ±3000ms），與手機相框共用同一首歌的偏移值；「顯示歌詞」關閉時按鈕跟著隱藏，更換歌詞來源後該首歌的偏移歸零。
+- 版本 code 300；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- New public voice control entry: any voice assistant can request songs and control playback without opening the screen (play by song name, liked list, play, pause, next, previous, like, unlike, repeat toggle). Song-name playback searches local plus online sources, cold-starts playback when idle, and every action returns an explicit result; see `docs/voice-control.md`.
+- Privacy settings gain a "Voice control" group: allow external playback control (on by default) and allow external favorite edits (off by default, with a warning that any app can edit favorites before turning it on).
+- The TV photo frame gains lyrics-offset −/+ buttons (50ms per tap, clamped to ±3000ms), sharing the same per-song offset as the phone frame; the buttons hide when Show lyrics is off, and the offset resets after switching lyrics source.
+- Version code 300; no database schema change or data migration.
+
 ## 13.7.69
 
 ### 中文

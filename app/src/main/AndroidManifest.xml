@@ -392,6 +392,18 @@
             android:name=".widget.WidgetActionReceiver"
             android:exported="false" />
 
+        <!-- Public voice control entry: any voice assistant or app can send
+             com.metrolist.music.action.VOICE_CONTROL here. No caller restriction
+             is applied; access is gated by the user's privacy switches.
+             See docs/voice-control.md for the action and result format. -->
+        <receiver
+            android:name=".voice.VoiceControlReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.metrolist.music.action.VOICE_CONTROL" />
+            </intent-filter>
+        </receiver>
+
         <service
             android:name=".widget.MusicRecognizerWidgetService"
             android:exported="false"

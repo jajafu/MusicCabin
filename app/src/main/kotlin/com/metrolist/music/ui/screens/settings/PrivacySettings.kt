@@ -35,9 +35,12 @@ import androidx.navigation.NavController
 import com.metrolist.music.LocalDatabase
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
+import com.metrolist.music.constants.AllowVoiceFavoriteEditKey
+import com.metrolist.music.constants.AllowVoicePlaybackControlKey
 import com.metrolist.music.constants.DisableScreenshotKey
 import com.metrolist.music.constants.PauseListenHistoryKey
 import com.metrolist.music.constants.PauseSearchHistoryKey
+import com.metrolist.music.voice.voiceLocalizedString
 import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.Material3SettingsGroup
@@ -63,6 +66,58 @@ fun PrivacySettings(
         key = DisableScreenshotKey,
         defaultValue = false
     )
+    val (allowVoicePlayback, onAllowVoicePlaybackChange) = rememberPreference(
+        key = AllowVoicePlaybackControlKey,
+        defaultValue = true
+    )
+    val (allowVoiceFavoriteEdit, onAllowVoiceFavoriteEditChange) = rememberPreference(
+        key = AllowVoiceFavoriteEditKey,
+        defaultValue = false
+    )
+
+    var showVoiceFavoriteWarnDialog by remember {
+        mutableStateOf(false)
+    }
+
+    if (showVoiceFavoriteWarnDialog) {
+        DefaultDialog(
+            onDismiss = { showVoiceFavoriteWarnDialog = false },
+            title = {
+                Text(
+                    text = voiceLocalizedString(
+                        R.string.voice_favorite_warn_title,
+                        R.string.voice_favorite_warn_title_zh_tw
+                    ),
+                )
+            },
+            content = {
+                Text(
+                    text = voiceLocalizedString(
+                        R.string.voice_favorite_warn_message,
+                        R.string.voice_favorite_warn_message_zh_tw
+                    ),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(horizontal = 18.dp),
+                )
+            },
+            buttons = {
+                TextButton(
+                    onClick = { showVoiceFavoriteWarnDialog = false },
+                ) {
+                    Text(text = stringResource(android.R.string.cancel))
+                }
+
+                TextButton(
+                    onClick = {
+                        showVoiceFavoriteWarnDialog = false
+                        onAllowVoiceFavoriteEditChange(true)
+                    },
+                ) {
+                    Text(text = stringResource(android.R.string.ok))
+                }
+            },
+        )
+    }
 
     var showClearListenHistoryDialog by remember {
         mutableStateOf(false)
@@ -241,6 +296,99 @@ fun PrivacySettings(
                         )
                     },
                     onClick = { onDisableScreenshotChange(!disableScreenshot) }
+                )
+            )
+        )
+
+        Spacer(modifier = Modifier.height(27.dp))
+
+        Material3SettingsGroup(
+            title = voiceLocalizedString(
+                R.string.voice_control,
+                R.string.voice_control_zh_tw
+            ),
+            items = listOf(
+                Material3SettingsItem(
+                    icon = painterResource(R.drawable.play),
+                    title = {
+                        Text(
+                            voiceLocalizedString(
+                                R.string.voice_allow_playback,
+                                R.string.voice_allow_playback_zh_tw
+                            )
+                        )
+                    },
+                    description = {
+                        Text(
+                            voiceLocalizedString(
+                                R.string.voice_allow_playback_desc,
+                                R.string.voice_allow_playback_desc_zh_tw
+                            )
+                        )
+                    },
+                    trailingContent = {
+                        Switch(
+                            checked = allowVoicePlayback,
+                            onCheckedChange = onAllowVoicePlaybackChange,
+                            thumbContent = {
+                                Icon(
+                                    painter = painterResource(
+                                        id = if (allowVoicePlayback) R.drawable.check else R.drawable.close
+                                    ),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(androidx.compose.material3.SwitchDefaults.IconSize)
+                                )
+                            }
+                        )
+                    },
+                    onClick = { onAllowVoicePlaybackChange(!allowVoicePlayback) }
+                ),
+                Material3SettingsItem(
+                    icon = painterResource(R.drawable.favorite),
+                    title = {
+                        Text(
+                            voiceLocalizedString(
+                                R.string.voice_allow_favorite,
+                                R.string.voice_allow_favorite_zh_tw
+                            )
+                        )
+                    },
+                    description = {
+                        Text(
+                            voiceLocalizedString(
+                                R.string.voice_allow_favorite_desc,
+                                R.string.voice_allow_favorite_desc_zh_tw
+                            )
+                        )
+                    },
+                    trailingContent = {
+                        Switch(
+                            checked = allowVoiceFavoriteEdit,
+                            onCheckedChange = { checked ->
+                                if (checked) {
+                                    showVoiceFavoriteWarnDialog = true
+                                } else {
+                                    onAllowVoiceFavoriteEditChange(false)
+                                }
+                            },
+                            thumbContent = {
+                                Icon(
+                                    painter = painterResource(
+                                        id = if (allowVoiceFavoriteEdit) R.drawable.check else R.drawable.close
+                                    ),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(androidx.compose.material3.SwitchDefaults.IconSize)
+                                )
+                            }
+                        )
+                    },
+                    onClick = {
+                        if (!allowVoiceFavoriteEdit) {
+                            showVoiceFavoriteWarnDialog = true
+                        } else {
+                            onAllowVoiceFavoriteEditChange(false)
+                        }
+                    }
                 )
             )
         )
