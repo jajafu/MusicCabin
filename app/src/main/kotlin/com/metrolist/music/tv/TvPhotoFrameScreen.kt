@@ -447,6 +447,7 @@ private fun FrameOverlayContent(
                 if (isPlaying) R.string.photo_frame_pause else R.string.photo_frame_play,
                 uiScale,
                 enabled = canControl,
+                autoFocus = true,
             ) { connection?.togglePlayPause() }
             FrameIcon(R.drawable.skip_next, R.string.photo_frame_next, uiScale, enabled = canControl && canNext) { connection?.seekToNext() }
             FrameIcon(R.drawable.arrow_back, R.string.photo_frame_previous_photo, uiScale, enabled = canNavigatePhotos, onClick = onPreviousPhoto)
@@ -457,7 +458,7 @@ private fun FrameOverlayContent(
                 FrameIcon(R.drawable.add, R.string.lyrics_offset_increase, uiScale, enabled = canAdjustOffset, onClick = { adjustLyricsOffset(50) })
             }
             // Photo selection lives in the in-frame settings dialog; no shortcut here.
-            FrameIcon(R.drawable.settings, R.string.photo_frame_settings, uiScale, autoFocus = true, onClick = onSettings)
+            FrameIcon(R.drawable.settings, R.string.photo_frame_settings, uiScale, onClick = onSettings)
             FrameIcon(R.drawable.fullscreen, R.string.tv_frame_hide_controls, uiScale, onClick = onHideControls)
         }
     }

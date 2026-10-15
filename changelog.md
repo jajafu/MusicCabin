@@ -4,6 +4,18 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.73
+
+### 中文
+
+- TV 相框進入時焦點改停在播放／暫停按鈕，方便直接用遙控器暫停或繼續。
+- 版本 code 303；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- The TV photo frame now puts initial focus on the play/pause button, so the remote can pause or resume right away.
+- Version code 303; no database schema change or data migration.
+
 ## 13.7.72
 
 ### 中文
