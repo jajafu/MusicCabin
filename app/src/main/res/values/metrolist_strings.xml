@@ -1469,4 +1469,56 @@
     <string name="tv_authorize_login_first_zh_tw" translatable="false">請先在這支手機登入，再授權電視。</string>
     <string name="tv_authorize_go_login">Go to login</string>
     <string name="tv_authorize_go_login_zh_tw" translatable="false">前往登入</string>
+
+    <!-- Voice control (public entry for any voice assistant) -->
+    <string name="voice_control">Voice control</string>
+    <string name="voice_control_zh_tw" translatable="false">語音控制</string>
+    <string name="voice_allow_playback">Allow external playback control</string>
+    <string name="voice_allow_playback_zh_tw" translatable="false">允許外部播放控制</string>
+    <string name="voice_allow_playback_desc">Let voice assistants and other apps play, pause, and switch songs without opening the screen.</string>
+    <string name="voice_allow_playback_desc_zh_tw" translatable="false">讓語音助手和其他應用程式不用開畫面也能播放、暫停和切歌。</string>
+    <string name="voice_allow_favorite">Allow external favorite edits</string>
+    <string name="voice_allow_favorite_zh_tw" translatable="false">允許外部修改收藏</string>
+    <string name="voice_allow_favorite_desc">Let voice assistants and other apps like or unlike songs.</string>
+    <string name="voice_allow_favorite_desc_zh_tw" translatable="false">讓語音助手和其他應用程式收藏或取消收藏歌曲。</string>
+    <string name="voice_favorite_warn_title">Let any app edit favorites?</string>
+    <string name="voice_favorite_warn_title_zh_tw" translatable="false">要讓任何應用程式改收藏嗎？</string>
+    <string name="voice_favorite_warn_message">Any app on this phone will be able to like or unlike your songs. Only turn this on if you trust the apps you installed.</string>
+    <string name="voice_favorite_warn_message_zh_tw" translatable="false">手機上的任何應用程式都能收藏或取消收藏你的歌曲。只有信任已安裝的應用程式時才打開。</string>
+    <string name="voice_result_played">Playing: %1$s</string>
+    <string name="voice_result_played_zh_tw" translatable="false">正在播放：%1$s</string>
+    <string name="voice_result_played_liked">Playing favorites (%1$d songs), starting with: %2$s</string>
+    <string name="voice_result_played_liked_zh_tw" translatable="false">正在播放喜愛清單（共 %1$d 首），從這首開始：%2$s</string>
+    <string name="voice_result_playing">Playing</string>
+    <string name="voice_result_playing_zh_tw" translatable="false">已開始播放</string>
+    <string name="voice_result_paused">Paused</string>
+    <string name="voice_result_paused_zh_tw" translatable="false">已暫停</string>
+    <string name="voice_result_next">Skipped to next song: %1$s</string>
+    <string name="voice_result_next_zh_tw" translatable="false">已切到下一首：%1$s</string>
+    <string name="voice_result_previous">Back to previous song: %1$s</string>
+    <string name="voice_result_previous_zh_tw" translatable="false">已回到上一首：%1$s</string>
+    <string name="voice_result_no_next">No next song</string>
+    <string name="voice_result_no_next_zh_tw" translatable="false">沒有下一首</string>
+    <string name="voice_result_no_previous">No previous song</string>
+    <string name="voice_result_no_previous_zh_tw" translatable="false">沒有上一首</string>
+    <string name="voice_result_liked">Added to favorites: %1$s</string>
+    <string name="voice_result_liked_zh_tw" translatable="false">已收藏：%1$s</string>
+    <string name="voice_result_unliked">Removed from favorites: %1$s</string>
+    <string name="voice_result_unliked_zh_tw" translatable="false">已取消收藏：%1$s</string>
+    <string name="voice_result_repeat">Repeat mode: %1$s</string>
+    <string name="voice_result_repeat_zh_tw" translatable="false">循環模式：%1$s</string>
+    <string name="voice_result_not_found">No song found for \"%1$s\"</string>
+    <string name="voice_result_not_found_zh_tw" translatable="false">找不到「%1$s」</string>
+    <string name="voice_result_empty">Favorites list is empty</string>
+    <string name="voice_result_empty_zh_tw" translatable="false">喜愛清單是空的</string>
+    <string name="voice_result_no_network">No network connection</string>
+    <string name="voice_result_no_network_zh_tw" translatable="false">沒有網路</string>
+    <string name="voice_result_denied_playback">External playback control is off</string>
+    <string name="voice_result_denied_playback_zh_tw" translatable="false">外部播放控制已關閉</string>
+    <string name="voice_result_denied_favorite">External favorite edits are off</string>
+    <string name="voice_result_denied_favorite_zh_tw" translatable="false">外部修改收藏已關閉</string>
+    <string name="voice_result_no_song">Nothing is playing right now</string>
+    <string name="voice_result_no_song_zh_tw" translatable="false">現在沒有播放歌曲</string>
+    <string name="voice_result_error">Something went wrong</string>
+    <string name="voice_result_error_zh_tw" translatable="false">執行失敗</string>
 </resources>

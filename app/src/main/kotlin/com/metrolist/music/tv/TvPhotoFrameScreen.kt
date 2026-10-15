@@ -40,6 +40,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -105,7 +106,9 @@ import com.metrolist.music.ui.component.FontSizeRange
 import com.metrolist.music.ui.component.rememberFrameUiScale
 import com.metrolist.music.ui.screens.frameErrorMessage
 import java.util.Date
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun TvPhotoFrameScreen(onExit: () -> Unit, viewModel: TvPhotoFrameViewModel = hiltViewModel()) {
@@ -121,6 +124,8 @@ fun TvPhotoFrameScreen(onExit: () -> Unit, viewModel: TvPhotoFrameViewModel = hi
     var showControls by rememberSaveable { mutableStateOf(true) }
     var showLyricsPicker by rememberSaveable { mutableStateOf(false) }
     val frameMetadata = LocalPlayerConnection.current?.mediaMetadata?.collectAsStateWithLifecycle()?.value
+    val framePlayerConnection = LocalPlayerConnection.current
+    val pickerScope = rememberCoroutineScope()
     val frameFocus = remember { FocusRequester() }
     var revealKeyCode by remember { mutableStateOf<Int?>(null) }
     BackHandler(enabled = !showSettings && !showMediaBrowser) {
@@ -283,6 +288,17 @@ fun TvPhotoFrameScreen(onExit: () -> Unit, viewModel: TvPhotoFrameViewModel = hi
         FrameLyricsSourcePicker(
             metadata = metadata,
             onDismiss = { showLyricsPicker = false },
+            onPickLyric = {
+                // New lyrics replace the old timing, so the previous per-song
+                // offset no longer applies. Atomic reset for the picked track.
+                pickerScope.launch(Dispatchers.IO) {
+                    runCatching {
+                        framePlayerConnection?.database?.query {
+                            resetLyricsOffset(metadata.id)
+                        }
+                    }
+                }
+            },
         )
     }
     if (showMediaBrowser) {
@@ -360,6 +376,21 @@ private fun FrameOverlayContent(
     val role = LocalListenTogetherManager.current?.role?.collectAsStateWithLifecycle()?.value
     val ready = connection?.service?.isPlayerReady?.collectAsStateWithLifecycle()?.value == true
     val canControl = ready && metadata != null && role != RoomRole.GUEST
+    // Same per-song offset as the phone photo frame: ±50ms per tap, clamped
+    // to ±3000ms. Atomic DB update so rapid taps never lose increments.
+    val currentSong = connection?.currentSong?.collectAsStateWithLifecycle()?.value
+    val frameScope = rememberCoroutineScope()
+    fun adjustLyricsOffset(deltaMs: Int) {
+        val songId = currentSong?.song?.id ?: return
+        frameScope.launch(Dispatchers.IO) {
+            runCatching {
+                connection?.database?.query {
+                    shiftLyricsOffset(songId, deltaMs)
+                }
+            }
+        }
+    }
+    val canAdjustOffset = canControl && currentSong != null
     val titleStyle = MaterialTheme.typography.titleLarge.copy(
         platformStyle = PlatformTextStyle(includeFontPadding = false),
         lineHeight = TextUnit.Unspecified,
@@ -424,6 +455,8 @@ private fun FrameOverlayContent(
             FrameIcon(R.drawable.arrow_forward, R.string.photo_frame_next_photo, uiScale, enabled = canNavigatePhotos, onClick = onNextPhoto)
             if (showLyrics) {
                 FrameIcon(R.drawable.lyrics, R.string.switch_lyrics_source, uiScale, enabled = canControl, onClick = onSwitchLyrics)
+                FrameIcon(R.drawable.remove, R.string.lyrics_offset_decrease, uiScale, enabled = canAdjustOffset, onClick = { adjustLyricsOffset(-50) })
+                FrameIcon(R.drawable.add, R.string.lyrics_offset_increase, uiScale, enabled = canAdjustOffset, onClick = { adjustLyricsOffset(50) })
             }
             // Photo selection lives in the in-frame settings dialog; no shortcut here.
             FrameIcon(R.drawable.settings, R.string.photo_frame_settings, uiScale, autoFocus = true, onClick = onSettings)
