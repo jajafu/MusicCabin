@@ -4,6 +4,20 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.72
+
+### 中文
+
+- 手機版相框 KTV 播放時保持螢幕亮著，離開相框恢復原本休眠設定。
+- 相框 KTV、相框 KTV2、TV 相框的操作列移除關閉 X 按鈕，離開改用返回鍵。
+- 版本 code 302；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- The phone photo frame KTV keeps the screen on during playback and restores the previous sleep setting after leaving.
+- Removed the close X button from the control rows of Photo frame KTV, Photo frame KTV 2, and the TV photo frame; use Back to exit instead.
+- Version code 302; no database schema change or data migration.
+
 ## 13.7.71
 
 ### 中文

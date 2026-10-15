@@ -285,7 +285,6 @@ fun PhotoFrameV2Screen(
                     onSettings = { showSettings = true },
                     onPreviousPhoto = { if (source == FrameV2Source.DRIVE) driveViewModel.slideshow.previous() else session.request(FramePlaybackCommand.PREVIOUS) },
                     onNextPhoto = { if (source == FrameV2Source.DRIVE) driveViewModel.slideshow.next() else session.request(FramePlaybackCommand.NEXT) },
-                    onExit = exit,
                     onSwitchLyrics = { showLyricsPicker = true },
                 )
                 if (source == FrameV2Source.LOCAL) {
@@ -388,7 +387,6 @@ private fun FrameOverlayContent(
     onSettings: () -> Unit,
     onPreviousPhoto: () -> Unit,
     onNextPhoto: () -> Unit,
-    onExit: () -> Unit,
     onSwitchLyrics: () -> Unit,
 ) {
     val connection = LocalPlayerConnection.current
@@ -468,7 +466,6 @@ private fun FrameOverlayContent(
                 FrameIcon(R.drawable.lyrics, R.string.switch_lyrics_source, uiScale, enabled = canControl, onClick = onSwitchLyrics)
             }
             FrameIcon(R.drawable.settings, R.string.photo_frame_settings, uiScale, onClick = onSettings)
-            FrameIcon(R.drawable.close, R.string.photo_frame_exit, uiScale, onClick = onExit)
         }
     }
 }

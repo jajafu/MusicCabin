@@ -269,7 +269,6 @@ fun TvPhotoFrameScreen(onExit: () -> Unit, viewModel: TvPhotoFrameViewModel = hi
                     onSettings = { showSettings = true },
                     onPreviousPhoto = { session.request(FramePlaybackCommand.PREVIOUS) },
                     onNextPhoto = { session.request(FramePlaybackCommand.NEXT) },
-                    onExit = onExit,
                     onHideControls = { showControls = false },
                     onSwitchLyrics = { showLyricsPicker = true },
                 )
@@ -361,7 +360,6 @@ private fun FrameOverlayContent(
     onSettings: () -> Unit,
     onPreviousPhoto: () -> Unit,
     onNextPhoto: () -> Unit,
-    onExit: () -> Unit,
     onHideControls: () -> Unit,
     onSwitchLyrics: () -> Unit,
 ) {
@@ -461,7 +459,6 @@ private fun FrameOverlayContent(
             // Photo selection lives in the in-frame settings dialog; no shortcut here.
             FrameIcon(R.drawable.settings, R.string.photo_frame_settings, uiScale, autoFocus = true, onClick = onSettings)
             FrameIcon(R.drawable.fullscreen, R.string.tv_frame_hide_controls, uiScale, onClick = onHideControls)
-            FrameIcon(R.drawable.close, R.string.photo_frame_exit, uiScale, onClick = onExit)
         }
     }
 }
