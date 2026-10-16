@@ -4,6 +4,18 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.75
+
+### 中文
+
+- 修正 Paxsenix 歌詞比對把秒當毫秒的問題：時間差改回以秒計算（2 秒／5 秒／10 秒），同名不同歌手的歌不再排到正確歌手前面，例如 `唯一 - G.E.M. 鄧紫棋` 不會再誤抓王力宏的版本而顯示空白。
+- 版本 code 305；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Fix Paxsenix lyrics matching that compared seconds against milliseconds: duration difference is now scored in seconds (2s / 5s / 10s), so same-title tracks by other artists no longer outrank the correct artist; e.g. `唯一 - G.E.M.` no longer picks the Wang Leehom version and shows blank.
+- Version code 305; no database schema change or data migration.
+
 ## 13.7.74
 
 ### 中文

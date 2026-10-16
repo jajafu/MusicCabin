@@ -268,7 +268,10 @@ object Paxsenix {
         artist: String,
         duration: Int
     ): List<Pair<SearchResult, Double>> {
-        val durationMs = duration * 1000
+        // Both sides are seconds: MediaMetadata.duration is seconds and
+        // Apple results are durationInMillis / 1000. Keep the original
+        // 2s / 5s / 10s intent.
+        val targetSec = duration
         val cleanupRegex = Regex("""\s*\(.*?\)|\s*\[.*?\]""")
         
         // Cleaned versions for fuzzy matching
@@ -286,11 +289,11 @@ object Paxsenix {
             val resultArtist = result.displayArtist
             
             result.duration?.let { d ->
-                val diff = abs(d - durationMs)
+                val diffSec = abs(d - targetSec)
                 when {
-                    diff <= 2000 -> score += 100 // Excellent match
-                    diff <= 5000 -> score += 50  // Good match
-                    diff <= 10000 -> score += 10 // Acceptable match
+                    diffSec <= 2 -> score += 100 // Excellent match
+                    diffSec <= 5 -> score += 50  // Good match
+                    diffSec <= 10 -> score += 10 // Acceptable match
                     else -> score -= 50          // Likely wrong version (Mixed/Edit/etc)
                 }
             }
