@@ -4,6 +4,24 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.74
+
+### 中文
+
+- 相框 KTV 歌詞改為兩段式並行抓取：每個已啟用來源只查一次（LyricsPlus、Paxsenix 即使在設定中關閉也照查，不再重複問同一批來源），最快回來的同步歌詞先顯示，讓畫面不再空白等待；25 秒內 LyricsPlus 或 Paxsenix 有逐字歌詞就直接升級替換。
+- 先顯示的那一筆會在約 0.4 秒的短窗內比較，逐字歌詞優先、其次依設定的來源順序，避免只因回得快就永久顯示較差的來源；已顯示逐字歌詞後不會被降級。
+- 若其他元件（例如手機歌詞頁）在相框抓完後才寫入沒有時間軸的歌詞，相框會再自動補抓一次（每首歌最多一次），避免整首歌沒有歌詞可顯示。
+- 離線時直接跳過抓取，不再每首歌空等來源逾時；沿用每家 8 秒、整體 25 秒的上限；手動挑選的歌詞仍優先保留。
+- 版本 code 304；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Photo frame KTV lyrics now fetch in two parallel stages: every enabled provider is searched once (LyricsPlus and Paxsenix are searched even when switched off, and the same providers are no longer asked twice), the fastest synced lyrics show immediately so the overlay is never blank, and word-synced LyricsPlus or Paxsenix lyrics upgrade it within 25 seconds.
+- The early pick is chosen inside a ~0.4s window that prefers word-synced lyrics and then the configured provider order, so a quick but worse source no longer sticks; once word-synced lyrics are showing they are never downgraded.
+- If another component (for example the phone lyrics pane) writes lyrics without a time axis after the frame finished fetching, the frame fetches once more (at most once per track) so the line does not stay empty.
+- Offline playback skips the fetch instead of waiting out provider timeouts for every track; the per-provider 8s and overall 25s limits stay, and manual picks are still kept.
+- Version code 304; no database schema change or data migration.
+
 ## 13.7.73
 
 ### 中文

@@ -45,16 +45,20 @@ import com.metrolist.music.db.entities.LyricsEntity
 import com.metrolist.music.di.LyricsHelperEntryPoint
 import com.metrolist.music.lyrics.LyricsEntry
 import com.metrolist.music.lyrics.LyricsUtils
+import com.metrolist.music.lyrics.LyricsWithProvider
 import com.metrolist.music.lyrics.isManualLyrics
 import com.metrolist.music.lyrics.lyricsTextLooksSynced
+import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.ui.component.AutoResizeText
 import com.metrolist.music.ui.component.FontSizeRange
 import com.metrolist.music.ui.component.WordLevelLyrics
 import com.metrolist.music.ui.component.wholeLineWords
 import com.metrolist.music.ui.component.rememberAdaptiveUiScale
 import dagger.hilt.android.EntryPointAccessors
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 
@@ -123,44 +127,104 @@ fun BoxScope.FrameLyricsOverlay(
     val song by connection.currentSong.collectAsStateWithLifecycle()
     val ready by connection.service.isPlayerReady.collectAsStateWithLifecycle()
     val metadata by connection.mediaMetadata.collectAsStateWithLifecycle()
-    var ktvFallbackDoneFor by remember { mutableStateOf<String?>(null) }
 
-    // The service only pre-fetches lyrics when the player's own lyrics pane is enabled, so the
-    // frame has to request them once per track or the layer stays blank.
-    LaunchedEffect(metadata?.id, lyricsEntity) {
-        val current = metadata ?: return@LaunchedEffect
-        delay(FRAME_LYRICS_FETCH_DELAY_MS)
-        withContext(Dispatchers.IO) {
-            runCatching {
-                val helper = EntryPointAccessors.fromApplication(
-                    context.applicationContext,
-                    LyricsHelperEntryPoint::class.java,
-                ).lyricsHelper()
-                val manualPick = context.isManualLyrics(current.id)
-                val cached = lyricsEntity?.lyrics
-                if (!cached.isNullOrBlank() && cached != LyricsEntity.LYRICS_NOT_FOUND &&
-                    (manualPick || LyricsUtils.isWordSynced(cached))
-                ) {
-                    return@runCatching
+    // Per-track latches: which track the automatic fetch already finished for,
+    // and which track already used its one recovery pass.
+    var fetchedTrack by remember { mutableStateOf<String?>(null) }
+    var recoveredTrack by remember { mutableStateOf<String?>(null) }
+
+    // Writes the fetched lyrics unless the row already holds something the pick
+    // cannot improve on: a manual pick, word-synced lyrics, or line-synced
+    // lyrics when the candidate is only line-synced too.
+    fun replaceable(row: String?, candidate: LyricsWithProvider): Boolean = when {
+        row.isNullOrBlank() || row == LyricsEntity.LYRICS_NOT_FOUND -> true
+        !lyricsTextLooksSynced(row) -> true
+        LyricsUtils.isWordSynced(row) -> false
+        else -> LyricsUtils.isWordSynced(candidate.lyrics)
+    }
+
+    // Two-stage parallel fetch: show the first synced lyrics from any provider
+    // right away (or, for the recovery pass, only write once the full cycle is
+    // done), then upgrade to word-synced KTV lyrics when one arrives. Every
+    // write re-reads the row so a manual pick made mid-fetch is never lost.
+    suspend fun autoFetchFrameLyrics(current: MediaMetadata, showEarly: Boolean) {
+        try {
+            val database = connection.database
+            suspend fun readRow(): String? =
+                try {
+                    database.lyrics(current.id).first()?.lyrics
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    null
                 }
-                if (ktvFallbackDoneFor == current.id) return@runCatching
-                helper.getKtvLyrics(current)?.let { ktv ->
-                    // The user may have picked lyrics while the fetch was in
-                    // flight; never overwrite an explicit pick.
-                    if (context.isManualLyrics(current.id)) return@runCatching
-                    connection.database.query {
-                        upsert(LyricsEntity(current.id, ktv.lyrics, ktv.provider))
-                    }
-                    return@runCatching
-                }
-                ktvFallbackDoneFor = current.id
-                if (context.isManualLyrics(current.id)) return@runCatching
-                val fallback = helper.getLyrics(current)
-                connection.database.query {
-                    upsert(LyricsEntity(current.id, fallback.lyrics, fallback.provider))
+            suspend fun writeRow(candidate: LyricsWithProvider) {
+                database.query {
+                    upsert(LyricsEntity(current.id, candidate.lyrics, candidate.provider))
                 }
             }
+
+            val row = readRow()
+            if (context.isManualLyrics(current.id) ||
+                (!row.isNullOrBlank() && LyricsUtils.isWordSynced(row))
+            ) {
+                return
+            }
+
+            val helper = EntryPointAccessors.fromApplication(
+                context.applicationContext,
+                LyricsHelperEntryPoint::class.java,
+            ).lyricsHelper()
+            val result =
+                helper.getFrameLyrics(current) { early ->
+                    if (!showEarly) return@getFrameLyrics
+                    if (context.isManualLyrics(current.id)) return@getFrameLyrics
+                    if (replaceable(readRow(), early)) writeRow(early)
+                }
+            if (context.isManualLyrics(current.id)) return
+
+            val best = result.upgrade ?: result.early?.takeIf { !showEarly }
+            if (best != null) {
+                if (replaceable(readRow(), best)) writeRow(best)
+                return
+            }
+            // Nothing synced anywhere: cache the miss only when the row is empty,
+            // so lyrics without a time axis fetched elsewhere are left alone.
+            val missing = readRow()
+            if (missing.isNullOrBlank() || missing == LyricsEntity.LYRICS_NOT_FOUND) {
+                database.query {
+                    upsert(LyricsEntity(current.id, LyricsEntity.LYRICS_NOT_FOUND, ""))
+                }
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
         }
+    }
+
+    LaunchedEffect(metadata?.id) {
+        val current = metadata ?: return@LaunchedEffect
+        delay(FRAME_LYRICS_FETCH_DELAY_MS)
+        try {
+            withContext(Dispatchers.IO) { autoFetchFrameLyrics(current, showEarly = true) }
+        } finally {
+            fetchedTrack = current.id
+        }
+    }
+
+    // Recovery pass: another component (e.g. the player's lyrics pane) can
+    // overwrite this track with lyrics that carry no time axis, which the frame
+    // cannot draw, so nothing would retry. One extra pass per track restores it;
+    // keying on [fetchedTrack] re-checks once the automatic fetch has finished.
+    val rowIsUntimed = lyricsEntity?.takeIf { it.id == metadata?.id }?.lyrics?.let { row ->
+        row.isNotBlank() && row != LyricsEntity.LYRICS_NOT_FOUND && !lyricsTextLooksSynced(row)
+    } == true
+    LaunchedEffect(metadata?.id, rowIsUntimed, fetchedTrack, recoveredTrack) {
+        if (!rowIsUntimed) return@LaunchedEffect
+        val current = metadata ?: return@LaunchedEffect
+        if (fetchedTrack != current.id || recoveredTrack == current.id) return@LaunchedEffect
+        recoveredTrack = current.id
+        withContext(Dispatchers.IO) { autoFetchFrameLyrics(current, showEarly = false) }
     }
 
     val lines = remember(lyricsEntity, s2tEnabled) {

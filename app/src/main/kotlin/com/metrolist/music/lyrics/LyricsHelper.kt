@@ -18,9 +18,12 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import timber.log.Timber
@@ -29,6 +32,33 @@ import javax.inject.Inject
 private const val MAX_LYRICS_FETCH_MS = 25000L
 private const val PER_PROVIDER_TIMEOUT_MS = 8000L
 private const val PROVIDER_NONE = ""
+
+/**
+ * How long the frame waits after the first synced answer before picking one, so
+ * a better source that lands a moment later still wins.
+ */
+private const val FRAME_EARLY_GRACE_MS = 400L
+
+/**
+ * Word-synced beats line-synced, then the user's provider order decides; a
+ * provider outside the configured order sorts last.
+ */
+private val FRAME_CANDIDATE_PREFERENCE: Comparator<FrameLyricsCandidate> =
+    compareByDescending<FrameLyricsCandidate> { LyricsUtils.isWordSynced(it.lyrics) }
+        .thenBy { it.priority }
+
+private data class FrameLyricsCandidate(
+    val provider: String,
+    val lyrics: String,
+    val isKtv: Boolean,
+    val priority: Int,
+)
+
+/** One streamed candidate for the frame's two-stage lyrics fetch. */
+data class FrameLyricsResult(
+    val early: LyricsWithProvider?,
+    val upgrade: LyricsWithProvider?,
+)
 
 class LyricsHelper
 @Inject
@@ -110,46 +140,127 @@ constructor(
     }
 
     /**
-     * KTV fetch: only LyricsPlus and Paxsenix, ignoring their enable switches.
-     * Returns the first word-synced result, or null when neither has one so the
-     * caller can fall back to the regular provider order.
+     * Frame two-stage fetch in a single parallel pass. Every enabled provider is
+     * searched exactly once (KTV providers even while their switch is off, so
+     * they join this pass instead of starting a second round of the same
+     * requests), and each time-synced candidate is streamed back as it arrives:
+     *
+     *  - [onEarlySynced] receives the best candidate of a short grace window, so
+     *    a higher-priority or word-synced result arriving just after the fastest
+     *    one still wins instead of whichever straggler answered first.
+     *  - The returned [FrameLyricsResult] carries that early pick plus the first
+     *    word-synced LyricsPlus/Paxsenix result for the caller to upgrade to.
+     *
+     * Everything shares the 25s budget; without a connection the pass is skipped
+     * outright so an offline head unit does not burn provider retries per track.
      */
-    suspend fun getKtvLyrics(mediaMetadata: MediaMetadata): LyricsWithProvider? {
+    suspend fun getFrameLyrics(
+        mediaMetadata: MediaMetadata,
+        onEarlySynced: suspend (LyricsWithProvider) -> Unit,
+    ): FrameLyricsResult {
         val isNetworkAvailable = try {
             networkConnectivity.isCurrentlyConnected()
         } catch (e: Exception) {
             true
         }
-        if (!isNetworkAvailable) return null
+        if (!isNetworkAvailable) return FrameLyricsResult(early = null, upgrade = null)
+
         val cleanedTitle = LyricsUtils.cleanTitleForSearch(mediaMetadata.title)
         val artists = mediaMetadata.artists.joinToString { it.name }
-        return withTimeoutOrNull(MAX_LYRICS_FETCH_MS) {
-            for (provider in KTV_PROVIDERS.mapNotNull { LyricsProviderRegistry.getProviderByName(it) }) {
-                val providerResult = try {
-                    withTimeoutOrNull(PER_PROVIDER_TIMEOUT_MS) {
-                        provider.getLyrics(
-                            context,
-                            mediaMetadata.id,
-                            cleanedTitle,
-                            artists,
-                            mediaMetadata.duration,
-                            mediaMetadata.album?.title,
-                        )
-                    }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    Timber.tag("LyricsHelper").w("KTV ${provider.name} threw: ${e.message}")
-                    null
-                }
-                val text = providerResult?.getOrNull()?.let { LyricsUtils.filterLyricsCreditLines(it) }
-                if (!text.isNullOrBlank() && LyricsUtils.isWordSynced(text)) {
-                    Timber.tag("LyricsHelper").i("Got KTV lyrics from ${provider.name}")
-                    return@withTimeoutOrNull LyricsWithProvider(text, provider.name)
-                }
-            }
-            null
+        val duration = mediaMetadata.duration
+        val album = mediaMetadata.album?.title
+        val mediaId = mediaMetadata.id
+        val preferences = context.dataStore.data.first()
+        val orderedProviders = resolveLyricsProviders(preferences)
+        val searchProviders =
+            (orderedProviders.filter { it.isEnabled(preferences) } +
+                KTV_PROVIDERS.mapNotNull { LyricsProviderRegistry.getProviderByName(it) })
+                .distinct()
+        val priorityOf = { name: String ->
+            orderedProviders.indexOfFirst { it.name == name }.takeIf { it >= 0 } ?: orderedProviders.size
         }
+
+        return withTimeoutOrNull(MAX_LYRICS_FETCH_MS) {
+            coroutineScope {
+                val channel = Channel<FrameLyricsCandidate>(Channel.UNLIMITED)
+                val stream = launch {
+                    try {
+                        searchProviders.map { provider ->
+                            launch {
+                                try {
+                                    withTimeoutOrNull(PER_PROVIDER_TIMEOUT_MS) {
+                                        provider.getAllLyrics(context, mediaId, cleanedTitle, artists, duration, album) { lyrics ->
+                                            val filtered = LyricsUtils.filterLyricsCreditLines(lyrics)
+                                            if (filtered.isBlank() || filtered == LYRICS_NOT_FOUND) return@getAllLyrics
+                                            if (!lyricsTextLooksSynced(filtered)) return@getAllLyrics
+                                            channel.trySend(
+                                                FrameLyricsCandidate(
+                                                    provider = provider.name,
+                                                    lyrics = filtered,
+                                                    isKtv = provider.name in KTV_PROVIDERS,
+                                                    priority = priorityOf(provider.name),
+                                                ),
+                                            )
+                                        }
+                                    }
+                                } catch (e: CancellationException) {
+                                    throw e
+                                } catch (_: Exception) {
+                                }
+                            }
+                        }.joinAll()
+                    } finally {
+                        channel.close()
+                    }
+                }
+
+                // Collect a short window after the first answer so source order
+                // and word-sync level can beat raw arrival order.
+                val collected = mutableListOf<FrameLyricsCandidate>()
+                channel.receiveCatching().getOrNull()?.let { first ->
+                    collected += first
+                    withTimeoutOrNull(FRAME_EARLY_GRACE_MS) {
+                        while (true) {
+                            collected += channel.receiveCatching().getOrNull() ?: break
+                        }
+                    }
+                }
+
+                val early = collected.minWithOrNull(FRAME_CANDIDATE_PREFERENCE)
+                    ?.let { LyricsWithProvider(it.lyrics, it.provider) }
+                if (early != null) {
+                    Timber.tag("LyricsHelper").d("Frame lyrics from ${early.provider} (early)")
+                    try {
+                        onEarlySynced(early)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (_: Exception) {
+                    }
+                }
+
+                var upgrade = collected
+                    .filter { it.isKtv && LyricsUtils.isWordSynced(it.lyrics) }
+                    .minByOrNull { it.priority }
+                    ?.let { LyricsWithProvider(it.lyrics, it.provider) }
+                if (upgrade == null) {
+                    for (candidate in channel) {
+                        if (candidate.isKtv && LyricsUtils.isWordSynced(candidate.lyrics)) {
+                            upgrade = LyricsWithProvider(candidate.lyrics, candidate.provider)
+                            break
+                        }
+                    }
+                }
+                if (upgrade != null) {
+                    Timber.tag("LyricsHelper").i("Frame KTV upgrade from ${upgrade.provider}")
+                } else if (early != null) {
+                    Timber.tag("LyricsHelper").d("Frame early pick from ${early.provider}; no KTV upgrade")
+                } else {
+                    Timber.tag("LyricsHelper").w("Frame found no synced lyrics")
+                }
+                stream.cancel()
+                FrameLyricsResult(early = early, upgrade = upgrade)
+            }
+        } ?: FrameLyricsResult(early = null, upgrade = null)
     }
 
     suspend fun getAllLyrics(
