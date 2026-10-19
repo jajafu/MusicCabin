@@ -9,32 +9,23 @@ import android.view.WindowManager
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
-import android.text.format.DateFormat
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -42,6 +33,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -52,11 +44,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.PlatformTextStyle
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.core.view.ViewCompat
 import androidx.core.net.toUri
@@ -75,20 +63,13 @@ import coil3.request.ImageRequest
 import coil3.request.SuccessResult
 import coil3.size.Precision
 import coil3.size.Scale
-import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
-import com.metrolist.music.listentogether.RoomRole
+import com.metrolist.music.photo.FrameOverlayContent
 import com.metrolist.music.photo.FramePlaybackCommand
 import com.metrolist.music.photo.FrameError
 import com.metrolist.music.photo.FrameLyricsOverlay
 import com.metrolist.music.photo.FrameLyricsSourcePicker
-import com.metrolist.music.photo.FRAME_CONTROL_ICON_LIFT_DP
-import com.metrolist.music.photo.FRAME_ICON_BASELINE_DP
-import com.metrolist.music.photo.FRAME_ICON_BUTTON_BASELINE_DP
-import com.metrolist.music.photo.FRAME_ICON_SPACING_DP
-import com.metrolist.music.photo.FRAME_ROW_SPACING_DP
-import com.metrolist.music.photo.FRAME_TEXT_BASELINE_SCALE
 import com.metrolist.music.photo.FrameImage
 import com.metrolist.music.photo.FramePlaybackState
 import com.metrolist.music.photo.FrameSlide
@@ -96,11 +77,9 @@ import com.metrolist.music.photo.FrameSlideDisplay
 import com.metrolist.music.photo.MediaStorePhotoBrowser
 import com.metrolist.music.photo.PhotoFramePlayback
 import com.metrolist.music.photo.coilFrameOrientation
-import com.metrolist.music.ui.component.AutoResizeText
-import com.metrolist.music.ui.component.FontSizeRange
 import com.metrolist.music.ui.component.rememberFrameUiScale
-import java.util.Date
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 const val PHOTO_FRAME_V2_ROUTE = "photo_frame_v2"
 
@@ -129,6 +108,8 @@ fun PhotoFrameV2Screen(
     var showControls by rememberSaveable { mutableStateOf(true) }
     var showLyricsPicker by rememberSaveable { mutableStateOf(false) }
     val frameMetadata = LocalPlayerConnection.current?.mediaMetadata?.collectAsStateWithLifecycle()?.value
+    val framePlayerConnection = LocalPlayerConnection.current
+    val pickerScope = rememberCoroutineScope()
     val exit: () -> Unit = {
         if (!navController.popBackStack()) navController.navigate(Screens.Home.route) { launchSingleTop = true }
     }
@@ -286,6 +267,7 @@ fun PhotoFrameV2Screen(
                     showLyrics = state.settings.showLyrics,
                     canPreviousPhoto = if (source == FrameV2Source.DRIVE) cloudSlides.canPrevious && !cloudSlides.loading else uris.size > 1,
                     canNextPhoto = if (source == FrameV2Source.DRIVE) cloudSlides.photoCount > 1 && !cloudSlides.loading else uris.size > 1,
+                    textColor = Color.White.copy(alpha = 0.85f),
                     onSettings = { showSettings = true },
                     onPreviousPhoto = { if (source == FrameV2Source.DRIVE) driveViewModel.slideshow.previous() else session.request(FramePlaybackCommand.PREVIOUS) },
                     onNextPhoto = { if (source == FrameV2Source.DRIVE) driveViewModel.slideshow.next() else session.request(FramePlaybackCommand.NEXT) },
@@ -315,6 +297,17 @@ fun PhotoFrameV2Screen(
         FrameLyricsSourcePicker(
             metadata = metadata,
             onDismiss = { showLyricsPicker = false },
+            onPickLyric = {
+                // New lyrics replace the old timing, so the previous per-song
+                // offset no longer applies. Atomic reset for the picked track.
+                pickerScope.launch(Dispatchers.IO) {
+                    runCatching {
+                        framePlayerConnection?.database?.query {
+                            resetLyricsOffset(metadata.id)
+                        }
+                    }
+                }
+            },
         )
     }
     if (showMediaBrowser) {
@@ -346,147 +339,6 @@ fun PhotoFrameV2Screen(
             slideshowActive = cloudSlides.active,
             slideshowPlaying = cloudSlides.playing,
             onToggleSlideshow = driveViewModel.slideshow::togglePlaying,
-        )
-    }
-}
-
-@Composable
-private fun FrameClock(active: Boolean, uiScale: Float) {
-    val context = LocalContext.current
-    var time by remember { mutableStateOf(DateFormat.getTimeFormat(context).format(Date())) }
-    LaunchedEffect(active) {
-        if (active) while (true) {
-            time = DateFormat.getTimeFormat(context).format(Date())
-            delay(60_000L - System.currentTimeMillis() % 60_000L)
-        }
-    }
-    val style = MaterialTheme.typography.headlineLarge.copy(
-        // Trim font padding and fixed line height so the clock top-aligns
-        // with the song title and artist in the same row.
-        platformStyle = PlatformTextStyle(includeFontPadding = false),
-        lineHeight = TextUnit.Unspecified,
-    )
-    AutoResizeText(
-        text = time,
-        fontSizeRange = FontSizeRange(
-            min = style.fontSize * FRAME_TEXT_BASELINE_SCALE,
-            max = style.fontSize * FRAME_TEXT_BASELINE_SCALE * uiScale,
-        ),
-        color = Color.White.copy(alpha = 0.85f),
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-        style = style,
-    )
-}
-
-@Composable
-private fun FrameOverlayContent(
-    uiScale: Float,
-    showClock: Boolean,
-    clockActive: Boolean,
-    showSongInfo: Boolean,
-    showLyrics: Boolean,
-    canPreviousPhoto: Boolean,
-    canNextPhoto: Boolean,
-    onSettings: () -> Unit,
-    onPreviousPhoto: () -> Unit,
-    onNextPhoto: () -> Unit,
-    onSwitchLyrics: () -> Unit,
-) {
-    val connection = LocalPlayerConnection.current
-    val metadata = connection?.mediaMetadata?.collectAsStateWithLifecycle()?.value
-    // Narrow screens: once the title is actually ellipsized, drop the artist so
-    // the full title shows. Latched per track to avoid a show/hide loop.
-    var hideArtist by remember(metadata?.id) { mutableStateOf(false) }
-    val canPrevious = connection?.canSkipPrevious?.collectAsStateWithLifecycle()?.value == true
-    val canNext = connection?.canSkipNext?.collectAsStateWithLifecycle()?.value == true
-    val isPlaying = connection?.isEffectivelyPlaying?.collectAsStateWithLifecycle()?.value == true
-    val role = LocalListenTogetherManager.current?.role?.collectAsStateWithLifecycle()?.value
-    val ready = connection?.service?.isPlayerReady?.collectAsStateWithLifecycle()?.value == true
-    val canControl = ready && metadata != null && role != RoomRole.GUEST
-    val titleStyle = MaterialTheme.typography.titleLarge.copy(
-        platformStyle = PlatformTextStyle(includeFontPadding = false),
-        lineHeight = TextUnit.Unspecified,
-    )
-    val artistStyle = MaterialTheme.typography.bodyLarge.copy(
-        platformStyle = PlatformTextStyle(includeFontPadding = false),
-        lineHeight = TextUnit.Unspecified,
-    )
-    Column(verticalArrangement = Arrangement.spacedBy(FRAME_ROW_SPACING_DP.dp * uiScale)) {
-        // Single-line info row: clock, title and artist share one visual center.
-        // Row (instead of FlowRow) vertically centers the mixed text sizes;
-        // the title shrinks with an ellipsis when the row is tight.
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp * uiScale),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (showClock) FrameClock(clockActive, uiScale)
-            if (showSongInfo && metadata != null) {
-                AutoResizeText(
-                    modifier = Modifier.weight(1f, fill = false),
-                    text = metadata.title,
-                    fontSizeRange = FontSizeRange(
-                        min = titleStyle.fontSize * FRAME_TEXT_BASELINE_SCALE,
-                        max = titleStyle.fontSize * FRAME_TEXT_BASELINE_SCALE * uiScale,
-                    ),
-                    color = Color.White.copy(alpha = 0.85f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    style = titleStyle,
-                    onSettled = { if (it.lineCount > 0 && it.isLineEllipsized(0)) hideArtist = true },
-                )
-                if (!hideArtist) {
-                    AutoResizeText(
-                        text = metadata.artists.joinToString { it.name },
-                        fontSizeRange = FontSizeRange(
-                            min = artistStyle.fontSize * FRAME_TEXT_BASELINE_SCALE,
-                            max = artistStyle.fontSize * FRAME_TEXT_BASELINE_SCALE * uiScale,
-                        ),
-                        color = Color.White.copy(alpha = 0.85f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        style = artistStyle,
-                    )
-                }
-            }
-        }
-        FlowRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(FRAME_ICON_SPACING_DP.dp * uiScale),
-            verticalArrangement = Arrangement.spacedBy(FRAME_ROW_SPACING_DP.dp * uiScale),
-        ) {
-            FrameIcon(R.drawable.skip_previous, R.string.photo_frame_previous, uiScale, enabled = canControl && canPrevious) { connection?.seekToPrevious() }
-            FrameIcon(
-                if (isPlaying) R.drawable.pause else R.drawable.play,
-                if (isPlaying) R.string.photo_frame_pause else R.string.photo_frame_play,
-                uiScale,
-                enabled = canControl,
-            ) { connection?.togglePlayPause() }
-            FrameIcon(R.drawable.skip_next, R.string.photo_frame_next, uiScale, enabled = canControl && canNext) { connection?.seekToNext() }
-            FrameIcon(R.drawable.arrow_back, R.string.photo_frame_previous_photo, uiScale, enabled = canPreviousPhoto, onClick = onPreviousPhoto)
-            FrameIcon(R.drawable.arrow_forward, R.string.photo_frame_next_photo, uiScale, enabled = canNextPhoto, onClick = onNextPhoto)
-            if (showLyrics) {
-                FrameIcon(R.drawable.lyrics, R.string.switch_lyrics_source, uiScale, enabled = canControl, onClick = onSwitchLyrics)
-            }
-            FrameIcon(R.drawable.settings, R.string.photo_frame_settings, uiScale, onClick = onSettings)
-        }
-    }
-}
-
-@Composable
-private fun FrameIcon(icon: Int, label: Int, uiScale: Float, enabled: Boolean = true, onClick: () -> Unit) {
-    IconButton(
-        onClick = onClick,
-        enabled = enabled,
-        modifier = Modifier.size(FRAME_ICON_BUTTON_BASELINE_DP.dp * uiScale),
-        colors = IconButtonDefaults.iconButtonColors(contentColor = Color.White.copy(alpha = 0.7f), disabledContentColor = Color.White.copy(alpha = 0.38f)),
-    ) {
-        Icon(
-            painterResource(icon),
-            stringResource(label),
-            Modifier.size(FRAME_ICON_BASELINE_DP.dp * uiScale)
-                .offset(y = (-FRAME_CONTROL_ICON_LIFT_DP * uiScale).dp),
         )
     }
 }

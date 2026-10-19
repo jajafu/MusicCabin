@@ -4,6 +4,20 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.79
+
+### 中文
+
+- 相框KTV2 的操作列新增歌詞偏移 −／＋按鈕，與相框KTV 相同：每按一次 50ms（僅在開啟「顯示歌詞」時顯示），並與歌詞頁共用同一首歌的偏移值；在相框內更換歌詞來源後，該首歌的偏移會歸零。
+- 相框KTV 與相框KTV2 的上方資訊列與操作列整併為同一份共用元件；除上述新增的偏移按鈕外，畫面外觀與操作不變，之後兩邊的功能不會再各改一份。
+- 版本 code 309；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Photo frame KTV 2 gains the same lyrics offset −/+ buttons as photo frame KTV: 50ms per tap (shown only when "Show lyrics" is on), sharing the per-song offset with the lyrics page, and switching the lyrics source inside the frame resets that song's offset to zero.
+- The top info and control rows of photo frame KTV and photo frame KTV 2 are consolidated into one shared component; apart from the new offset buttons above, visuals and behavior are unchanged, so future changes no longer need to be made twice.
+- Version code 309; no database schema change and no data migration is required.
+
 ## 13.7.78
 
 ### 中文
