@@ -4,6 +4,30 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.77
+
+### 中文
+
+- 更新頁的「請檢查更新」標題與按鈕改為「立即檢查更新」；按鈕在裝置已知最新版本時，文字後方以括號顯示該版本編號（例如「立即檢查更新（13.7.76）」），完成檢查後仍照舊顯示「最新：版本號」。
+- 版本 code 307；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- The update page title and button now read "Check for updates now"; when the device already knows the latest release, the button shows that version in parentheses (e.g. "Check for updates now (13.7.76)"), and after a completed check it still shows "Latest: version" as before.
+- Version code 307; no database schema change and no data migration is required.
+
+## 13.7.76
+
+### 中文
+
+- 相框KTV2 新增與相框KTV 相同的相片併排功能，並補齊雲端（Drive）輪播：直式（螢幕直立）播放時把兩張橫式照片上下堆疊成一個間隔，橫式播放時把兩張直式照片左右併排，方向不合的照片在找不到合適搭檔時退回單張並延後重試，旋轉裝置後的新間隔會依當下方向重新併排。本機來源沿用同一套播放引擎併排，Drive 來源的墊檔預先下載、歌詞與操作列均不受影響。
+- 版本 code 306；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Photo frame KTV 2 gains the same photo pairing as frame KTV, now covering the Drive cloud slideshow: in portrait orientation two landscape photos stack in one interval, in landscape orientation two portrait photos show side by side, mismatched photos fall back to a single photo and wait for a later partner retry, and new intervals after rotation pair by the current orientation. The local source pairs through the same playback engine as before, and the Drive prefetch, lyrics, and control row keep working unchanged.
+- Version code 306; no database schema change and no data migration is required.
+
 ## 13.7.75
 
 ### 中文

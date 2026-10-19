@@ -303,7 +303,13 @@ fun UpdaterScreen(
                             } else if (latestVersion != null) {
                                 Text(stringResource(R.string.latest_version_format, latestVersion!!))
                             } else {
-                                Text(stringResource(R.string.check_for_updates_button))
+                                // Show the newest release this device already knows about, if any.
+                                val cachedVersion = remember { Updater.getCachedLatestRelease()?.versionName }
+                                if (cachedVersion != null) {
+                                    Text(stringResource(R.string.check_for_updates_button_version, cachedVersion))
+                                } else {
+                                    Text(stringResource(R.string.check_for_updates_button))
+                                }
                             }
                         },
                         trailingContent = {

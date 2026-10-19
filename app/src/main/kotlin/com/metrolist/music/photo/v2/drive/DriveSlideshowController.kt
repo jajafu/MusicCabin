@@ -1,5 +1,8 @@
 package com.metrolist.music.photo.v2.drive
 
+import com.metrolist.music.photo.FramePhotoOrientation
+import com.metrolist.music.photo.canPair
+import com.metrolist.music.photo.needsPairing
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -12,7 +15,11 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlin.random.Random
 
-data class DriveSlide<P>(val image: P, val fromCache: Boolean)
+/**
+ * One visible Drive interval: a single photo, or a pair of same-orientation
+ * photos sharing the frame like the local photo frame playback does.
+ */
+data class DriveSlide<P>(val image: P, val fromCache: Boolean, val pairImage: P? = null)
 
 data class DriveSlideshowState<P>(
     val active: Boolean = false,
@@ -26,7 +33,15 @@ data class DriveSlideshowState<P>(
     val canPrevious: Boolean = false,
     val intervalSeconds: Int = 10,
     val error: DriveException? = null,
+    val pairPhoto: DriveFile? = null,
 )
+
+private class QueuedFile(val file: DriveFile, val round: Int)
+
+/** A photo whose orientation was decoded; it waits for a later pair or single. */
+private class DeferredFile(val file: DriveFile, val orientation: FramePhotoOrientation, val round: Int)
+
+private class DrivePhoto<P>(val file: DriveFile, val image: P, val fromCache: Boolean, val orientation: FramePhotoOrientation)
 
 /** UI-dispatcher owner of the shuffle order. Prefetch reserves files without decoding images. */
 class DriveSlideshowController<P>(
@@ -36,6 +51,7 @@ class DriveSlideshowController<P>(
     private val random: Random = Random.Default,
     private val waitInterval: suspend (Long) -> Unit = { delay(it) },
     private val onAuthorizationFailure: () -> Unit = {},
+    private val orientationOf: (P) -> FramePhotoOrientation = { FramePhotoOrientation.UNKNOWN },
 ) {
     private val mutableState = MutableStateFlow(DriveSlideshowState<P>())
     val state = mutableState.asStateFlow()
@@ -48,12 +64,23 @@ class DriveSlideshowController<P>(
     private var photos = emptyList<DriveFile>()
     private var unsupportedCount = 0
     private var downloadAllowed = true
+    private var round = 0
     private val failed = mutableSetOf<String>()
-    private val queue = ArrayDeque<DriveFile>()
-    private val history = mutableListOf<DriveFile>()
+    private val queue = ArrayDeque<QueuedFile>()
+    private val deferred = mutableListOf<DeferredFile>()
+    /** Photo files pulled for the slide being built; suspension puts them back at the queue front. */
+    private val pendingPhotos = mutableListOf<QueuedFile>()
+    /** One entry per visible interval: the displayed primary, optionally its paired partner. */
+    private val history = mutableListOf<List<DriveFile>>()
     private var historyIndex = -1
     private var suspended = false
-    private var pendingPhoto: DriveFile? = null
+
+    /** Screen orientation set by the player screen; pairing applies it on the next load. */
+    private var landscapeScreen = true
+
+    fun setLandscapeScreen(value: Boolean) {
+        landscapeScreen = value
+    }
 
     fun start(
         account: DriveAccount,
@@ -94,7 +121,8 @@ class DriveSlideshowController<P>(
         worker = null
         timer = null
         preloader = null
-        pendingPhoto = null
+        pendingPhotos.clear()
+        deferred.clear()
         this.account = account
         this.api = api
         this.photos = photos.filter { it.canPreview }.distinctBy { it.id }
@@ -103,14 +131,18 @@ class DriveSlideshowController<P>(
         failed.clear()
         queue.clear()
         val currentPhoto = state.value.photo?.id?.let { id -> this.photos.firstOrNull { it.id == id } }
+        // The revived slide is only complete when both photos survive; otherwise show single.
+        val currentPairPhoto = if (currentPhoto == null) null
+        else state.value.pairPhoto?.id?.let { id -> this.photos.firstOrNull { it.id == id } }
         history.clear()
         historyIndex = if (currentPhoto == null) -1 else 0
-        if (currentPhoto != null) history += currentPhoto
+        if (currentPhoto != null) history += listOfNotNull(currentPhoto, currentPairPhoto)
         mutableState.value = state.value.copy(
             active = true,
             loading = false,
             folderName = folderName,
             photo = currentPhoto,
+            pairPhoto = currentPairPhoto,
             photoCount = this.photos.size,
             skippedCount = unsupportedCount,
             canPrevious = false,
@@ -134,50 +166,122 @@ class DriveSlideshowController<P>(
         mutableState.value = state.value.copy(loading = true)
         worker = scope.launch(start = CoroutineStart.UNDISPATCHED) {
             try {
+                suspend fun loadPhoto(file: DriveFile): DrivePhoto<P>? = try {
+                    val slide = load(selectedAccount, file, selectedApi, downloadAllowed)
+                    if (session != generation) null
+                    else DrivePhoto(file, slide.image, slide.fromCache, orientationOf(slide.image))
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (error: Exception) {
+                    if (session == generation) recordFailure(file, error)
+                    null
+                }
+
+                /** Builds 1..2 display files for the next interval, pairing within the current round. */
+                suspend fun buildSlideFiles(): List<DrivePhoto<P>>? {
+                    while (true) {
+                        currentCoroutineContext().ensureActive()
+                        // A interrupted retry can leave both queues empty while this worker is
+                        // still building; refill once more before giving up, so a single failed
+                        // candidate cannot stop the slideshow while readable photos remain.
+                        if (queue.isEmpty() && deferred.isEmpty()) replenish()
+                        val candidate = deferred.removeFirstOrNull()?.let { QueuedFile(it.file, it.round) }
+                            ?: queue.removeFirstOrNull()
+                            ?: return null
+                        pendingPhotos += candidate
+                        val primary = loadPhoto(candidate.file)
+                        if (session != generation) return null
+                        if (primary == null) {
+                            pendingPhotos.remove(candidate)
+                            continue
+                        }
+                        if (!primary.orientation.needsPairing(landscapeScreen)) {
+                            pendingPhotos.clear()
+                            return listOf(primary)
+                        }
+
+                        // Portrait photos pair on landscape screens and landscapes stack on portrait
+                        // screens; the partner must come from the same shuffle round. A loaded but
+                        // mismatched partner waits in deferred for a later slide instead of repeating
+                        // this interval, like FramePlaybackSession.deferredPhotos does.
+                        while (true) {
+                            currentCoroutineContext().ensureActive()
+                            val partnerCandidate = deferred.indexOfFirst {
+                                it.round == candidate.round && canPair(primary.orientation, it.orientation)
+                            }.takeIf { it >= 0 }?.let { deferred.removeAt(it) }
+                                ?.let { QueuedFile(it.file, it.round) }
+                                ?: queue.removeFirstOrNull()
+                            if (partnerCandidate == null) {
+                                pendingPhotos.clear()
+                                return listOf(primary)
+                            }
+                            if (partnerCandidate.round != candidate.round) {
+                                // The primary's round is over (like a stale deferred photo after a
+                                // refresh): stop the wait like the local engine does instead of
+                                // decoding the whole fresh round within one interval.
+                                deferred += DeferredFile(partnerCandidate.file, FramePhotoOrientation.UNKNOWN, partnerCandidate.round)
+                                pendingPhotos.remove(partnerCandidate)
+                                pendingPhotos.clear()
+                                return listOf(primary)
+                            }
+                            pendingPhotos += partnerCandidate
+                            val partner = loadPhoto(partnerCandidate.file)
+                            if (session != generation) return null
+                            if (partner == null) {
+                                pendingPhotos.remove(partnerCandidate)
+                                continue
+                            }
+                            if (canPair(primary.orientation, partner.orientation)) {
+                                pendingPhotos.clear()
+                                return listOf(primary, partner)
+                            }
+                            pendingPhotos.remove(partnerCandidate)
+                            deferred += DeferredFile(
+                                partner.file, partner.orientation, partnerCandidate.round,
+                            )
+                        }
+                    }
+                }
+
                 while (session == generation) {
                     currentCoroutineContext().ensureActive()
                     val targetIndex = if (previous) historyIndex - 1 else historyIndex + 1
                     val fromHistory = targetIndex in history.indices
                     if (previous && !fromHistory) break
-                    replenish()
-                    val photo = if (fromHistory) history[targetIndex] else queue.removeFirstOrNull() ?: break
-                    pendingPhoto = if (fromHistory) null else photo
-                    try {
-                        val slide = load(selectedAccount, photo, selectedApi, downloadAllowed)
-                        currentCoroutineContext().ensureActive()
-                        if (session != generation) return@launch
-                        pendingPhoto = null
-                        if (fromHistory) historyIndex = targetIndex else {
-                            history += photo
-                            if (history.size > 200) history.removeAt(0)
-                            historyIndex = history.lastIndex
-                        }
-                        mutableState.value = state.value.copy(current = slide, photo = photo, canPrevious = historyIndex > 0, error = if (downloadAllowed) null else state.value.error)
-                        return@launch
-                    } catch (cancelled: CancellationException) {
-                        throw cancelled
-                    } catch (error: Exception) {
-                        if (session != generation) return@launch
-                        pendingPhoto = null
+                    val slidePhotos: List<DrivePhoto<P>>? = if (fromHistory) {
+                        history[targetIndex].take(2).mapNotNull { loadPhoto(it) }
+                    } else {
+                        replenish()
+                        buildSlideFiles()
+                    }
+                    if (session != generation) return@launch
+                    if (slidePhotos == null) break
+                    if (slidePhotos.isEmpty()) {
+                        // A replayed history entry with no readable photo is dropped; the walk continues.
                         if (fromHistory) {
                             history.removeAt(targetIndex)
                             if (targetIndex <= historyIndex) historyIndex--
+                            continue
                         }
-                        val failure = error as? DriveException
-                        if (failure?.failure in DOWNLOAD_INTERRUPTED) {
-                            downloadAllowed = false
-                            preloader?.cancel()
-                        }
-                        if (failure?.failure in AUTHORIZATION_INTERRUPTED) onAuthorizationFailure()
-                        failed += photo.id
-                        queue.removeAll { it.id == photo.id }
-                        mutableState.value = state.value.copy(
-                            skippedCount = unsupportedCount + failed.size,
-                            canPrevious = historyIndex > 0,
-                            error = if (error is DriveCacheMissException) state.value.error
-                                else failure ?: DriveException(DriveFailure.UNKNOWN),
-                        )
+                        break
                     }
+                    val primary = slidePhotos.first()
+                    val partner = slidePhotos.getOrNull(1)
+                    if (fromHistory) {
+                        historyIndex = targetIndex
+                    } else {
+                        history += slidePhotos.map { it.file }
+                        if (history.size > 200) history.removeAt(0)
+                        historyIndex = history.lastIndex
+                    }
+                    mutableState.value = state.value.copy(
+                        current = DriveSlide(primary.image, primary.fromCache, partner?.image),
+                        photo = primary.file,
+                        pairPhoto = partner?.file,
+                        canPrevious = historyIndex > 0,
+                        error = if (downloadAllowed) null else state.value.error,
+                    )
+                    return@launch
                 }
                 if (session == generation) mutableState.value = state.value.copy(playing = false)
             } finally {
@@ -187,6 +291,22 @@ class DriveSlideshowController<P>(
                 }
             }
         }
+    }
+
+    private fun recordFailure(file: DriveFile, error: Exception) {
+        val failure = error as? DriveException
+        if (failure?.failure in DOWNLOAD_INTERRUPTED) {
+            downloadAllowed = false
+            preloader?.cancel()
+        }
+        if (failure?.failure in AUTHORIZATION_INTERRUPTED) onAuthorizationFailure()
+        failed += file.id
+        queue.removeAll { it.file.id == file.id }
+        mutableState.value = state.value.copy(
+            skippedCount = unsupportedCount + failed.size,
+            error = if (error is DriveCacheMissException) state.value.error
+                else failure ?: DriveException(DriveFailure.UNKNOWN),
+        )
     }
 
     fun togglePlaying() {
@@ -200,6 +320,9 @@ class DriveSlideshowController<P>(
             if (failed.isNotEmpty() || !downloadAllowed) {
                 failed.clear()
                 queue.clear()
+                // Stale deferred photos carry expired rounds; a fresh retry starts clean.
+                // pendingPhotos belongs to the in-flight worker and stays as is.
+                deferred.clear()
                 downloadAllowed = true
                 mutableState.value = state.value.copy(skippedCount = unsupportedCount, error = null)
             }
@@ -222,8 +345,12 @@ class DriveSlideshowController<P>(
             worker?.cancel()
             timer?.cancel()
             preloader?.cancel()
-            pendingPhoto?.let { queue.addFirst(it) }
-            pendingPhoto = null
+            for (entry in pendingPhotos.reversed()) {
+                queue.removeAll { it.file.id == entry.file.id }
+                deferred.removeAll { it.file.id == entry.file.id }
+                queue.addFirst(QueuedFile(entry.file, entry.round))
+            }
+            pendingPhotos.clear()
             mutableState.value = state.value.copy(loading = false)
         } else if (state.value.active) {
             if (state.value.current == null) next() else schedule()
@@ -242,22 +369,29 @@ class DriveSlideshowController<P>(
         api = null
         photos = emptyList()
         downloadAllowed = true
+        round = 0
         queue.clear()
+        deferred.clear()
+        pendingPhotos.clear()
         history.clear()
         historyIndex = -1
-        pendingPhoto = null
         failed.clear()
         mutableState.value = DriveSlideshowState(intervalSeconds = state.value.intervalSeconds)
     }
 
     private fun replenish() {
         if (queue.isNotEmpty()) return
-        val round = photos.filterNot { it.id in failed }.shuffled(random).toMutableList()
-        if (round.size > 1 && round.first().id == state.value.photo?.id) {
-            val swap = random.nextInt(1, round.size)
-            round[0] = round[swap].also { round[swap] = round[0] }
+        round++
+        val files = photos.filterNot { it.id in failed }.shuffled(random).toMutableList()
+        // A new round must not open with a photo of the just-displayed interval, matching
+        // the local engine's previous-photo guard: the head alone is protected here, and
+        // a small folder may still repeat its only remaining photos.
+        val blocked = state.value.let { setOfNotNull(it.photo?.id, it.pairPhoto?.id) }
+        if (files.size > 1 && files.first().id in blocked) {
+            val swap = files.indices.drop(1).firstOrNull { files[it].id !in blocked }
+            if (swap != null) files[0] = files[swap].also { files[swap] = files[0] }
         }
-        queue.addAll(round)
+        queue.addAll(files.map { QueuedFile(it, round) })
     }
 
     private fun schedule() {
@@ -266,8 +400,9 @@ class DriveSlideshowController<P>(
         val selectedAccount = account ?: return
         val selectedApi = api ?: return
         replenish()
-        // The visible photo plus four random upcoming photos seeds five offline-ready frames.
-        val upcoming = if (downloadAllowed) queue.filter { it.id != state.value.photo?.id }.take(4) else emptyList()
+        val visiblePhotoId = setOfNotNull(state.value.photo?.id, state.value.pairPhoto?.id)
+        // The visible interval plus four random upcoming photos seeds five offline-ready frames.
+        val upcoming = if (downloadAllowed) queue.filter { it.file.id !in visiblePhotoId }.take(4).map { it.file } else emptyList()
         if (!downloadAllowed) preloader?.cancel()
         if (preloader?.isActive != true) {
             preloader = scope.launch {

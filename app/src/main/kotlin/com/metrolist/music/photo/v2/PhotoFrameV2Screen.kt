@@ -13,7 +13,6 @@ import android.text.format.DateFormat
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.FlowRow
@@ -70,7 +69,6 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
-import coil3.compose.asPainter
 import coil3.imageLoader
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
@@ -91,7 +89,9 @@ import com.metrolist.music.photo.FRAME_ICON_BUTTON_BASELINE_DP
 import com.metrolist.music.photo.FRAME_ICON_SPACING_DP
 import com.metrolist.music.photo.FRAME_ROW_SPACING_DP
 import com.metrolist.music.photo.FRAME_TEXT_BASELINE_SCALE
+import com.metrolist.music.photo.FrameImage
 import com.metrolist.music.photo.FramePlaybackState
+import com.metrolist.music.photo.FrameSlide
 import com.metrolist.music.photo.FrameSlideDisplay
 import com.metrolist.music.photo.PhotoFramePlayback
 import com.metrolist.music.photo.coilFrameOrientation
@@ -193,6 +193,8 @@ fun PhotoFrameV2Screen(
         // rotation only re-lays out the current image and applies the new size to later photos.
         val decodeSize by rememberUpdatedState(width to height)
         val landscapeNow by rememberUpdatedState(isLandscape)
+        // Pairing follows the current screen orientation; rotation applies to later photos.
+        LaunchedEffect(isLandscape) { driveViewModel.slideshow.setLandscapeScreen(isLandscape) }
         // A cancelled decode can finish cleanup after its replacement has started.
         // Give each effect its own frame state so old cleanup cannot erase new images.
         var slides by remember(session, state.settings.intervalSeconds, foreground, showSettings, showMediaBrowser) {
@@ -243,11 +245,12 @@ fun PhotoFrameV2Screen(
         val toggleLabel = stringResource(R.string.photo_frame_toggle_controls)
         Box(Modifier.fillMaxSize().clickable(onClickLabel = toggleLabel) { showControls = !showControls }) {
             if (source == FrameV2Source.DRIVE && foreground) {
-                Crossfade(targetState = cloudSlides.current?.image, animationSpec = tween(350), label = "Drive photo") { image ->
-                    if (image != null) Image(
-                        painter = remember(image) { image.asPainter(context) }, contentDescription = null,
-                        contentScale = scale, modifier = Modifier.fillMaxSize(),
-                    )
+                Crossfade(targetState = cloudSlides.current, animationSpec = tween(350), label = "Drive photo") { slide ->
+                    if (slide != null) {
+                        val frames = listOfNotNull(slide.image, slide.pairImage)
+                            .mapIndexed { index, image -> FrameImage(index.toString(), image) }
+                        FrameSlideDisplay(FrameSlide(frames), isLandscape, scale)
+                    }
                 }
             }
             slides.current?.let { FrameSlideDisplay(it, isLandscape, scale) }

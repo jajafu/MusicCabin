@@ -14,6 +14,7 @@ import coil3.request.SuccessResult
 import coil3.size.Scale
 import com.metrolist.music.BuildConfig
 import com.metrolist.music.constants.MaxImageCacheSizeKey
+import com.metrolist.music.photo.coilFrameOrientation
 import com.metrolist.music.photo.v2.drive.*
 import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.safeDataStoreEdit
@@ -75,7 +76,7 @@ class PhotoFrameV2ViewModel @Inject constructor(
                     .networkCachePolicy(CachePolicy.DISABLED)
                     .build(),
             ) as? SuccessResult ?: throw DriveException(DriveFailure.INVALID_IMAGE)
-            DriveSlide(result.image, cached)
+            DriveSlide(result.image, fromCache = cached)
         }
 
     val slideshow: DriveSlideshowController<Image> = DriveSlideshowController(
@@ -83,6 +84,7 @@ class PhotoFrameV2ViewModel @Inject constructor(
         load = { account, photo, api, allowDownload -> loadImage(context, api, account, photo, allowDownload) },
         prefetch = imageCache::prefetch,
         onAuthorizationFailure = ::requireReconnect,
+        orientationOf = ::coilFrameOrientation,
     )
     private var cacheScan: Job? = null
     private var cacheIndexing: Job? = null
