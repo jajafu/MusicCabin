@@ -1,4 +1,4 @@
-package com.metrolist.music.photo.v2
+package com.metrolist.music.photo
 
 import android.content.Intent
 import android.net.Uri
@@ -7,6 +7,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -61,7 +62,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -75,6 +80,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.withFrameNanos
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -85,28 +91,23 @@ import coil3.request.ImageRequest
 import coil3.size.Precision
 import coil3.size.Scale
 import com.metrolist.music.R
-import com.metrolist.music.photo.DirectUsbListing
-import com.metrolist.music.photo.DirectUsbPhotoSource
-import com.metrolist.music.photo.DirectUsbRoot
-import com.metrolist.music.photo.MediaStoreAlbum
-import com.metrolist.music.photo.MediaStorePhoto
-import com.metrolist.music.photo.MediaStorePhotoSource
-import com.metrolist.music.photo.MediaStoreVolume
-import com.metrolist.music.photo.MediaStoreVolumeDiagnostic
-import com.metrolist.music.photo.MediaStoreVolumeKind
-import com.metrolist.music.photo.hasMediaStorePhotoAccess
-import com.metrolist.music.photo.mergeMediaStorePhotos
-import com.metrolist.music.photo.requiredMediaStorePhotoPermissions
-import com.metrolist.music.photo.updateMediaStoreFolderSelection
+import com.metrolist.music.tv.isAndroidTv
+import com.metrolist.music.tv.tvLocalizedString
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 private const val MediaStorePageSize = 80
 
+/**
+ * MediaStore photo picker shared by the phone frame, frame 2 and the TV frame.
+ * [tvMode] switches on remote-control focus handling and the TV empty-state
+ * copy; it defaults to false so phone callers keep their old behaviour.
+ */
 @Composable
 internal fun MediaStorePhotoBrowser(
     onDismiss: () -> Unit,
     onPhotosSelected: (List<Uri>) -> Unit,
+    tvMode: Boolean = false,
 ) {
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -229,6 +230,7 @@ internal fun MediaStorePhotoBrowser(
             MediaStoreBrowserTopBar(
                 selectedCount = selected.size,
                 diagnosticsEnabled = hasAccess && volumes.isNotEmpty(),
+                autoFocus = tvMode && hasAccess,
                 onDismiss = onDismiss,
                 onDiagnostics = { showDiagnostics = true },
                 onAdd = {
@@ -243,6 +245,7 @@ internal fun MediaStorePhotoBrowser(
                             Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null)),
                         )
                     },
+                    tvMode = tvMode,
                 )
                 else -> {
                     if (volumes.isNotEmpty()) {
@@ -266,7 +269,7 @@ internal fun MediaStorePhotoBrowser(
                                         }
                                     },
                                     label = { Text(mediaStoreVolumeLabel(volume)) },
-                                    modifier = Modifier.heightIn(min = 48.dp),
+                                    modifier = Modifier.heightIn(min = 48.dp).tvBrowserFocus(),
                                 )
                             }
                         }
@@ -322,6 +325,9 @@ internal fun MediaStorePhotoBrowser(
                     )
                     MediaStorePhotoGrid(
                         photos = photos,
+                        emptyMessage = if (tvMode && volumes.any { it.kind == MediaStoreVolumeKind.PRIMARY } &&
+                            selectedVolume?.kind != MediaStoreVolumeKind.REMOVABLE)
+                            tvLocalizedString(R.string.tv_photo_local_empty, R.string.tv_photo_local_empty_zh_tw) else stringResource(R.string.photo_browser_empty),
                         selected = selected,
                         selectedLookup = selectedLookup,
                         loading = loading,
@@ -336,6 +342,7 @@ internal fun MediaStorePhotoBrowser(
                         directBrowseEnabled = selectedVolume?.kind == MediaStoreVolumeKind.REMOVABLE,
                         directBrowseLoading = directRootLoading,
                         directBrowseError = directRootError,
+                        centerEmptyMessage = tvMode,
                         onDirectBrowse = {
                             val volume = selectedVolume ?: return@MediaStorePhotoGrid
                             scope.launch {
@@ -370,17 +377,25 @@ internal fun MediaStorePhotoBrowser(
 private fun MediaStoreBrowserTopBar(
     selectedCount: Int,
     diagnosticsEnabled: Boolean,
+    autoFocus: Boolean = false,
     onDismiss: () -> Unit,
     onDiagnostics: () -> Unit,
     onAdd: () -> Unit,
 ) {
     val diagnosticsLabel = "${stringResource(R.string.storage)} · ${stringResource(R.string.details)}"
+    val closeFocus = remember { FocusRequester() }
+    LaunchedEffect(autoFocus) {
+        if (autoFocus) {
+            withFrameNanos { }
+            closeFocus.requestFocus()
+        }
+    }
     Row(
         Modifier.fillMaxWidth().heightIn(min = 64.dp).padding(horizontal = 8.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        IconButton(onClick = onDismiss, modifier = Modifier.size(48.dp)) {
+        IconButton(onClick = onDismiss, modifier = Modifier.size(48.dp).focusRequester(closeFocus).tvBrowserFocus()) {
             Icon(painterResource(R.drawable.arrow_back), stringResource(R.string.photo_browser_close))
         }
         Column(Modifier.weight(1f)) {
@@ -401,12 +416,12 @@ private fun MediaStoreBrowserTopBar(
         if (diagnosticsEnabled) {
             IconButton(
                 onClick = onDiagnostics,
-                modifier = Modifier.size(48.dp),
+                modifier = Modifier.size(48.dp).tvBrowserFocus(),
             ) {
                 Icon(painterResource(R.drawable.info), diagnosticsLabel)
             }
         }
-        Button(onClick = onAdd, enabled = selectedCount > 0, modifier = Modifier.heightIn(min = 48.dp)) {
+        Button(onClick = onAdd, enabled = selectedCount > 0, modifier = Modifier.heightIn(min = 48.dp).tvBrowserFocus()) {
             Text(stringResource(R.string.photo_browser_add, selectedCount))
         }
     }
@@ -465,7 +480,7 @@ private fun MediaStoreStorageDiagnosticsDialog(
             }
         },
         confirmButton = {
-            OutlinedButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp)) {
+            OutlinedButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp).tvBrowserFocus()) {
                 Text(stringResource(R.string.close))
             }
         },
@@ -504,7 +519,14 @@ private fun MediaStoreStorageDiagnosticCard(diagnostic: MediaStoreVolumeDiagnost
 }
 
 @Composable
-private fun MediaStorePermissionContent(onRequest: () -> Unit, onSettings: () -> Unit) {
+private fun MediaStorePermissionContent(onRequest: () -> Unit, onSettings: () -> Unit, tvMode: Boolean) {
+    val allowFocus = remember { FocusRequester() }
+    LaunchedEffect(tvMode) {
+        if (tvMode) {
+            withFrameNanos { }
+            allowFocus.requestFocus()
+        }
+    }
     Column(
         Modifier.fillMaxSize().padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -529,14 +551,21 @@ private fun MediaStorePermissionContent(onRequest: () -> Unit, onSettings: () ->
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Button(onClick = onRequest, modifier = Modifier.heightIn(min = 48.dp)) {
+            Button(onClick = onRequest, modifier = Modifier.heightIn(min = 48.dp).focusRequester(allowFocus).tvBrowserFocus()) {
                 Text(stringResource(R.string.photo_browser_allow))
             }
-            OutlinedButton(onClick = onSettings, modifier = Modifier.heightIn(min = 48.dp)) {
+            OutlinedButton(onClick = onSettings, modifier = Modifier.heightIn(min = 48.dp).tvBrowserFocus()) {
                 Text(stringResource(R.string.photo_browser_app_settings))
             }
         }
     }
+}
+
+private fun Modifier.tvBrowserFocus(): Modifier = composed {
+    val tvMode = isAndroidTv(LocalContext.current)
+    var focused by remember { mutableStateOf(false) }
+    this.onFocusChanged { focused = it.isFocused }
+        .then(if (tvMode && focused) Modifier.border(4.dp, Color.White, RoundedCornerShape(12.dp)) else Modifier)
 }
 
 @Composable
@@ -571,7 +600,7 @@ private fun MediaStoreAlbumControls(
                 Modifier.weight(1f),
                 color = MaterialTheme.colorScheme.error,
             )
-            OutlinedButton(onClick = onRetry, modifier = Modifier.heightIn(min = 48.dp)) {
+            OutlinedButton(onClick = onRetry, modifier = Modifier.heightIn(min = 48.dp).tvBrowserFocus()) {
                 Text(stringResource(R.string.retry))
             }
         }
@@ -584,7 +613,7 @@ private fun MediaStoreAlbumControls(
                     selected = selectedAlbum == null,
                     onClick = { onSelectAlbum(null) },
                     label = { Text(stringResource(R.string.photo_browser_all_folders)) },
-                    modifier = Modifier.heightIn(min = 48.dp),
+                    modifier = Modifier.heightIn(min = 48.dp).tvBrowserFocus(),
                 )
             }
             rowItems(albums, key = MediaStoreAlbum::id) { album ->
@@ -594,7 +623,7 @@ private fun MediaStoreAlbumControls(
                     selected = album.id == selectedAlbum?.id,
                     onClick = { onSelectAlbum(album) },
                     label = { Text("$name · $count", maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                    modifier = Modifier.heightIn(min = 48.dp),
+                    modifier = Modifier.heightIn(min = 48.dp).tvBrowserFocus(),
                 )
             }
         }
@@ -617,7 +646,7 @@ private fun MediaStoreAlbumControls(
             OutlinedButton(
                 onClick = onToggleFolder,
                 enabled = !bulkSelecting,
-                modifier = Modifier.heightIn(min = 48.dp),
+                modifier = Modifier.heightIn(min = 48.dp).tvBrowserFocus(),
             ) {
                 if (bulkSelecting) {
                     CircularProgressIndicator(Modifier.size(20.dp))
@@ -649,6 +678,7 @@ private fun MediaStoreAlbumControls(
 @Composable
 private fun MediaStorePhotoGrid(
     photos: List<MediaStorePhoto>,
+    emptyMessage: String,
     selected: MutableList<String>,
     selectedLookup: Set<String>,
     loading: Boolean,
@@ -661,6 +691,7 @@ private fun MediaStorePhotoGrid(
     directBrowseLoading: Boolean,
     directBrowseError: Boolean,
     onDirectBrowse: () -> Unit,
+    centerEmptyMessage: Boolean = false,
 ) {
     when {
         photos.isEmpty() && loading -> BrowserCenteredMessage {
@@ -669,18 +700,18 @@ private fun MediaStorePhotoGrid(
         }
         photos.isEmpty() && loadError -> BrowserCenteredMessage {
             Text(stringResource(R.string.photo_browser_load_error), color = MaterialTheme.colorScheme.error)
-            Button(onClick = onRetry, modifier = Modifier.padding(top = 12.dp).heightIn(min = 48.dp)) {
+            Button(onClick = onRetry, modifier = Modifier.padding(top = 12.dp).heightIn(min = 48.dp).tvBrowserFocus()) {
                 Text(stringResource(R.string.retry))
             }
         }
         photos.isEmpty() -> BrowserCenteredMessage {
             Icon(painterResource(R.drawable.hide_image), null, Modifier.size(48.dp))
-            Text(stringResource(R.string.photo_browser_empty), Modifier.padding(top = 12.dp))
+            Text(emptyMessage, Modifier.padding(top = 12.dp), textAlign = if (centerEmptyMessage) TextAlign.Center else TextAlign.Start)
             if (directBrowseEnabled) {
                 Button(
                     onClick = onDirectBrowse,
                     enabled = !directBrowseLoading,
-                    modifier = Modifier.padding(top = 16.dp).heightIn(min = 48.dp),
+                    modifier = Modifier.padding(top = 16.dp).heightIn(min = 48.dp).tvBrowserFocus(),
                 ) {
                     if (directBrowseLoading) {
                         CircularProgressIndicator(Modifier.size(20.dp))
@@ -723,10 +754,10 @@ private fun MediaStorePhotoGrid(
                 Box(Modifier.fillMaxWidth().padding(vertical = 12.dp), contentAlignment = Alignment.Center) {
                     when {
                         loading -> CircularProgressIndicator(Modifier.size(32.dp))
-                        loadError -> Button(onClick = onRetry, modifier = Modifier.heightIn(min = 48.dp)) {
+                        loadError -> Button(onClick = onRetry, modifier = Modifier.heightIn(min = 48.dp).tvBrowserFocus()) {
                             Text(stringResource(R.string.retry))
                         }
-                        hasMore -> OutlinedButton(onClick = onLoadMore, modifier = Modifier.heightIn(min = 48.dp)) {
+                        hasMore -> OutlinedButton(onClick = onLoadMore, modifier = Modifier.heightIn(min = 48.dp).tvBrowserFocus()) {
                             Text(stringResource(R.string.photo_browser_load_more))
                         }
                     }
@@ -785,6 +816,7 @@ private fun DirectUsbPhotoBrowser(
                 },
                 onDiagnostics = {},
                 onAdd = onAdd,
+                autoFocus = isAndroidTv(LocalContext.current),
             )
             Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)) {
                 Row(
@@ -795,7 +827,7 @@ private fun DirectUsbPhotoBrowser(
                     IconButton(
                         onClick = { parentPath?.let { currentPath = it } },
                         enabled = parentPath != null && !bulkSelecting,
-                        modifier = Modifier.size(48.dp),
+                        modifier = Modifier.size(48.dp).tvBrowserFocus(),
                     ) {
                         Icon(painterResource(R.drawable.arrow_upward), stringResource(R.string.back))
                     }
@@ -843,7 +875,7 @@ private fun DirectUsbPhotoBrowser(
                         }
                     },
                     enabled = !loading && !loadError && !bulkSelecting,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).tvBrowserFocus(),
                 ) {
                     if (bulkSelecting) {
                         CircularProgressIndicator(Modifier.size(20.dp))
@@ -875,7 +907,7 @@ private fun DirectUsbPhotoBrowser(
                 }
                 loadError -> BrowserCenteredMessage {
                     Text(stringResource(R.string.photo_browser_folder_error), color = MaterialTheme.colorScheme.error)
-                    Button(onClick = { revision++ }, modifier = Modifier.padding(top = 12.dp).heightIn(min = 48.dp)) {
+                    Button(onClick = { revision++ }, modifier = Modifier.padding(top = 12.dp).heightIn(min = 48.dp).tvBrowserFocus()) {
                         Text(stringResource(R.string.retry))
                     }
                 }
@@ -923,7 +955,7 @@ private fun DirectUsbEntries(
             OutlinedButton(
                 onClick = { onOpenDirectory(directory.path) },
                 enabled = enabled,
-                modifier = Modifier.fillMaxWidth().aspectRatio(1f),
+                modifier = Modifier.fillMaxWidth().aspectRatio(1f).tvBrowserFocus(),
                 shape = RoundedCornerShape(12.dp),
                 contentPadding = PaddingValues(12.dp),
             ) {
@@ -954,6 +986,7 @@ private fun DirectUsbEntries(
 @Composable
 private fun MediaStorePhotoTile(photo: MediaStorePhoto, selected: Boolean, onToggle: () -> Unit) {
     val context = LocalContext.current
+    var focused by remember { mutableStateOf(false) }
     val description = stringResource(R.string.photo_browser_photo_description, photo.name)
     val request = remember(photo.uri) {
         ImageRequest.Builder(context)
@@ -968,7 +1001,9 @@ private fun MediaStorePhotoTile(photo: MediaStorePhoto, selected: Boolean, onTog
     }
     Box(
         Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(12.dp))
+            .onFocusChanged { focused = it.isFocused }
             .selectable(selected = selected, role = Role.Checkbox, onClick = onToggle)
+            .then(if (isAndroidTv(context) && focused) Modifier.border(4.dp, Color.White, RoundedCornerShape(12.dp)) else Modifier)
             .semantics { contentDescription = description },
     ) {
         AsyncImage(

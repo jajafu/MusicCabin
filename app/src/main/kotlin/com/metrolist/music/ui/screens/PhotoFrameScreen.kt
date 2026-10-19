@@ -88,6 +88,7 @@ import com.metrolist.music.photo.FRAME_TEXT_BASELINE_SCALE
 import com.metrolist.music.photo.FramePlaybackCommand
 import com.metrolist.music.photo.FramePlaybackState
 import com.metrolist.music.photo.FramePlaybackSession
+import com.metrolist.music.photo.MediaStorePhotoBrowser
 import com.metrolist.music.photo.PhotoFramePlayback
 import com.metrolist.music.ui.component.AutoResizeText
 import com.metrolist.music.ui.component.FontSizeRange

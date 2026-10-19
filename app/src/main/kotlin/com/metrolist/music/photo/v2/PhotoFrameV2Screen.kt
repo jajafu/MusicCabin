@@ -93,6 +93,7 @@ import com.metrolist.music.photo.FrameImage
 import com.metrolist.music.photo.FramePlaybackState
 import com.metrolist.music.photo.FrameSlide
 import com.metrolist.music.photo.FrameSlideDisplay
+import com.metrolist.music.photo.MediaStorePhotoBrowser
 import com.metrolist.music.photo.PhotoFramePlayback
 import com.metrolist.music.photo.coilFrameOrientation
 import com.metrolist.music.ui.component.AutoResizeText

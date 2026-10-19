@@ -45,8 +45,6 @@
     <string name="tv_playlist_name_hint_zh_tw" translatable="false">歌單名稱</string>
     <string name="tv_create">Create</string>
     <string name="tv_create_zh_tw" translatable="false">建立</string>
-    <string name="tv_remove">Remove</string>
-    <string name="tv_remove_zh_tw" translatable="false">移除</string>
     <string name="tv_delete_playlist">Delete playlist</string>
     <string name="tv_delete_playlist_zh_tw" translatable="false">刪除歌單</string>
     <string name="tv_delete_playlist_confirm">Delete this playlist? Songs stay in your library.</string>
@@ -1148,8 +1146,6 @@
     <string name="stream_source_android_creator_desc">Android creator client. Off by default; needs DroidGuard.</string>
     <string name="photo_frame">Photo frame KTV</string>
     <string name="photo_frame_settings">Photo frame KTV settings</string>
-    <string name="photo_frame_local_only">Choose photos on this device or a connected USB drive. Use only while parked.</string>
-    <string name="photo_frame_pick_photos">Choose photos</string>
     <string name="photo_browser_browse_device">Browse device</string>
     <string name="photo_browser_title">Device photos</string>
     <string name="photo_browser_close">Close device photos</string>
@@ -1182,8 +1178,6 @@
     <string name="photo_browser_load_error">Photos could not be read from this storage source.</string>
     <string name="photo_browser_load_more">Load more</string>
     <string name="photo_browser_photo_description">Select photo %1$s</string>
-    <!-- Retained while translated resource sets still contain the removed legacy picker copy. -->
-    <string name="photo_frame_pick_folder" tools:ignore="UnusedResources">Choose folder</string>
     <string name="photo_frame_empty">No photos selected. Add photos or a folder to start the slideshow.</string>
     <string name="photo_frame_scanning">Preparing photos: %1$d found</string>
     <string name="photo_frame_display">Display</string>
@@ -1205,19 +1199,16 @@
     <string name="photo_frame_not_scanned">Not scanned yet. Tap Rescan sources.</string>
     <string name="photo_frame_no_images">No images found in this folder.</string>
     <string name="photo_frame_failed_photos">%1$d of %2$d photos could not be read</string>
-    <string name="photo_frame_reauthorize" tools:ignore="UnusedResources">Select again to restore access</string>
     <string name="photo_frame_remove">Remove %1$s from the frame</string>
     <string name="photo_frame_storage_error">Could not save your changes. Check available storage and try again.</string>
     <string name="photo_frame_invalid_image">This selection is not a supported image.</string>
     <string name="photo_frame_manifest_error">The photo index could not be loaded. Your source selections are preserved; rescan to rebuild the index.</string>
-    <string name="photo_frame_picker_unavailable" tools:ignore="UnusedResources">This device does not provide a compatible file picker. Use its Files app to expose photos or USB storage to other apps.</string>
     <string name="photo_frame_previous">Previous song</string>
     <string name="photo_frame_next">Next song</string>
     <string name="photo_frame_play">Play</string>
     <string name="photo_frame_pause">Pause</string>
     <string name="photo_frame_previous_photo">Previous photo</string>
     <string name="photo_frame_next_photo">Next photo</string>
-    <string name="photo_frame_exit">Exit photo frame</string>
     <string name="photo_frame_toggle_controls">Show or hide photo frame controls</string>
     <string name="photo_frame_cancel">Cancel</string>
     <string name="photo_frame_done">Done</string>
@@ -1230,10 +1221,6 @@
     <!-- Photo frame 2 uses paired resources here to keep the experiment self-contained. -->
     <string name="photo_frame_v2_title" translatable="false">Photo frame KTV 2</string>
     <string name="photo_frame_v2_title_zh_tw" translatable="false">相框KTV2</string>
-    <string name="photo_frame_v2_entry_description" translatable="false">Play a Google Drive folder with image caching</string>
-    <string name="photo_frame_v2_entry_description_zh_tw" translatable="false">Google Drive 資料夾輪播與圖片快取</string>
-    <string name="photo_frame_v2_scope" translatable="false">Choose a Drive folder to play its photos randomly. Downloads are automatic and reuse the app’s image cache. Use only while parked.</string>
-    <string name="photo_frame_v2_scope_zh_tw" translatable="false">指定 Drive 資料夾即可隨機輪播照片。自動下載需要的照片，並優先使用 App 的圖片快取。請僅在停車時使用。</string>
     <string name="photo_frame_v2_enable" translatable="false">Enable Google Drive</string>
     <string name="photo_frame_v2_enable_zh_tw" translatable="false">啟用 Google Drive</string>
     <string name="photo_frame_v2_permission" translatable="false">Requests read-only access to your entire Drive. Reads the folders you browse and photos directly inside the folder you choose for playback. YouTube Music sign-in is separate.</string>
@@ -1242,10 +1229,6 @@
     <string name="photo_frame_v2_build_disabled_zh_tw" translatable="false">此建置已停用 Drive。</string>
     <string name="photo_frame_v2_disabled" translatable="false">Drive is off. Enable it before connecting.</string>
     <string name="photo_frame_v2_disabled_zh_tw" translatable="false">Drive 已停用。啟用後即可連接。</string>
-    <string name="photo_frame_v2_account" translatable="false">Connected account: %1$s</string>
-    <string name="photo_frame_v2_account_zh_tw" translatable="false">已連接帳戶：%1$s</string>
-    <string name="photo_frame_v2_saved_account" translatable="false">Saved account: %1$s. Connect to start this session.</string>
-    <string name="photo_frame_v2_saved_account_zh_tw" translatable="false">已儲存帳戶：%1$s。請按連接開始本次測試。</string>
     <string name="photo_frame_v2_connect" translatable="false">Connect Google Drive</string>
     <string name="photo_frame_v2_connect_zh_tw" translatable="false">連接 Google Drive</string>
     <string name="photo_frame_v2_disconnect" translatable="false">Disconnect locally</string>
@@ -1254,26 +1237,10 @@
     <string name="photo_frame_v2_disconnect_hint_zh_tw" translatable="false">更換帳戶前請先解除連接。這會移除此裝置保存的 Drive 帳戶與資料夾選擇，不會撤銷 Google 端授權。</string>
     <string name="photo_frame_v2_cancel" translatable="false">Cancel</string>
     <string name="photo_frame_v2_cancel_zh_tw" translatable="false">取消</string>
-    <string name="photo_frame_v2_refresh_token" translatable="false">Test token renewal</string>
-    <string name="photo_frame_v2_refresh_token_zh_tw" translatable="false">測試重新取得 token</string>
-    <string name="photo_frame_v2_ready" translatable="false">Ready to test</string>
-    <string name="photo_frame_v2_ready_zh_tw" translatable="false">準備開始測試</string>
     <string name="photo_frame_v2_authorizing" translatable="false">Waiting for Google authorization…</string>
     <string name="photo_frame_v2_authorizing_zh_tw" translatable="false">等待 Google 授權…</string>
     <string name="photo_frame_v2_connected" translatable="false">Connected</string>
     <string name="photo_frame_v2_connected_zh_tw" translatable="false">已連線</string>
-    <string name="photo_frame_v2_listing" translatable="false">Loading all pages: %1$d items found…</string>
-    <string name="photo_frame_v2_listing_zh_tw" translatable="false">正在載入所有分頁：已找到 %1$d 個項目…</string>
-    <string name="photo_frame_v2_listed" translatable="false">All photo pages loaded.</string>
-    <string name="photo_frame_v2_listed_zh_tw" translatable="false">照片清單分頁已全部載入。</string>
-    <string name="photo_frame_v2_downloading" translatable="false">Downloading and decoding the selected photo…</string>
-    <string name="photo_frame_v2_downloading_zh_tw" translatable="false">正在下載並解碼選取的照片…</string>
-    <string name="photo_frame_v2_previewed" translatable="false">Photo download and decode succeeded. The temporary file has been removed.</string>
-    <string name="photo_frame_v2_previewed_zh_tw" translatable="false">照片下載與解碼成功，暫存檔已移除。</string>
-    <string name="photo_frame_v2_refreshed" translatable="false">Token renewal and account verification succeeded.</string>
-    <string name="photo_frame_v2_refreshed_zh_tw" translatable="false">重新取得 token 與帳戶驗證成功。</string>
-    <string name="photo_frame_v2_stopped" translatable="false">Session stopped. Connect again to continue.</string>
-    <string name="photo_frame_v2_stopped_zh_tw" translatable="false">本次工作已停止。請重新連接以繼續。</string>
     <string name="photo_frame_v2_root" translatable="false">My Drive</string>
     <string name="photo_frame_v2_root_zh_tw" translatable="false">我的雲端硬碟</string>
     <string name="photo_frame_v2_parent" translatable="false">Parent folder</string>
@@ -1284,16 +1251,8 @@
     <string name="photo_frame_v2_list_photos_zh_tw" translatable="false">使用此資料夾播放</string>
     <string name="photo_frame_v2_no_folders" translatable="false">No subfolders here.</string>
     <string name="photo_frame_v2_no_folders_zh_tw" translatable="false">這裡沒有子資料夾。</string>
-    <string name="photo_frame_v2_photo_count" translatable="false">Direct photos: %1$d</string>
-    <string name="photo_frame_v2_photo_count_zh_tw" translatable="false">直屬照片：%1$d 張</string>
     <string name="photo_frame_v2_preview_limit" translatable="false">Plays direct JPEG, PNG and WebP photos up to 20 MiB each; subfolders are excluded. Image cache capacity and clearing follow Storage settings. A zero cache capacity keeps no photos.</string>
     <string name="photo_frame_v2_preview_limit_zh_tw" translatable="false">播放直屬 JPEG、PNG 與 WebP 照片，每張上限 20 MiB，不含子資料夾。圖片快取容量與清除沿用儲存空間設定；容量為 0 時不保留照片。</string>
-    <string name="photo_frame_v2_cannot_preview" translatable="false">Preview unavailable: download permission, format or size limit.</string>
-    <string name="photo_frame_v2_cannot_preview_zh_tw" translatable="false">無法預覽：下載權限、格式或檔案大小不符合限制。</string>
-    <string name="photo_frame_v2_preview" translatable="false">Download and preview</string>
-    <string name="photo_frame_v2_preview_zh_tw" translatable="false">下載並預覽</string>
-    <string name="photo_frame_v2_back" translatable="false">Back</string>
-    <string name="photo_frame_v2_back_zh_tw" translatable="false">返回</string>
     <string name="photo_frame_v2_unavailable" translatable="false">This device cannot currently connect to Google Drive. Check Google services or disable Drive testing.</string>
     <string name="photo_frame_v2_unavailable_zh_tw" translatable="false">這部裝置目前無法連接 Google Drive。請檢查 Google 服務，或停用 Drive 測試。</string>
     <string name="photo_frame_v2_cancelled" translatable="false">Authorization was cancelled. You can retry manually.</string>
@@ -1328,36 +1287,18 @@
     <string name="photo_frame_v2_unknown_zh_tw" translatable="false">測試失敗，請重試，或依測試指南檢查數字錯誤碼。</string>
     <string name="photo_frame_v2_error_code" translatable="false">Error code: %1$s</string>
     <string name="photo_frame_v2_error_code_zh_tw" translatable="false">錯誤碼：%1$s</string>
-    <string name="photo_frame_v2_toggle_controls" translatable="false">Show or hide controls</string>
-    <string name="photo_frame_v2_toggle_controls_zh_tw" translatable="false">顯示或隱藏控制列</string>
     <string name="photo_frame_v2_preparing" translatable="false">Preparing photos…</string>
     <string name="photo_frame_v2_preparing_zh_tw" translatable="false">正在準備照片…</string>
     <string name="photo_frame_v2_no_playable_photos" translatable="false">No playable photos. Try another folder or reconnect.</string>
     <string name="photo_frame_v2_no_playable_photos_zh_tw" translatable="false">沒有可播放的照片，請更換資料夾或重新連接。</string>
-    <string name="photo_frame_v2_from_cache" translatable="false">Loaded from image cache</string>
-    <string name="photo_frame_v2_from_cache_zh_tw" translatable="false">已從圖片快取載入</string>
-    <string name="photo_frame_v2_loaded_from_drive" translatable="false">Loaded from Google Drive</string>
-    <string name="photo_frame_v2_loaded_from_drive_zh_tw" translatable="false">已從 Google Drive 載入</string>
-    <string name="photo_frame_v2_slideshow_count" translatable="false">Supported photos: %1$d · Skipped: %2$d</string>
-    <string name="photo_frame_v2_slideshow_count_zh_tw" translatable="false">可支援照片：%1$d 張 · 已略過：%2$d 張</string>
     <string name="photo_frame_v2_pause_slideshow" translatable="false">Pause slideshow</string>
     <string name="photo_frame_v2_pause_slideshow_zh_tw" translatable="false">暫停輪播</string>
     <string name="photo_frame_v2_resume_slideshow" translatable="false">Play slideshow</string>
     <string name="photo_frame_v2_resume_slideshow_zh_tw" translatable="false">播放輪播</string>
-    <string name="photo_frame_v2_next_photo" translatable="false">Next photo</string>
-    <string name="photo_frame_v2_next_photo_zh_tw" translatable="false">下一張</string>
-    <string name="photo_frame_v2_change_folder" translatable="false">Back to folders</string>
-    <string name="photo_frame_v2_change_folder_zh_tw" translatable="false">返回資料夾</string>
-    <string name="photo_frame_v2_interval" translatable="false">Change photo every %1$d seconds</string>
-    <string name="photo_frame_v2_interval_zh_tw" translatable="false">每 %1$d 秒換一張</string>
-    <string name="photo_frame_v2_seconds" translatable="false">%1$d s</string>
-    <string name="photo_frame_v2_seconds_zh_tw" translatable="false">%1$d 秒</string>
     <string name="photo_frame_v2_source" translatable="false">Photo source</string>
     <string name="photo_frame_v2_source_zh_tw" translatable="false">照片來源</string>
     <string name="photo_frame_v2_local_photos" translatable="false">Local photos</string>
     <string name="photo_frame_v2_local_photos_zh_tw" translatable="false">本地照片</string>
-    <string name="photo_frame_v2_cloud_folder" translatable="false">Google Drive folder</string>
-    <string name="photo_frame_v2_cloud_folder_zh_tw" translatable="false">Google Drive 雲端資料夾</string>
     <string name="photo_frame_v2_choose_source" translatable="false">Open the gear to choose local photos or a cloud folder.</string>
     <string name="photo_frame_v2_choose_source_zh_tw" translatable="false">請點齒輪，選擇本地照片或雲端資料夾。</string>
     <string name="photo_frame_v2_settings_subtitle" translatable="false">Photo sources and display</string>
@@ -1384,8 +1325,6 @@
     <string name="photo_frame_v2_not_connected_zh_tw" translatable="false">尚未連線</string>
     <string name="tv_photo_pair_title" translatable="false">Send photos from phone</string>
     <string name="tv_photo_pair_title_zh_tw" translatable="false">從手機傳送照片</string>
-    <string name="tv_photo_pair_source_detail" translatable="false">Phone or cloud files · same Wi-Fi</string>
-    <string name="tv_photo_pair_source_detail_zh_tw" translatable="false">手機或雲端檔案 · 同一 Wi-Fi</string>
     <string name="tv_photo_pair_hint" translatable="false">On a phone using the same Wi-Fi, scan the QR code or open the TV address. Select photos from your phone or a cloud source shown in the system file picker. The phone compresses and sends photos directly to this TV.</string>
     <string name="tv_photo_pair_hint_zh_tw" translatable="false">手機連上同一 Wi-Fi 後，掃描 QR code 或開啟電視網址，從手機或系統檔案選擇器可見的雲端來源選照片。手機會壓縮後直接傳到這台電視。</string>
     <string name="tv_photo_pair_address" translatable="false">Open on phone: %1$s</string>

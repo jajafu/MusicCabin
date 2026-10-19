@@ -4,6 +4,20 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.78
+
+### 中文
+
+- 清理相框照片瀏覽器的重複實作，手機、相框 KTV2 與 TV 共用同一份瀏覽元件，保留 TV 的遙控器焦點與空畫面行為。
+- 排除 opencc4j 未使用的 jieba 詞頻資源，並移除相框 KTV2 舊版狀態字串、已移除操作的舊字串與無用 import；簡轉繁所需字典保留。
+- 版本 code 308；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Deduplicated the photo browser so the phone frame, Photo frame KTV 2, and TV frame share one implementation while retaining TV remote focus and empty-state behavior.
+- Excluded opencc4j's unused Jieba word-frequency resource and removed stale Photo frame KTV 2 state strings, removed-action strings, and unused imports; the dictionaries required for Simplified-to-Traditional conversion remain packaged.
+- Version code 308; no database schema change and no data migration is required.
+
 ## 13.7.77
 
 ### 中文

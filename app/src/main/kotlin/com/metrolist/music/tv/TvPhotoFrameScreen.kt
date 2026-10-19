@@ -100,6 +100,7 @@ import com.metrolist.music.photo.cachedOrientation
 import com.metrolist.music.photo.FramePlaybackCommand
 import com.metrolist.music.photo.FramePlaybackState
 import com.metrolist.music.photo.FramePlaybackSession
+import com.metrolist.music.photo.MediaStorePhotoBrowser
 import com.metrolist.music.photo.PhotoFramePlayback
 import com.metrolist.music.ui.component.AutoResizeText
 import com.metrolist.music.ui.component.FontSizeRange
@@ -301,7 +302,7 @@ fun TvPhotoFrameScreen(onExit: () -> Unit, viewModel: TvPhotoFrameViewModel = hi
         )
     }
     if (showMediaBrowser) {
-        TvMediaStorePhotoBrowser(
+        MediaStorePhotoBrowser(
             onDismiss = { showMediaBrowser = false },
             onPhotosSelected = { uris ->
                 showMediaBrowser = false

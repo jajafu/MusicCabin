@@ -821,8 +821,6 @@
     <string name="choose_something_below">在下方選擇</string>
     <string name="photo_frame">相框KTV</string>
     <string name="photo_frame_settings">相框KTV設定</string>
-    <string name="photo_frame_local_only">選擇這部裝置或連接的 USB 磁碟機中的照片。請僅在停車時使用。</string>
-    <string name="photo_frame_pick_photos">選擇照片</string>
     <string name="photo_browser_browse_device">瀏覽裝置</string>
     <string name="photo_browser_title">裝置照片</string>
     <string name="photo_browser_close">關閉裝置照片</string>
@@ -853,7 +851,6 @@
     <string name="photo_browser_load_error">無法從此儲存來源讀取照片。</string>
     <string name="photo_browser_load_more">載入更多</string>
     <string name="photo_browser_photo_description">選取照片 %1$s</string>
-    <string name="photo_frame_pick_folder">選擇資料夾</string>
     <string name="photo_frame_empty">尚未選擇照片。新增照片或資料夾即可開始輪播。</string>
     <string name="photo_frame_scanning">正在準備照片：已找到 %1$d 張</string>
     <string name="photo_frame_display">顯示</string>
@@ -873,19 +870,16 @@
     <string name="photo_frame_not_scanned">尚未掃描。點選「重新掃描來源」。</string>
     <string name="photo_frame_no_images">此資料夾中找不到圖片。</string>
     <string name="photo_frame_failed_photos">%1$d/%2$d 張照片無法讀取</string>
-    <string name="photo_frame_reauthorize">再次選取以恢復存取權限</string>
     <string name="photo_frame_remove">從相框移除 %1$s</string>
     <string name="photo_frame_storage_error">無法儲存變更。請確認可用儲存空間後再試。</string>
     <string name="photo_frame_invalid_image">此選取項目不是支援的圖片格式。</string>
     <string name="photo_frame_manifest_error">無法載入照片索引。已保留來源選取項目；請重新掃描以重建索引。</string>
-    <string name="photo_frame_picker_unavailable">此裝置沒有相容的檔案選擇器。請使用車機的檔案管理員，將照片或 USB 儲存空間提供給其他 App。</string>
     <string name="photo_frame_previous">上一首歌曲</string>
     <string name="photo_frame_next">下一首歌曲</string>
     <string name="photo_frame_play">播放</string>
     <string name="photo_frame_pause">暫停</string>
     <string name="photo_frame_previous_photo">上一張照片</string>
     <string name="photo_frame_next_photo">下一張照片</string>
-    <string name="photo_frame_exit">退出數位相框</string>
     <string name="photo_frame_toggle_controls">顯示或隱藏數位相框控制項</string>
     <string name="photo_frame_cancel">取消</string>
     <string name="photo_frame_done">完成</string>

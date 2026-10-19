@@ -118,8 +118,8 @@ android {
         applicationId = applicationIdOverride ?: baseApplicationId
         minSdk = 26
         targetSdk = 36
-        versionCode = 307
-        versionName = "13.7.77"
+        versionCode = 308
+        versionName = "13.7.78"
         buildConfigField("boolean", "PHOTO_FRAME_V2_AVAILABLE", "false")
         buildConfigField("boolean", "DRIVE_OAUTH_AVAILABLE", "false")
 
@@ -288,6 +288,12 @@ android {
             excludes += "META-INF/LICENSE.md"
             excludes += "META-INF/INDEX.LIST"
             excludes += "META-INF/io.netty.versions.properties"
+            // opencc4j depends on nlp-common, which ships a 5.2 MB Jieba word
+            // frequency dictionary and a character table under /nlp. The
+            // Simplified-to-Traditional converter only reads /data/dictionary,
+            // so nlp-common's DefaultTrieTreeMap and ChineseTsCharFormat are
+            // never instantiated and these resources are never loaded.
+            excludes += "nlp/**"
         }
     }
 }
