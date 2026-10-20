@@ -9,12 +9,14 @@ This file records project-specific features, fixes, and build changes in `MusicC
 ### 中文
 
 - 修正語音控制完全無作用：接收器把 `onReceive` 的 context 直接拿去建立 MediaController，該 context 被 Android 禁止綁定服務（`ReceiverCallNotAllowedException`），所有指令都在收到後立刻失敗。改用應用程式層級的 context 綁定媒體服務後，暫停、播放、循環模式等指令才會真正生效。
+- 修正語音點歌從未真正播放、且會清空原本佇列：接收器送出的歌曲 ID 不是媒體服務認得的格式，服務端解析成空佇列後仍回報成功，導致小助手說「正在播放」但什麼都沒播、播放清單被清掉。點歌改走服務的語音搜尋佇列（含自動電台接續）、播喜愛清單改走喜愛清單節點，並在回報成功前先確認佇列真的套用完成，失敗時如實回報「執行失敗」。
 - 修正語音控制回傳結果遺失：`goAsync()` 之後若再呼叫 receiver 自己的 `setResult*()` 會丟出例外並被吞掉，呼叫端永遠只收到「取消＋空結果」。改為把結果寫入 `goAsync()` 回傳的 PendingResult，小助手現在能收到正確的狀態與歌曲資訊。
 - 版本 code 311；無資料庫 schema 變更，升級不需遷移資料。
 
 ### English
 
 - Fix voice control doing nothing at all: the receiver built the MediaController from the `onReceive` context, which Android forbids from binding services (`ReceiverCallNotAllowedException`), so every command failed immediately after delivery. Binding the media service through the application context makes pause, play, repeat mode and other commands actually work.
+- Fix voice song requests never playing and wiping the current queue: the receiver sent bare song IDs that the media session cannot resolve, so the session silently applied an empty queue while the receiver still reported success — the assistant announced playback but nothing played and the queue disappeared. Song requests now go through the session's voice search queue (with its automatic radio continuation) and liked-list playback goes through the liked-playlist node; the receiver also verifies the queue was actually applied before reporting success and honestly reports a failure otherwise.
 - Fix voice control results never reaching the caller: after `goAsync()`, calling the receiver's own `setResult*()` throws and the exception was swallowed, so callers always received "canceled + empty". Results are now written to the PendingResult returned by `goAsync()`, so the assistant receives the correct status and song information.
 - Version code 311; no database schema change and no data migration is required.
 

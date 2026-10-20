@@ -15,6 +15,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.HandlerThread
 import androidx.annotation.StringRes
+import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionResult
@@ -31,6 +32,7 @@ import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.HideVideoSongsKey
 import com.metrolist.music.constants.MediaSessionConstants
 import com.metrolist.music.db.MusicDatabase
+import com.metrolist.music.db.entities.PlaylistEntity
 import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.models.toMediaMetadata
@@ -322,10 +324,29 @@ class VoiceControlReceiver : BroadcastReceiver() {
             candidates = ordered
             artistMatched = true
         }
-        val items = candidates.map { it.toMediaItem() }
-        controller.setMediaItems(items)
-        controller.prepare()
-        controller.play()
+        // The session's media item resolution only understands its library
+        // paths and voice search queries; bare song IDs resolve to an empty
+        // queue and would clear whatever was queued. Hand the query over as
+        // a voice search request so the session builds its own radio queue
+        // around the best match.
+        val items = candidates.map { metadata ->
+            metadata.toMediaItem().buildUpon()
+                .setRequestMetadata(
+                    MediaItem.RequestMetadata.Builder()
+                        .setSearchQuery(query)
+                        .build(),
+                )
+                .build()
+        }
+        if (!applyMediaItemsAndPlay(controller, items, candidates.first().id)) {
+            finishWith(
+                Activity.RESULT_CANCELED,
+                VoiceControl.STATUS_ERROR,
+                context.voiceMessage(R.string.voice_result_error, R.string.voice_result_error_zh_tw),
+                null,
+            )
+            return
+        }
         val first = candidates.first()
         // title 欄位只放歌名，歌手走 artist 欄位；但念出來的訊息在知道歌手時
         // 要帶上「歌名 - 歌手」，因為文件叫小助手直接念訊息、不要自己拼字。
@@ -403,9 +424,23 @@ class VoiceControlReceiver : BroadcastReceiver() {
             )
             return
         }
-        controller.setMediaItems(songs.map { it.toMediaItem() })
-        controller.prepare()
-        controller.play()
+        // Bare song IDs resolve to an empty queue in the session; address
+        // the liked-playlist node instead so the session builds the queue
+        // and starts at the first liked song.
+        val firstSongId = songs.first().song.id
+        val items = songs.map { it.toMediaItem() }.toMutableList()
+        items[0] = items[0].buildUpon()
+            .setMediaId("${MusicService.PLAYLIST}/${PlaylistEntity.LIKED_PLAYLIST_ID}/$firstSongId")
+            .build()
+        if (!applyMediaItemsAndPlay(controller, items, firstSongId)) {
+            finishWith(
+                Activity.RESULT_CANCELED,
+                VoiceControl.STATUS_ERROR,
+                context.voiceMessage(R.string.voice_result_error, R.string.voice_result_error_zh_tw),
+                null,
+            )
+            return
+        }
         val first = songs.firstOrNull()
         val firstTitle = first?.song?.title.orEmpty()
         val firstArtist = first?.orderedArtists?.firstOrNull()?.name.orEmpty()
@@ -435,9 +470,23 @@ class VoiceControlReceiver : BroadcastReceiver() {
             // 沒歌可繼續時直接播喜愛清單；連喜愛都是空的才明確請對方先點歌。
             val liked = runCatching { database.likedSongsByCreateDateAsc().first() }.getOrDefault(emptyList())
             if (liked.isNotEmpty()) {
-                controller.setMediaItems(liked.map { it.toMediaItem() })
-                controller.prepare()
-                controller.play()
+                // Bare song IDs resolve to an empty queue in the session;
+                // address the liked-playlist node instead.
+                val items = liked.map { it.toMediaItem() }.toMutableList()
+                items[0] = items[0].buildUpon()
+                    .setMediaId(
+                        "${MusicService.PLAYLIST}/${PlaylistEntity.LIKED_PLAYLIST_ID}/${liked.first().song.id}",
+                    )
+                    .build()
+                if (!applyMediaItemsAndPlay(controller, items, liked.first().song.id)) {
+                    finishWith(
+                        Activity.RESULT_CANCELED,
+                        VoiceControl.STATUS_ERROR,
+                        context.voiceMessage(R.string.voice_result_error, R.string.voice_result_error_zh_tw),
+                        null,
+                    )
+                    return
+                }
                 val first = liked.firstOrNull()
                 val firstTitle = first?.song?.title.orEmpty()
                 val firstArtist = first?.orderedArtists?.firstOrNull()?.name.orEmpty()
@@ -489,6 +538,34 @@ class VoiceControlReceiver : BroadcastReceiver() {
             if (controller.mediaItemCount > 0) return
             delay(RESTORE_POLL_INTERVAL_MS)
         }
+    }
+
+    /**
+     * Applies [items] through the session and starts playback. The session
+     * resolves the request asynchronously (it may hit the network) and a
+     * failure silently leaves the queue empty, so playback of the requested
+     * first item is polled for before reporting success.
+     */
+    private suspend fun applyMediaItemsAndPlay(
+        controller: MediaController,
+        items: List<MediaItem>,
+        expectedFirstMediaId: String,
+    ): Boolean {
+        controller.setMediaItems(items)
+        playAfterPossibleStop(controller)
+        var started = false
+        withTimeoutOrNull(PLAYBACK_START_TIMEOUT_MS) {
+            while (!started) {
+                started = controller.currentMediaItem?.mediaId == expectedFirstMediaId &&
+                    (
+                        controller.isPlaying ||
+                            controller.playbackState == Player.STATE_BUFFERING ||
+                            controller.playbackState == Player.STATE_READY
+                        )
+                if (!started) delay(PLAYBACK_START_POLL_INTERVAL_MS)
+            }
+        }
+        return started
     }
 
     private fun playAfterPossibleStop(controller: MediaController) {
@@ -793,6 +870,10 @@ class VoiceControlReceiver : BroadcastReceiver() {
 
         const val CONTROLLER_TIMEOUT_MS = 8_000L
         const val RECEIVER_TIMEOUT_MS = 9_000L
+        // The session resolves setMediaItems asynchronously (network) before
+        // the requested content reaches the player; wait for it to start.
+        const val PLAYBACK_START_TIMEOUT_MS = 5_000L
+        const val PLAYBACK_START_POLL_INTERVAL_MS = 200L
         // 上次的清單是服務在背後讀回來的，通常幾百毫秒內會出現；
         // 最多等 1 秒，播報入口整體 9 秒的上限還夠用。
         const val RESTORE_POLL_TIMES = 10
