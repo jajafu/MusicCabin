@@ -12,6 +12,8 @@ import android.content.Context
 import android.content.Intent
 import android.net.ConnectivityManager
 import android.os.Bundle
+import android.os.Handler
+import android.os.HandlerThread
 import androidx.annotation.StringRes
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
@@ -47,8 +49,8 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.android.asCoroutineDispatcher
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.guava.await
@@ -70,11 +72,22 @@ interface VoiceControlEntryPoint {
  * extras ([VoiceControl.EXTRA_STATUS], plus title/mode when relevant).
  */
 class VoiceControlReceiver : BroadcastReceiver() {
-    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    // MediaController requires every method call to happen on the thread of
+    // its application looper, while the voice handling also touches the
+    // database and the network, which must stay off the main thread. Running
+    // the whole flow on one dedicated looper thread satisfies both.
+    private val scope = CoroutineScope(voiceHandler.asCoroutineDispatcher() + SupervisorJob())
+
+    // The ordered broadcast's pending result returned by goAsync(). Once
+    // goAsync() has been called, the receiver's own setResultCode() and
+    // friends throw IllegalStateException("Call while result is not
+    // pending"), so the result must be written to this object instead.
+    private var pendingResult: PendingResult? = null
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != VoiceControl.ACTION) return
         val pending = goAsync()
+        pendingResult = pending
         val command = intent.getStringExtra(VoiceControl.EXTRA_COMMAND).orEmpty()
         val query = intent.getStringExtra(VoiceControl.EXTRA_QUERY).orEmpty()
         scope.launch {
@@ -142,10 +155,17 @@ class VoiceControlReceiver : BroadcastReceiver() {
         ).musicDatabase()
 
         // Connecting a MediaController also cold-starts the service, so no
-        // manual playback is required beforehand.
-        val token = SessionToken(context, ComponentName(context, MusicService::class.java))
+        // manual playback is required beforehand. The receiver's onReceive
+        // context is a ReceiverRestrictedContext and must not bind services
+        // (bindService throws ReceiverCallNotAllowedException there), so the
+        // controller is built against the application context.
+        val appContext = context.applicationContext
+        val token = SessionToken(appContext, ComponentName(appContext, MusicService::class.java))
         val controller = withTimeoutOrNull(CONTROLLER_TIMEOUT_MS) {
-            MediaController.Builder(context, token).buildAsync().await()
+            MediaController.Builder(appContext, token)
+                .setApplicationLooper(voiceThread.looper)
+                .buildAsync()
+                .await()
         }
         if (controller == null) {
             finishWith(
@@ -751,19 +771,26 @@ class VoiceControlReceiver : BroadcastReceiver() {
         voiceLocalizedString(this, english, chinese, *args)
 
     private fun finishWith(code: Int, status: String, message: String, extras: Bundle?) {
-        runCatching {
-            setResultCode(code)
-            setResultData(message)
-            setResultExtras(
-                (extras ?: Bundle()).apply {
-                    putString(VoiceControl.EXTRA_STATUS, status)
-                    putString(VoiceControl.EXTRA_MESSAGE, message)
-                },
-            )
-        }
+        // Results go to the goAsync() PendingResult: after goAsync() the
+        // receiver's own setters are no longer usable (they throw), and the
+        // values set there would never reach the caller.
+        val pending = pendingResult ?: return
+        pending.setResultCode(code)
+        pending.setResultData(message)
+        pending.setResultExtras(
+            (extras ?: Bundle()).apply {
+                putString(VoiceControl.EXTRA_STATUS, status)
+                putString(VoiceControl.EXTRA_MESSAGE, message)
+            },
+        )
     }
 
     private companion object {
+        // Shared looper thread: see the scope comment above. The controller's
+        // application looper must be this thread's looper.
+        val voiceThread = HandlerThread("VoiceControl").apply { start() }
+        val voiceHandler = Handler(voiceThread.looper)
+
         const val CONTROLLER_TIMEOUT_MS = 8_000L
         const val RECEIVER_TIMEOUT_MS = 9_000L
         // 上次的清單是服務在背後讀回來的，通常幾百毫秒內會出現；

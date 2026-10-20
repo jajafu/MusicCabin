@@ -4,6 +4,20 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.81
+
+### 中文
+
+- 修正語音控制完全無作用：接收器把 `onReceive` 的 context 直接拿去建立 MediaController，該 context 被 Android 禁止綁定服務（`ReceiverCallNotAllowedException`），所有指令都在收到後立刻失敗。改用應用程式層級的 context 綁定媒體服務後，暫停、播放、循環模式等指令才會真正生效。
+- 修正語音控制回傳結果遺失：`goAsync()` 之後若再呼叫 receiver 自己的 `setResult*()` 會丟出例外並被吞掉，呼叫端永遠只收到「取消＋空結果」。改為把結果寫入 `goAsync()` 回傳的 PendingResult，小助手現在能收到正確的狀態與歌曲資訊。
+- 版本 code 311；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Fix voice control doing nothing at all: the receiver built the MediaController from the `onReceive` context, which Android forbids from binding services (`ReceiverCallNotAllowedException`), so every command failed immediately after delivery. Binding the media service through the application context makes pause, play, repeat mode and other commands actually work.
+- Fix voice control results never reaching the caller: after `goAsync()`, calling the receiver's own `setResult*()` throws and the exception was swallowed, so callers always received "canceled + empty". Results are now written to the PendingResult returned by `goAsync()`, so the assistant receives the correct status and song information.
+- Version code 311; no database schema change and no data migration is required.
+
 ## 13.7.80
 
 ### 中文
