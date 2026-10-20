@@ -6,6 +6,7 @@ import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.metrolist.music.photo.FrameError
+import com.metrolist.music.photo.FramePlaybackSession
 import com.metrolist.music.photo.FrameSettings
 import com.metrolist.music.photo.FramePhotoReceiver
 import com.metrolist.music.photo.PhotoCatalog
@@ -42,6 +43,23 @@ class PhotoFrameViewModel @Inject constructor(
     private var operation: Job? = null
     private var settingsOperation: Job? = null
     private var operationId = 0L
+    // The session holds URI strings only (no decoded images), so keeping it here
+    // lets rotation reuse the shuffle order and resume at the current photo.
+    private var sessionKey: Int? = null
+    private var session: FramePlaybackSession? = null
+
+    internal fun playbackSession(uris: List<String>, generation: Int): FramePlaybackSession {
+        val key = 31 * uris.hashCode() + generation
+        val cached = session
+        if (cached == null || sessionKey != key) {
+            return FramePlaybackSession(uris).also {
+                session = it
+                sessionKey = key
+            }
+        }
+        return cached
+    }
+
     private var receiverJob: Job? = null
     private var receiver: FramePhotoReceiver? = null
     private var receiverGeneration = 0

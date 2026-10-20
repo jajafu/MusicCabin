@@ -4,6 +4,18 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.80
+
+### 中文
+
+- 相框KTV 播放途中旋轉螢幕不再重洗牌換圖：播放順序與目前這張改存於 ViewModel（與相框KTV2 相同做法），旋轉只改變版面，會從同一張照片繼續播放；旋轉後目前照片會以新版面尺寸重新解碼，之後的照片也跟隨最新版面，播放不再因此重啟。
+- 版本 code 310；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Photo frame KTV no longer reshuffles and switches the photo when the screen is rotated during playback: the shuffle order and current photo now live in the ViewModel (same approach as photo frame KTV 2), so rotation only changes the layout and playback resumes at the same photo; the current photo re-decodes at the new layout size after rotation and later photos follow the latest layout, without restarting playback.
+- Version code 310; no database schema change and no data migration is required.
+
 ## 13.7.79
 
 ### 中文

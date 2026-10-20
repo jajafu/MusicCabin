@@ -68,7 +68,6 @@ import com.metrolist.music.photo.FrameLyricsSourcePicker
 import com.metrolist.music.photo.FrameOverlayContent
 import com.metrolist.music.photo.FramePlaybackCommand
 import com.metrolist.music.photo.FramePlaybackState
-import com.metrolist.music.photo.FramePlaybackSession
 import com.metrolist.music.photo.MediaStorePhotoBrowser
 import com.metrolist.music.photo.PhotoFramePlayback
 import com.metrolist.music.ui.component.rememberFrameUiScale
@@ -99,15 +98,22 @@ fun PhotoFrameScreen(navController: NavHostController, viewModel: PhotoFrameView
     BackHandler(enabled = !showSettings && !showMediaBrowser, onBack = exit)
 
     DisposableEffect(lifecycle, viewModel) {
+        // Rotation recreates the activity but retains the ViewModel; skip teardown
+        // then so the shuffle order and current photo survive and only the layout changes.
+        fun isConfigChange(): Boolean = context.findActivity()?.isChangingConfigurations == true
         val observer = LifecycleEventObserver { _, _ ->
             foreground = lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
-            if (foreground) viewModel.initialize() else viewModel.cancelOperation()
+            if (foreground) {
+                viewModel.initialize()
+            } else if (!isConfigChange()) {
+                viewModel.cancelOperation()
+            }
         }
         lifecycle.addObserver(observer)
         if (foreground) viewModel.initialize()
         onDispose {
             lifecycle.removeObserver(observer)
-            viewModel.cancelOperation()
+            if (!isConfigChange()) viewModel.cancelOperation()
         }
     }
     FrameImmersiveMode(foreground)
@@ -118,28 +124,34 @@ fun PhotoFrameScreen(navController: NavHostController, viewModel: PhotoFrameView
         val width = (constraints.maxWidth * factor).toInt().coerceAtLeast(1)
         val height = (constraints.maxHeight * factor).toInt().coerceAtLeast(1)
         val uris = remember(state.photos) { state.photos.map { it.uri } }
-        val session = remember(uris, generation) { FramePlaybackSession(uris) }
+        // ViewModel-retained: rotation reuses the shuffle order and resumes at the current photo.
+        val session = viewModel.playbackSession(uris, generation)
         val isLandscape = constraints.maxWidth > constraints.maxHeight
         val landscapeNow by rememberUpdatedState(isLandscape)
         // Scale clock, song info, icons and padding with the short edge so a
         // 720dp head unit renders larger than a 360dp phone.
         val uiScale = rememberFrameUiScale()
+        // Decode size follows the latest layout without restarting playback:
+        // rotation (activity recreation) re-decodes the current photo at the new
+        // size, while a plain resize applies the new size to later photos.
+        val decodeSize by rememberUpdatedState(width to height)
         // A cancelled decode can finish cleanup after its replacement has started.
         // Give each effect its own frame state so old cleanup cannot erase new images.
-        var slides by remember(session, width, height, state.settings.intervalSeconds, foreground, showSettings, showMediaBrowser) {
+        var slides by remember(session, state.settings.intervalSeconds, foreground, showSettings, showMediaBrowser) {
             mutableStateOf(FramePlaybackState<coil3.Image>())
         }
         val fade = remember { Animatable(0f) }
 
-        LaunchedEffect(session, width, height, state.settings.intervalSeconds, foreground, showSettings, showMediaBrowser) {
-            if (!foreground || showSettings || showMediaBrowser) return@LaunchedEffect
+        LaunchedEffect(session, state.settings.intervalSeconds, foreground, showSettings, showMediaBrowser) {
+            if (!foreground || showSettings || showMediaBrowser || uris.isEmpty()) return@LaunchedEffect
             val playback = PhotoFramePlayback<coil3.Image>(
                 load = { uri ->
                     val photoUri = uri.toUri()
                     require(photoUri.scheme == "content" || photoUri.scheme == "file")
+                    val (decodeWidth, decodeHeight) = decodeSize
                     val request = ImageRequest.Builder(context)
                         .data(photoUri)
-                        .size(width, height)
+                        .size(decodeWidth, decodeHeight)
                         .scale(Scale.FIT)
                         .precision(Precision.EXACT)
                         .memoryCachePolicy(CachePolicy.DISABLED)
@@ -278,4 +290,10 @@ private fun FrameImmersiveMode(active: Boolean) {
             if (navigationVisible) controller.show(WindowInsetsCompat.Type.navigationBars()) else controller.hide(WindowInsetsCompat.Type.navigationBars())
         }
     }
+}
+
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
 }
