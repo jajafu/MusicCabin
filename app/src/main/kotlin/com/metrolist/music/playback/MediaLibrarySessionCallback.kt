@@ -58,6 +58,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
+import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.guava.future
 import kotlinx.coroutines.launch
@@ -77,6 +78,28 @@ internal fun isManualSkipCommand(command: Int): Boolean =
 
 internal fun Player.Commands.containsManualSkipCommand(): Boolean =
     (0 until size()).any { index -> isManualSkipCommand(get(index)) }
+
+/**
+ * Computes the volume a SET_VOLUME request should write for [mode] given the
+ * [current] value and the [requested] target, rounded to percent precision so
+ * repeated voice steps do not drift through float error (0.30000004-style
+ * values) and clamped to 0..1. Returns null for a state query (or an unknown
+ * mode), which must never write anything. Pure and internal so the boundary
+ * behavior is unit-testable without a running session.
+ */
+internal fun requestedPlayerVolume(
+    mode: String,
+    current: Float,
+    requested: Float,
+): Float? = when (mode) {
+    MediaSessionConstants.VOLUME_MODE_SET -> quantizedVolume(requested)
+    MediaSessionConstants.VOLUME_MODE_UP -> quantizedVolume(current + MediaSessionConstants.VOLUME_STEP)
+    MediaSessionConstants.VOLUME_MODE_DOWN -> quantizedVolume(current - MediaSessionConstants.VOLUME_STEP)
+    else -> null
+}
+
+private fun quantizedVolume(volume: Float): Float =
+    (volume * 100).roundToInt().coerceIn(0, 100) / 100f
 
 class MediaLibrarySessionCallback
 @Inject
@@ -122,6 +145,7 @@ constructor(
                 .add(MediaSessionConstants.CommandToggleShuffle)
                 .add(MediaSessionConstants.CommandToggleRepeatMode)
                 .add(MediaSessionConstants.CommandAddToTargetPlaylist)
+                .add(MediaSessionConstants.CommandSetVolume)
                 .build(),
             connectionResult.availablePlayerCommands,
         )
@@ -154,6 +178,16 @@ constructor(
             MediaSessionConstants.ACTION_ADD_TO_TARGET_PLAYLIST ->
                 successfulCustomCommand(addToTargetPlaylist)
 
+            MediaSessionConstants.ACTION_SET_VOLUME -> {
+                val newVolume = applySetVolume(args)
+                Futures.immediateFuture(
+                    SessionResult(
+                        SessionResult.RESULT_SUCCESS,
+                        Bundle().apply { putFloat(MediaSessionConstants.EXTRA_VOLUME, newVolume) },
+                    ),
+                )
+            }
+
             else -> super.onCustomCommand(session, controller, customCommand, args)
         }
     }
@@ -171,6 +205,25 @@ constructor(
     private fun successfulCustomCommand(action: () -> Unit): ListenableFuture<SessionResult> {
         action()
         return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+    }
+
+    /**
+     * Applies a volume request (voice assistant, etc.) to the app's own
+     * player volume — not the device volume. Sleep timer and audio focus
+     * keep multiplying on top, so their behavior is unchanged. The new
+     * volume is returned in the result so callers can report the level.
+     * A state query returns the current value untouched and never writes.
+     */
+    private fun applySetVolume(args: Bundle): Float {
+        val current = service.playerVolume.value
+        val mode = args.getString(MediaSessionConstants.EXTRA_VOLUME_MODE, MediaSessionConstants.VOLUME_MODE_GET)
+        if (mode == MediaSessionConstants.VOLUME_MODE_GET) return current
+        val newVolume = requestedPlayerVolume(mode, current, args.getFloat(MediaSessionConstants.EXTRA_VOLUME, current))
+            ?: return current
+        if (newVolume != current) {
+            service.playerVolume.value = newVolume
+        }
+        return newVolume
     }
 
     @Suppress("OVERRIDE_DEPRECATION")

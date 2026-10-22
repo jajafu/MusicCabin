@@ -22,7 +22,7 @@ call the MusicCabin music app. No screen, no login, no special permission needed
 | Extra     | Type   | Required | Meaning                                    |
 |-----------|--------|----------|--------------------------------------------|
 | `command` | String | Yes      | One of the commands in section 3           |
-| `query`   | String | For `play_query` / `play_artist` | Song name (artist may be included) for `play_query`; artist name only for `play_artist` (a trailing 的歌/歌 is stripped) |
+| `query`   | String | For `play_query` / `play_artist` / `volume_set` | Song name (artist may be included) for `play_query`; artist name only for `play_artist` (a trailing 的歌/歌 is stripped); target volume for `volume_set` (see section 3) |
 
 ## 3. Commands
 
@@ -44,6 +44,18 @@ call the MusicCabin music app. No screen, no login, no special permission needed
 | `repeat_all`    | Set repeat mode to `all` directly.                                     |
 | `repeat_one`    | Set repeat mode to `one` directly.                                     |
 | `repeat_state`  | Report the current repeat mode without changing it.                    |
+| `volume_up`     | Raise the app's own music volume by 10% and report the new level.      |
+| `volume_down`   | Lower the app's own music volume by 10% and report the new level.      |
+| `volume_set`    | Set the app's own music volume to a target. `query` carries a whole number 0–100 (`80` → 80%) or a 0–1 decimal (`0.8` → 80%); `最大`/`max` means 100%, `靜音`/`mute` means 0%. Send whole numbers as `80`, not `80.0` — anything containing a decimal point is validated as a 0–1 fraction and rejected otherwise. Out-of-range or non-numeric values return `error` asking for 0–100. |
+| `volume_get`    | Report the current app music volume without changing it.               |
+
+The `volume_*` commands adjust the **music app's own volume** (the slider on
+the player screen), not the device/system volume. Map spoken phrases like
+「大聲一點」→ `volume_up`, 「小聲一點」→ `volume_down`, 「音量調到 80」→
+`volume_set` with `query=80`. Volume changes do not unmute a muted player,
+in a Listen Together room a follower's volume is overwritten by the
+host's next sync, and while casting they only change the local volume,
+not the cast target's volume.
 
 ## 4. Result contract (ordered broadcast only)
 
@@ -63,6 +75,10 @@ call the MusicCabin music app. No screen, no login, no special permission needed
   - `is_playing` (Boolean, only for `now_playing`): whether playback is
     actually playing right now (`false` after pause/stop).
   - `mode` (String, only for `repeat_*`): `off`, `all`, or `one`.
+  - `volume` (Float, only for `volume_*`): the applied volume as a 0–1
+    fraction (0.8 means 80%). Values applied by `volume_set` / `volume_up` /
+    `volume_down` are quantized to 1% precision (decimals rounded to whole
+    percent); `volume_get` returns the queried value as-is.
 
 ## 5. Status values
 
@@ -80,12 +96,13 @@ call the MusicCabin music app. No screen, no login, no special permission needed
 | `unliked`    | Like removed from `title`                            | OK           |
 | `already_unliked` | `title` was not liked, nothing changed        | OK           |
 | `repeat`     | Repeat mode changed/reported, see `mode`             | OK           |
+| `volume`     | App volume applied/reported, see `volume` (Float)    | OK           |
 | `not_found`  | `play_query` matched nothing                         | CANCELED     |
 | `empty`      | Favorites list is empty                              | CANCELED     |
 | `no_network` | Offline (or online search failed) and nothing local  | CANCELED     |
 | `denied`     | Blocked by the user's privacy switch (see section 6) | CANCELED     |
 | `no_song`    | Nothing is playing / nothing to act on               | CANCELED     |
-| `error`      | Unexpected failure or timeout                        | CANCELED     |
+| `error`      | Unexpected failure, timeout, or invalid `volume_set` input | CANCELED     |
 
 ## 6. Privacy gates (user-controlled)
 
@@ -137,6 +154,10 @@ voiceCommand(context, "now_playing")
 voiceCommand(context, "pause")
 voiceCommand(context, "stop")
 voiceCommand(context, "repeat_toggle")
+voiceCommand(context, "volume_up")
+voiceCommand(context, "volume_down")
+voiceCommand(context, "volume_set", "80")
+voiceCommand(context, "volume_get")
 ```
 
 ## 8. Quick test with adb
@@ -161,6 +182,12 @@ adb shell am broadcast -a com.metrolist.music.action.VOICE_CONTROL --es command 
 adb shell am broadcast -a com.metrolist.music.action.VOICE_CONTROL --es command next
 adb shell am broadcast -a com.metrolist.music.action.VOICE_CONTROL --es command repeat_toggle
 adb shell am broadcast -a com.metrolist.music.action.VOICE_CONTROL --es command repeat_state
+
+# App music volume: louder / quieter / set to 80% / query
+adb shell am broadcast -a com.metrolist.music.action.VOICE_CONTROL --es command volume_up
+adb shell am broadcast -a com.metrolist.music.action.VOICE_CONTROL --es command volume_down
+adb shell am broadcast -a com.metrolist.music.action.VOICE_CONTROL --es command volume_set --es query "80"
+adb shell am broadcast -a com.metrolist.music.action.VOICE_CONTROL --es command volume_get
 ```
 
 Note: `am broadcast` is unordered, so it triggers the action but prints no

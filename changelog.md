@@ -4,6 +4,18 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.82
+
+### 中文
+
+- 語音控制新增音量指令：大聲一點（`volume_up`）、小聲一點（`volume_down`，每次 10%）、直接指定（`volume_set`，收 0～100 整數或 0～1 小數，也收「最大」「靜音」）、查目前音量（`volume_get`）。調整的是播放畫面那條 App 內音量滑桿的值，不會動到系統音量；睡眠計時與導航壓低等機制照舊各自疊加，「一起聽」房主也會照常同步新音量，回傳結果帶套用後的音量百分比（`status=volume`、`volume` 欄位）。
+- 版本 code 312；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Voice control gains volume commands: louder (`volume_up`), quieter (`volume_down`, 10% per step), direct set (`volume_set`, accepts a 0–100 whole number or 0–1 decimal, plus 最大/max and 靜音/mute), and a current-level query (`volume_get`). They change the app's own player volume — the slider on the player screen — not the system volume; sleep timer and audio-focus ducking keep multiplying on top, and Listen Together hosts still sync the new level to the room. Results carry the applied level (`status=volume`, `volume` extra as a 0–1 fraction with the spoken message in percent).
+- Version code 312; no database schema change and no data migration is required.
+
 ## 13.7.81
 
 ### 中文

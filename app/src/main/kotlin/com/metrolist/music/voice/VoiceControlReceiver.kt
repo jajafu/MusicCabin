@@ -58,6 +58,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.guava.await
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.math.roundToInt
 
 @EntryPoint
 @InstallIn(SingletonComponent::class)
@@ -196,6 +197,25 @@ class VoiceControlReceiver : BroadcastReceiver() {
                 VoiceControl.COMMAND_REPEAT_ALL -> setRepeat(context, controller, Player.REPEAT_MODE_ALL)
                 VoiceControl.COMMAND_REPEAT_ONE -> setRepeat(context, controller, Player.REPEAT_MODE_ONE)
                 VoiceControl.COMMAND_REPEAT_STATE -> queryRepeat(context, controller)
+                VoiceControl.COMMAND_VOLUME_UP -> changeVolume(context, controller, MediaSessionConstants.VOLUME_MODE_UP, 0f)
+                VoiceControl.COMMAND_VOLUME_DOWN -> changeVolume(context, controller, MediaSessionConstants.VOLUME_MODE_DOWN, 0f)
+                VoiceControl.COMMAND_VOLUME_GET -> changeVolume(context, controller, MediaSessionConstants.VOLUME_MODE_GET, 0f)
+                VoiceControl.COMMAND_VOLUME_SET -> {
+                    val target = parseVoiceVolume(query)
+                    if (target == null) {
+                        finishWith(
+                            Activity.RESULT_CANCELED,
+                            VoiceControl.STATUS_ERROR,
+                            context.voiceMessage(
+                                R.string.voice_result_volume_invalid,
+                                R.string.voice_result_volume_invalid_zh_tw,
+                            ),
+                            null,
+                        )
+                    } else {
+                        changeVolume(context, controller, MediaSessionConstants.VOLUME_MODE_SET, target)
+                    }
+                }
                 else -> finishWith(
                     Activity.RESULT_CANCELED,
                     VoiceControl.STATUS_ERROR,
@@ -826,6 +846,58 @@ class VoiceControlReceiver : BroadcastReceiver() {
                 modeName,
             ),
             Bundle().apply { putString(VoiceControl.EXTRA_MODE, modeId) },
+        )
+    }
+
+    /**
+     * 語音助手說大聲一點、小聲一點或「音量調到 80」時走這裡。實際數值由
+     * 服務端以自訂指令套用到 playerVolume（App 內音量，不是系統音量），
+     * 回傳結果帶套用後的新音量，照實念給使用者聽。
+     */
+    private suspend fun changeVolume(
+        context: Context,
+        controller: MediaController,
+        mode: String,
+        target: Float,
+    ) {
+        val result = runCatching {
+            controller.sendCustomCommand(
+                MediaSessionConstants.CommandSetVolume,
+                Bundle().apply {
+                    putString(MediaSessionConstants.EXTRA_VOLUME_MODE, mode)
+                    putFloat(MediaSessionConstants.EXTRA_VOLUME, target)
+                },
+            ).await()
+        }.getOrNull()
+        if (result?.resultCode != SessionResult.RESULT_SUCCESS) {
+            finishWith(
+                Activity.RESULT_CANCELED,
+                VoiceControl.STATUS_ERROR,
+                context.voiceMessage(R.string.voice_result_error, R.string.voice_result_error_zh_tw),
+                null,
+            )
+            return
+        }
+        val newVolume = result.extras.getFloat(MediaSessionConstants.EXTRA_VOLUME, -1f)
+        if (newVolume < 0f) {
+            finishWith(
+                Activity.RESULT_CANCELED,
+                VoiceControl.STATUS_ERROR,
+                context.voiceMessage(R.string.voice_result_error, R.string.voice_result_error_zh_tw),
+                null,
+            )
+            return
+        }
+        val percent = (newVolume * 100).roundToInt()
+        finishWith(
+            Activity.RESULT_OK,
+            VoiceControl.STATUS_VOLUME,
+            context.voiceMessage(
+                R.string.voice_result_volume,
+                R.string.voice_result_volume_zh_tw,
+                percent,
+            ),
+            Bundle().apply { putFloat(VoiceControl.EXTRA_VOLUME, newVolume) },
         )
     }
 

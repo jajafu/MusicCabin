@@ -1459,6 +1459,10 @@
     <string name="voice_result_already_unliked_zh_tw" translatable="false">本來就沒收藏：%1$s</string>
     <string name="voice_result_repeat">Repeat mode: %1$s</string>
     <string name="voice_result_repeat_zh_tw" translatable="false">循環模式：%1$s</string>
+    <string name="voice_result_volume">Volume: %1$d%%</string>
+    <string name="voice_result_volume_zh_tw" translatable="false">音量：%1$d%%</string>
+    <string name="voice_result_volume_invalid">Please say a volume between 0 and 100</string>
+    <string name="voice_result_volume_invalid_zh_tw" translatable="false">請說 0 到 100 之間的音量</string>
     <string name="voice_result_not_found">No song found for \"%1$s\"</string>
     <string name="voice_result_not_found_zh_tw" translatable="false">找不到「%1$s」</string>
     <string name="voice_result_empty">Favorites list is empty</string>
