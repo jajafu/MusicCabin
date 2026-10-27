@@ -64,7 +64,9 @@ import coil3.request.SuccessResult
 import coil3.size.Precision
 import coil3.size.Scale
 import com.metrolist.music.LocalPlayerConnection
+import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.R
+import com.metrolist.music.listentogether.RoomRole
 import com.metrolist.music.photo.FrameOverlayContent
 import com.metrolist.music.photo.FramePlaybackCommand
 import com.metrolist.music.photo.FrameError
@@ -95,6 +97,7 @@ fun PhotoFrameV2Screen(
     val busy by viewModel.busy.collectAsStateWithLifecycle()
     val actionError by viewModel.error.collectAsStateWithLifecycle()
     val generation by viewModel.generation.collectAsStateWithLifecycle()
+    val transfer by viewModel.transfer.collectAsStateWithLifecycle()
     val source by driveViewModel.source.collectAsStateWithLifecycle()
     val drive by driveViewModel.state.collectAsStateWithLifecycle()
     // Receive the cleared image state on STOP, instead of retaining a decoded frame until START.
@@ -140,6 +143,24 @@ fun PhotoFrameV2Screen(
         }
     }
     FrameImmersiveMode(foreground)
+    // The photo receiver (photo transfer + song requests) runs for as long as
+    // this frame screen is in the foreground; leaving the screen stops it.
+    LaunchedEffect(foreground) {
+        if (foreground) viewModel.startReceiver() else viewModel.stopReceiver()
+    }
+    DisposableEffect(Unit) {
+        onDispose { viewModel.stopReceiver() }
+    }
+    DisposableEffect(framePlayerConnection) {
+        viewModel.attachPlayer(framePlayerConnection)
+        onDispose { viewModel.attachPlayer(null) }
+    }
+    val listenTogether = LocalListenTogetherManager.current
+    LaunchedEffect(listenTogether) {
+        listenTogether?.role?.collect { role ->
+            viewModel.attachGuestRole(role == RoomRole.GUEST)
+        }
+    }
     LaunchedEffect(foreground, source, drive.initialized, showSettings, showMediaBrowser) {
         driveViewModel.slideshow.setSuspended(!foreground || showSettings || showMediaBrowser)
         if (foreground && source == FrameV2Source.DRIVE && drive.initialized && !showSettings && !showMediaBrowser && !drive.busy) {
@@ -324,6 +345,8 @@ fun PhotoFrameV2Screen(
             state = state,
             busy = busy,
             error = localError,
+            transfer = transfer,
+            onClearReceived = viewModel::clearReceived,
             onDismiss = { showSettings = false; viewModel.dismissError() },
             onBrowsePhotos = { showMediaBrowser = true },
             onRescan = viewModel::rescan,

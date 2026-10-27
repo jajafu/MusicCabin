@@ -33,7 +33,6 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -50,9 +49,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.metrolist.music.R
 import com.metrolist.music.photo.FrameCatalogState
 import com.metrolist.music.photo.FrameError
@@ -78,15 +74,12 @@ internal fun PhotoFrameSettingsPanel(
     onRemove: (String) -> Unit,
     onClear: () -> Unit,
     onClearReceived: () -> Unit,
-    onStartReceiver: () -> Unit,
-    onStopReceiver: () -> Unit,
     onCancelScan: () -> Unit,
     onSettings: (FrameSettings) -> Unit,
 ) {
     var confirmClear by rememberSaveable { mutableStateOf(false) }
     var confirmClearReceived by rememberSaveable { mutableStateOf(false) }
     var transferOpen by rememberSaveable { mutableStateOf(false) }
-    val lifecycle = LocalLifecycleOwner.current.lifecycle
     val context = LocalContext.current
     val localSources = remember(state.sources, context) {
         state.sources.filterNot { FramePhotoReceiver.isImportedUri(context, it.uri) }
@@ -94,23 +87,6 @@ internal fun PhotoFrameSettingsPanel(
     val receivedCount = state.sources.size - localSources.size
     val localPhotoCount = remember(state.photos, context) {
         state.photos.count { !FramePhotoReceiver.isImportedUri(context, it.uri) }
-    }
-    DisposableEffect(transferOpen, lifecycle) {
-        if (transferOpen) {
-            if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) onStartReceiver()
-            val observer = LifecycleEventObserver { _, event ->
-                when (event) {
-                    Lifecycle.Event.ON_START -> onStartReceiver()
-                    Lifecycle.Event.ON_STOP -> onStopReceiver()
-                    else -> Unit
-                }
-            }
-            lifecycle.addObserver(observer)
-            onDispose {
-                lifecycle.removeObserver(observer)
-                onStopReceiver()
-            }
-        } else onDispose { onStopReceiver() }
     }
     val enabled = state.initialized && !busy
     ModalBottomSheet(

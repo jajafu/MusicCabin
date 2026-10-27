@@ -62,7 +62,9 @@ import coil3.size.Scale
 import com.metrolist.music.photo.FrameSlideDisplay
 import com.metrolist.music.photo.coilFrameOrientation
 import com.metrolist.music.LocalPlayerConnection
+import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.R
+import com.metrolist.music.listentogether.RoomRole
 import com.metrolist.music.photo.FrameLyricsOverlay
 import com.metrolist.music.photo.FrameLyricsSourcePicker
 import com.metrolist.music.photo.FrameOverlayContent
@@ -114,6 +116,25 @@ fun PhotoFrameScreen(navController: NavHostController, viewModel: PhotoFrameView
         onDispose {
             lifecycle.removeObserver(observer)
             if (!isConfigChange()) viewModel.cancelOperation()
+        }
+    }
+    // The photo receiver (photo transfer + song requests) runs for as long as
+    // this frame screen is in the foreground; leaving the screen stops it and
+    // the settings panel no longer controls the lifecycle.
+    LaunchedEffect(foreground) {
+        if (foreground) viewModel.startReceiver() else viewModel.stopReceiver()
+    }
+    DisposableEffect(Unit) {
+        onDispose { viewModel.stopReceiver() }
+    }
+    DisposableEffect(framePlayerConnection) {
+        viewModel.attachPlayer(framePlayerConnection)
+        onDispose { viewModel.attachPlayer(null) }
+    }
+    val listenTogether = LocalListenTogetherManager.current
+    LaunchedEffect(listenTogether) {
+        listenTogether?.role?.collect { role ->
+            viewModel.attachGuestRole(role == RoomRole.GUEST)
         }
     }
     FrameImmersiveMode(foreground)
@@ -257,8 +278,6 @@ fun PhotoFrameScreen(navController: NavHostController, viewModel: PhotoFrameView
             onRemove = viewModel::removeSource,
             onClear = viewModel::clear,
             onClearReceived = viewModel::clearReceived,
-            onStartReceiver = viewModel::startReceiver,
-            onStopReceiver = viewModel::stopReceiver,
             onCancelScan = viewModel::cancelOperation,
             onSettings = viewModel::updateSettings,
         )

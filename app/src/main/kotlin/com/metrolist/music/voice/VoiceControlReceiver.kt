@@ -711,7 +711,7 @@ class VoiceControlReceiver : BroadcastReceiver() {
         }.getOrNull()
         val targetTitle = target?.title?.toString().orEmpty()
         val targetArtist = target?.artist?.toString().orEmpty()
-        controller.seekToPrevious()
+        controller.seekToPreviousMediaItem()
         playAfterPossibleStop(controller)
         finishWith(
             Activity.RESULT_OK,

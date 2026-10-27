@@ -13,7 +13,9 @@ import com.metrolist.music.photo.FrameSelectionType
 import com.metrolist.music.photo.FrameSettings
 import com.metrolist.music.photo.PhotoCatalog
 import com.metrolist.music.photo.FramePhotoReceiver
+import com.metrolist.music.photo.FrameSongRequestController
 import com.metrolist.music.photo.v2.LocalPhotoCatalog
+import com.metrolist.music.playback.PlayerConnection
 import com.metrolist.music.utils.dataStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -57,6 +59,23 @@ class TvPhotoFrameViewModel @Inject constructor(
     private var receiverGeneration = 0
     private var receiving = false
     private var receiverRequested = false
+
+    // Attached by the frame screen from LocalPlayerConnection; the song request
+    // controller reads it from the receiver's background threads.
+    @Volatile private var playerConnection: PlayerConnection? = null
+    @Volatile private var listenTogetherGuest = false
+    private val songRequests = FrameSongRequestController(
+        playerProvider = { playerConnection },
+        guestProvider = { listenTogetherGuest },
+    )
+
+    fun attachPlayer(connection: PlayerConnection?) {
+        playerConnection = connection
+    }
+
+    fun attachGuestRole(isGuest: Boolean) {
+        listenTogetherGuest = isGuest
+    }
 
     fun initialize() {
         if (operation?.isActive == true) return
@@ -182,14 +201,18 @@ class TvPhotoFrameViewModel @Inject constructor(
         val current = ++receiverGeneration
         mutableTransfer.value = TransferState()
         receiverJob = viewModelScope.launch {
-            val server = FramePhotoReceiver(context) { file ->
-                runBlocking { catalog.addPhotos(listOf(file.toUri())) }
-                if (state.value.sources.none { it.uri == file.toUri().toString() }) {
-                    throw IOException("Cannot add TV photo")
-                }
-                mutableGeneration.value++
-                mutableTransfer.value = mutableTransfer.value.copy(count = mutableTransfer.value.count + 1)
-            }
+            val server = FramePhotoReceiver(
+                context,
+                onPhoto = { file ->
+                    runBlocking { catalog.addPhotos(listOf(file.toUri())) }
+                    if (state.value.sources.none { it.uri == file.toUri().toString() }) {
+                        throw IOException("Cannot add TV photo")
+                    }
+                    mutableGeneration.value++
+                    mutableTransfer.value = mutableTransfer.value.copy(count = mutableTransfer.value.count + 1)
+                },
+                songRequests = songRequests,
+            )
             try {
                 val url = withContext(Dispatchers.IO) { server.start() }
                 if (receiving && receiverGeneration == current) {
@@ -244,6 +267,7 @@ class TvPhotoFrameViewModel @Inject constructor(
 
     override fun onCleared() {
         stopReceiver()
+        songRequests.close()
         super.onCleared()
     }
 
