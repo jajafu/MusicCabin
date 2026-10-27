@@ -212,6 +212,13 @@ internal class FramePhotoReceiver(
                 if (parsed == null) FrameSongRequestResult(400, "Invalid JSON body")
                 else controller.remove(parsed.index, parsed.videoId)
             }
+            method == "POST" && path == "/move" -> {
+                val parsed = body?.decodeToString()?.let { text ->
+                    runCatching { songRequestJson.decodeFromString<FrameMoveBody>(text) }.getOrNull()
+                }
+                if (parsed == null) FrameSongRequestResult(400, "Invalid JSON body")
+                else controller.move(parsed.from, parsed.to)
+            }
             else -> FrameSongRequestResult(404, "Not found")
         }
         respond(output, result.status, result.body)
@@ -255,7 +262,7 @@ internal class FramePhotoReceiver(
         const val MAX_BYTES = 2 * 1024 * 1024
         const val MAX_EDGE = 4096
         const val MAX_JSON_BYTES = 4096
-        private val SONG_REQUEST_POST_PATHS = setOf("/play-next", "/add-end", "/remove")
+        private val SONG_REQUEST_POST_PATHS = setOf("/play-next", "/add-end", "/remove", "/move")
         // filesDir never moves within a process, so canonicalize the imports
         // root once instead of on every isImportedUri() call. Each call still
         // canonicalizes its own file, which is required for correctness.

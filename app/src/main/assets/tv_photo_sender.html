@@ -59,7 +59,7 @@
   </section>
   <section id="page-songs" hidden>
     <h1>點歌</h1>
-    <p>搜尋歌曲後插播或加到待播清單；清單與播放狀態每 4 秒自動更新。</p>
+    <p>搜尋歌曲後插播或加到待播清單；清單與播放狀態每 10 秒自動更新。</p>
     <p id="song-connection" class="hint" role="status" aria-live="polite">正在連線到相框…</p>
     <div class="card">
       <p class="field-label"><span class="badge">目前播放</span><span id="now-title">—</span></p>
@@ -224,12 +224,25 @@
     setStatusSongs(`${error.name === 'TypeError' ? '無法連線到相框。' : (error.message || '操作失敗。')}`);
   }
 
+  /** POST then refresh; the refreshed queue replaces the row buttons. */
+  async function queueAction(url, payload, event) {
+    const button = event.currentTarget;
+    button.disabled = true;
+    try {
+      await postJson(url, payload);
+      await refreshState();
+    } catch (error) {
+      reportActionError(error);
+      button.disabled = false;
+    }
+  }
+
   function setStatusSongs(text) {
     songConnection.textContent = text;
   }
 
   function renderState(state) {
-    setStatusSongs('已連線到相框；每 4 秒自動更新。');
+    setStatusSongs('已連線到相框；每 10 秒自動更新。');
     const now = state.nowPlaying;
     nowTitle.textContent = now ? now.title : '—';
     nowArtists.textContent = now ? `${now.artists || '未知歌手'} · ${formatDuration(now.duration)}` : '尚未播放';
@@ -251,16 +264,19 @@
       queueBox.append(empty);
       return;
     }
-    for (const song of queue) {
-      const remove = rowButton('移除', false, async event => {
-        const button = event.currentTarget;
-        button.disabled = true;
-        try {
-          await postJson('/remove', { index: song.index, videoId: song.videoId });
-          await refreshState();
-        } catch (error) { reportActionError(error); button.disabled = false; }
-      });
-      queueBox.append(songRow(song, [remove]));
+    for (const [position, song] of queue.entries()) {
+      const buttons = [];
+      if (position > 0) {
+        buttons.push(rowButton('↑', false, async event =>
+          queueAction('/move', { from: song.index, to: song.index - 1 }, event)));
+      }
+      if (position < queue.length - 1) {
+        buttons.push(rowButton('↓', false, async event =>
+          queueAction('/move', { from: song.index, to: song.index + 1 }, event)));
+      }
+      buttons.push(rowButton('移除', false, async event =>
+        queueAction('/remove', { index: song.index, videoId: song.videoId }, event)));
+      queueBox.append(songRow(song, buttons));
     }
   }
 
@@ -268,13 +284,13 @@
     try {
       const response = await fetch('/state');
       if (response.status === 503) {
-        setStatusSongs('相框的播放器尚未就緒；每 4 秒會自動重試。');
+        setStatusSongs('相框的播放器尚未就緒；每 10 秒會自動重試。');
         return;
       }
       if (!response.ok) throw new Error(`狀態取得失敗（${response.status}）`);
       renderState(await response.json());
     } catch (error) {
-      setStatusSongs('無法連線到相框；請確認相框畫面仍開啟，每 4 秒會自動重試。');
+      setStatusSongs('無法連線到相框；請確認相框畫面仍開啟，每 10 秒會自動重試。');
     }
   }
 
@@ -309,18 +325,10 @@
         return;
       }
       for (const song of songs) {
-        const playNext = rowButton('插播', true, async event => {
-          const button = event.currentTarget;
-          button.disabled = true;
-          try { await postJson('/play-next', { videoId: song.videoId }); await refreshState(); button.disabled = false; }
-          catch (error) { reportActionError(error); button.disabled = false; }
-        });
-        const addEnd = rowButton('加到最後', false, async event => {
-          const button = event.currentTarget;
-          button.disabled = true;
-          try { await postJson('/add-end', { videoId: song.videoId }); await refreshState(); button.disabled = false; }
-          catch (error) { reportActionError(error); button.disabled = false; }
-        });
+        const playNext = rowButton('插播', true, async event =>
+          queueAction('/play-next', { videoId: song.videoId }, event));
+        const addEnd = rowButton('加到最後', false, async event =>
+          queueAction('/add-end', { videoId: song.videoId }, event));
         resultsBox.append(songRow(song, [playNext, addEnd]));
       }
     } catch (error) {
@@ -345,7 +353,7 @@
   setInterval(() => {
     if (document.hidden || pageSongs.hidden) return;
     refreshState();
-  }, 4000);
+  }, 10000);
 })();
 </script>
 </body>

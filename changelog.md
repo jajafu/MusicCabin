@@ -4,6 +4,20 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.85
+
+### 中文
+
+- 點歌網頁的待播清單支援調整順序：每首歌加上移／下移按鈕（無法移動到正在播放的歌之前），隨機播放模式下照 App 內佇列的同一套方式重建播放順序。
+- 點歌狀態的自动輪詢從每 4 秒放寬到每 10 秒，操作後與切到點歌分頁時仍會立即刷新；一起聽訪客的防護不變。
+- 版本 code 315；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- The song-request page's upcoming queue can now be reordered: each row gains move-up / move-down buttons (cannot move past the playing song), and shuffle mode rebuilds the playback order the same way the in-app queue does.
+- The song-request status polling is relaxed from every 4 seconds to every 10 seconds; actions and opening the song-request tab still refresh immediately. Listen Together guest protection is unchanged.
+- Version code 315; no database schema change and no data migration is required.
+
 ## 13.7.84
 
 ### 中文

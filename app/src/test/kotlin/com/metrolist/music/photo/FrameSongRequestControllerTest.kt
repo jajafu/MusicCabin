@@ -39,6 +39,12 @@ class FrameSongRequestControllerTest {
         assertEquals(503, controller.playNext("dQw4w9WgXcQ").status)
         assertEquals(503, controller.addToEnd("dQw4w9WgXcQ").status)
         assertEquals(503, controller.remove(2, null).status)
+        assertEquals(503, controller.move(2, 3).status)
+    }
+
+    @Test
+    fun `queue reordering is refused for listen together guests`() {
+        assertEquals(409, controller(guest = true).move(2, 3).status)
     }
 
     @Test

@@ -1,7 +1,9 @@
 package com.metrolist.music.photo
 
+import androidx.media3.exoplayer.source.ShuffleOrder.DefaultShuffleOrder
 import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.models.SongItem
+import com.metrolist.music.extensions.move
 import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.extensions.metadata
 import com.metrolist.music.playback.PlayerConnection
@@ -144,6 +146,47 @@ internal class FrameSongRequestController(
         }
     }
 
+    /** Move a queued song to another position in the upcoming queue. */
+    fun move(from: Int, to: Int): FrameSongRequestResult {
+        if (guestProvider()) return FrameSongRequestResult.guestDenied()
+        val connection = readyConnection() ?: return FrameSongRequestResult.unavailable()
+        val windows = connection.queueWindows.value
+        val currentIndex = connection.currentWindowIndex.value
+        if (from == to) return FrameSongRequestResult.ok("Moved")
+        if (from <= currentIndex || to <= currentIndex ||
+            from !in windows.indices || to !in windows.indices
+        ) {
+            return FrameSongRequestResult(400, "Invalid queue index")
+        }
+        val shuffle = connection.shuffleModeEnabled.value
+        return runBlocking {
+            withContext(Dispatchers.Main) {
+                try {
+                    val player = connection.player
+                    if (!shuffle) {
+                        // Timeline index (firstPeriodIndex), not queue position:
+                        // the playing song may sit anywhere in the timeline.
+                        player.moveMediaItem(windows[from].firstPeriodIndex, windows[to].firstPeriodIndex)
+                    } else {
+                        // Playback order is the shuffle order itself; rebuild it
+                        // with the song moved between queue positions, the same
+                        // way the in-app queue does.
+                        player.setShuffleOrder(
+                            DefaultShuffleOrder(
+                                windows.map { it.firstPeriodIndex }.toMutableList()
+                                    .move(from, to).toIntArray(),
+                                System.currentTimeMillis(),
+                            ),
+                        )
+                    }
+                    FrameSongRequestResult.ok("Moved")
+                } catch (_: Exception) {
+                    FrameSongRequestResult(500, "Could not move the song")
+                }
+            }
+        }
+    }
+
     override fun close() {
         searchScope.cancel()
     }
@@ -224,6 +267,12 @@ internal data class FrameVideoIdBody(
 internal data class FrameRemoveBody(
     val index: Int,
     val videoId: String? = null,
+)
+
+@Serializable
+internal data class FrameMoveBody(
+    val from: Int,
+    val to: Int,
 )
 
 /** Status and plain-text body the receiver turns into an HTTP response. */
