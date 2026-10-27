@@ -4,6 +4,18 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.86
+
+### 中文
+
+- TV 版相框KTV 開場照片改為隨機：原本每次開啟都固定顯示同一張（清單中第一張方向符合螢幕的照片），現在從所有方向符合的照片中隨機挑一張當開場；方向符合的照片不止一張時，開場畫面不再固定同一張。開場瞬間顯示的速度與其他照片的播放順序不變。
+- 版本 code 316；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- The TV photo frame KTV now opens on a random photo: previously every start showed the same first photo (the first screen-matching photo in the catalog order); when more than one screen-matching photo exists, the opening photo is no longer fixed. The instant opening display and the playback order of the remaining photos are unchanged.
+- Version code 316; no database schema change and no data migration is required.
+
 ## 13.7.85
 
 ### 中文

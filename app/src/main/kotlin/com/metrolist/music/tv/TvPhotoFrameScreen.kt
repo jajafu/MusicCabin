@@ -198,19 +198,25 @@ fun TvPhotoFrameScreen(onExit: () -> Unit, viewModel: TvPhotoFrameViewModel = hi
         val width = (constraints.maxWidth * factor).toInt().coerceAtLeast(1)
         val height = (constraints.maxHeight * factor).toInt().coerceAtLeast(1)
         val isLandscape = constraints.maxWidth > constraints.maxHeight
-        // One pass over the catalog: the filtered URIs for playback and the
-        // cached screen-matching photo pinned first so the opening slide needs
-        // no trial decodes. Bounds are only a hint and the decoded bitmap
-        // still governs pairing, with a graceful fallback when stale.
-        val (uris, preferredFirst) = remember(state.photos, state.sources, source, isLandscape) {
+        // One pass over the catalog: the filtered URIs for playback plus the
+        // screen-matching candidates, from which one random photo is pinned
+        // first so every start opens on a different photo while the opening
+        // slide still needs no trial decodes. The pick is remembered by
+        // candidate content, so playback-state churn (e.g. a photo marked
+        // unreadable) keeps the opening slide and the running session stable.
+        // Bounds are only a hint and the decoded bitmap still governs pairing,
+        // with a graceful fallback when stale.
+        val (uris, pinnedCandidates) = remember(state.photos, state.sources, source, isLandscape) {
             val want = if (isLandscape) FramePhotoOrientation.LANDSCAPE else FramePhotoOrientation.PORTRAIT
             val orientationBySource = state.sources.associate { it.uri to it.cachedOrientation() }
             val filtered = state.photos.filter { photo ->
                 val imported = FramePhotoReceiver.isImportedUri(context, photo.uri)
                 if (source == TvPhotoFrameViewModel.Source.TRANSFER) imported else !imported
             }
-            filtered.map { it.uri } to filtered.firstOrNull { orientationBySource[it.sourceUri] == want }?.uri
+            filtered.map { it.uri } to
+                filtered.filter { orientationBySource[it.sourceUri] == want }.map { it.uri }
         }
+        val preferredFirst = remember(pinnedCandidates) { pinnedCandidates.randomOrNull() }
         val session = remember(uris, generation, preferredFirst) { FramePlaybackSession(uris, preferredFirst = preferredFirst) }
         val landscapeNow by rememberUpdatedState(isLandscape)
         // TV screens are large; scale overlay text and icons with the short edge.
