@@ -1,21 +1,37 @@
 package com.metrolist.music.photo.v2
 
+import android.content.Context
 import android.net.Uri
+import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.metrolist.music.photo.FrameError
 import com.metrolist.music.photo.FramePlaybackSession
 import com.metrolist.music.photo.FrameSettings
+import com.metrolist.music.photo.FramePhotoReceiver
+import com.metrolist.music.photo.FrameSongRequestController
+import com.metrolist.music.playback.PlayerConnection
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import java.io.File
+import java.io.IOException
 import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 
 @HiltViewModel
-class LocalPhotoFrameViewModel @Inject constructor(private val catalog: LocalPhotoCatalog) : ViewModel() {
+class LocalPhotoFrameViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
+    private val catalog: LocalPhotoCatalog,
+) : ViewModel() {
+    data class TransferState(val url: String? = null, val count: Int = 0, val error: Boolean = false)
+
     val state = catalog.state
     private val _error = MutableStateFlow<FrameError?>(null)
     val error = _error.asStateFlow()
@@ -43,14 +59,127 @@ class LocalPhotoFrameViewModel @Inject constructor(private val catalog: LocalPho
         return cached
     }
 
+    private var receiverJob: Job? = null
+    private var receiver: FramePhotoReceiver? = null
+    private var receiverGeneration = 0
+    private var receiverRequested = false
+    private var receiving = false
+    private val _transfer = MutableStateFlow(TransferState())
+    val transfer = _transfer.asStateFlow()
+
+    // Attached by the frame screen from LocalPlayerConnection; the song request
+    // controller reads it from the receiver's background threads.
+    @Volatile private var playerConnection: PlayerConnection? = null
+    @Volatile private var listenTogetherGuest = false
+    private val songRequests = FrameSongRequestController(
+        playerProvider = { playerConnection },
+        guestProvider = { listenTogetherGuest },
+    )
+
+    fun attachPlayer(connection: PlayerConnection?) {
+        playerConnection = connection
+    }
+
+    fun attachGuestRole(isGuest: Boolean) {
+        listenTogetherGuest = isGuest
+    }
+
     fun initialize() {
         if (!state.value.initialized) runOperation { catalog.initialize() }
     }
 
     fun addPhotos(uris: List<Uri>) = runOperation { catalog.addPhotos(uris); _generation.value++ }
     fun rescan() = runOperation { catalog.rescan(); _generation.value++ }
-    fun removeSource(uri: String) = runOperation { catalog.removeSource(uri) }
-    fun clear() = runOperation { catalog.clear() }
+    fun removeSource(uri: String) = runOperation {
+        catalog.removeSource(uri)
+        if (state.value.sources.none { it.uri == uri }) deleteReceivedCopy(uri)
+        _generation.value++
+    }
+    fun clear() = runOperation {
+        closeReceiver()
+        try {
+            catalog.clear()
+            if (state.value.sources.isNotEmpty()) throw IOException("Cannot clear photo sources")
+            deleteReceivedFiles()
+            _generation.value++
+        } finally {
+            if (receiverRequested) startReceiver()
+        }
+    }
+    fun clearReceived() = runOperation {
+        closeReceiver()
+        try {
+            val received = state.value.sources.map { it.uri }
+                .filter { FramePhotoReceiver.isImportedUri(context, it) }
+            received.forEach { catalog.removeSource(it) }
+            if (state.value.sources.any { it.uri in received }) throw IOException("Cannot clear received photos")
+            deleteReceivedFiles()
+            _generation.value++
+        } finally {
+            if (receiverRequested) startReceiver()
+        }
+    }
+
+    fun startReceiver() {
+        receiverRequested = true
+        if (receiving) return
+        receiving = true
+        val current = ++receiverGeneration
+        _transfer.value = TransferState()
+        receiverJob = viewModelScope.launch {
+            val server = FramePhotoReceiver(
+                context,
+                onPhoto = { file ->
+                    runBlocking { catalog.addPhotos(listOf(file.toUri())) }
+                    if (state.value.sources.none { it.uri == file.toUri().toString() }) {
+                        throw IOException("Cannot add received photo")
+                    }
+                    _generation.value++
+                    _transfer.value = _transfer.value.copy(count = _transfer.value.count + 1)
+                },
+                songRequests = songRequests,
+            )
+            try {
+                val url = withContext(Dispatchers.IO) { server.start() }
+                if (receiving && receiverGeneration == current) {
+                    receiver = server
+                    _transfer.value = _transfer.value.copy(url = url)
+                } else server.close()
+            } catch (cancelled: CancellationException) {
+                server.close()
+                throw cancelled
+            } catch (_: Exception) {
+                server.close()
+                if (receiving && receiverGeneration == current) _transfer.value = TransferState(error = true)
+            }
+        }
+    }
+
+    fun stopReceiver() {
+        receiverRequested = false
+        closeReceiver()
+    }
+
+    private fun closeReceiver() {
+        receiving = false
+        receiverGeneration++
+        receiverJob?.cancel()
+        receiverJob = null
+        receiver?.close()
+        receiver = null
+        _transfer.value = TransferState()
+    }
+
+    private fun deleteReceivedCopy(uri: String) {
+        if (!FramePhotoReceiver.isImportedUri(context, uri)) return
+        uri.toUri().path?.let { File(it).delete() }
+    }
+
+    private fun deleteReceivedFiles() {
+        FramePhotoReceiver.importsDirectory(context).listFiles()?.forEach { file ->
+            if (file.isFile && !file.delete()) throw IOException("Cannot delete received photo")
+        }
+    }
     fun updateSettings(settings: FrameSettings) {
         settingsOperation?.cancel()
         settingsOperation = viewModelScope.launch {
@@ -93,5 +222,11 @@ class LocalPhotoFrameViewModel @Inject constructor(private val catalog: LocalPho
                 if (operationId == id) _busy.value = false
             }
         }
+    }
+
+    override fun onCleared() {
+        stopReceiver()
+        songRequests.close()
+        super.onCleared()
     }
 }

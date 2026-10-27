@@ -151,6 +151,27 @@ fun TvPhotoFrameScreen(onExit: () -> Unit, viewModel: TvPhotoFrameViewModel = hi
             viewModel.cancelOperation()
         }
     }
+    // The photo receiver (photo transfer + song requests) runs for as long as
+    // this frame screen is in the foreground; leaving the screen stops it and
+    // the settings panel no longer controls the lifecycle.
+    LaunchedEffect(foreground) {
+        if (foreground) viewModel.startReceiver() else viewModel.stopReceiver()
+    }
+    // Leaving the screen does not always stop the owner's lifecycle first (the
+    // TV frame page is swapped out directly), so stop the receiver on dispose.
+    DisposableEffect(Unit) {
+        onDispose { viewModel.stopReceiver() }
+    }
+    DisposableEffect(framePlayerConnection) {
+        viewModel.attachPlayer(framePlayerConnection)
+        onDispose { viewModel.attachPlayer(null) }
+    }
+    val listenTogether = LocalListenTogetherManager.current
+    LaunchedEffect(listenTogether) {
+        listenTogether?.role?.collect { role ->
+            viewModel.attachGuestRole(role == RoomRole.GUEST)
+        }
+    }
     FrameImmersiveMode(foreground)
 
     BoxWithConstraints(

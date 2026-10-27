@@ -4,6 +4,34 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.84
+
+### 中文
+
+- 相框KTV 掃碼點歌：手機掃描相框設定裡原本的 QR code 開啟的網頁，現在同頁多了「點歌」分頁——可搜尋歌曲、插播、加到待播清單最後、移除待播歌曲，並顯示目前播放與待播清單（每 4 秒自動更新）。三個相框（相框KTV、相框KTV2、TV版相框KTV）都支援；相框KTV2 的設定頁也補上 QR code 與網址顯示。
+- 傳照服務生命週期變更：原本只有設定頁的傳照區塊開著時服務才運行，現在只要相框畫面在前景就持續運行，退出設定頁不受影響；完全離開相框畫面才停止。設定頁的傳照區改為只顯示狀態、QR code 與已收照片管理。同一個 port（38747）、同一個網址，未新增第二個服務。
+- 「一起聽」訪客透過網頁的點歌變更（插播／加到最後／移除）會被拒絕，與 App 內規則一致；原有照片傳送功能不受影響。
+- 版本 code 314；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Photo frame KTV song requests: the phone page opened by the existing photo-transfer QR code in the frame settings now has a "Song requests" tab — search songs, play next, add to the end of the queue, remove queued songs, and see the now playing and upcoming queue (auto-refreshed every 4 seconds). All three frames support it (Photo frame KTV, Photo frame KTV 2, TV photo frame KTV); the Photo frame KTV 2 settings also gained the QR code and address display.
+- Receiver lifecycle change: the transfer service used to run only while the settings section was open; it now runs whenever the photo frame screen is in the foreground, survives leaving the settings page, and stops only after the frame screen is closed. The settings section now only shows the status, QR code, and received-photo management. Same port (38747), same URL, no second service added.
+- Listen Together guests are refused queue changes (play next / add to end / remove) from the web page, matching the in-app rule; the existing photo transfer is unaffected.
+- Version code 314; no database schema change and no data migration is required.
+
+## 13.7.83
+
+### 中文
+
+- 修正語音「上一首」在歌的中間永遠只會把目前這首重播、不切歌：語音指令原本走 Media3 的 `seekToPrevious()`，依其契約（預設 3 秒規則）位置超過 3 秒就重播目前歌曲；改用 `seekToPreviousMediaItem()` 直接切到佇列的上一首。任何位置都會真的切歌，且回覆歌名與實際切過去的一致；沒有上一首時照舊回「沒有上一首」。App 內按鍵的「3 秒內重播」維持標準互動不變。
+- 版本 code 313；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Fix the voice "previous" command only restarting the current song instead of switching, whenever playback was past 3 seconds: the command used Media3's `seekToPrevious()`, which by contract replays the current song past the default 3-second threshold; it now uses `seekToPreviousMediaItem()` to jump to the queue's actual previous song. Switching now works from any position, and the announced song title matches the one actually played; with no previous song the "no previous" reply is unchanged. The in-app button's replay-within-3-seconds behavior stays as is.
+- Version code 313; no database schema change and no data migration is required.
+
 ## 13.7.82
 
 ### 中文

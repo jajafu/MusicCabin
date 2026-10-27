@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MusicCabin · 傳送照片到相框</title>
+  <title>MusicCabin · 傳照片與點歌</title>
   <style>
     :root { color-scheme: dark; font-family: system-ui, sans-serif; background: #101827; color: #f2f6ff; }
     * { box-sizing: border-box; }
@@ -19,20 +19,63 @@
     button:disabled { opacity: .5; }
     #status { white-space: pre-wrap; min-height: 2em; }
     .hint { font-size: .92rem; }
+    .tabs { display: flex; gap: 8px; margin-top: 4px; }
+    .tab { min-height: 48px; margin-top: 0; border: 2px solid #354965; border-radius: 12px; background: #1d2c42; color: #c8d4e8; font-weight: 700; }
+    .tab.active { background: #83c5ff; border-color: #83c5ff; color: #0d263c; }
+    .field-label { margin: 0 0 6px; }
+    #query { width: 100%; min-height: 50px; border-radius: 10px; border: 2px solid #7187a5; background: #101827; color: white; padding: 12px; font-size: 1.05rem; }
+    .song-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid #273952; }
+    .song-row:first-child { border-top: 0; }
+    .song-row .thumb { width: 48px; height: 48px; border-radius: 8px; object-fit: cover; flex: none; background: #101827; }
+    .song-row .meta { flex: 1; min-width: 0; }
+    .song-row .title { margin: 0; color: #f2f6ff; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .song-row .sub { margin: 0; color: #9fb2cc; font-size: .88rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .song-row .ops { display: flex; gap: 6px; flex: none; }
+    .song-row.current .title { color: #83c5ff; }
+    .badge { display: inline-block; margin-right: 6px; padding: 1px 8px; border-radius: 999px; background: #27425f; color: #9fd0ff; font-size: .75rem; vertical-align: middle; }
+    button.row-btn { width: auto; min-height: 38px; margin: 0; padding: 6px 12px; font-size: .9rem; border-radius: 10px; background: #27425f; color: #cfe4ff; }
+    button.row-btn.primary { background: #83c5ff; color: #0d263c; }
+    button.row-btn.danger { background: #3b2430; color: #ff9db1; }
+    .empty { color: #9fb2cc; }
   </style>
 </head>
 <body>
 <main>
-  <h1>傳送照片到 MusicCabin 相框</h1>
-  <p>手機與接收裝置連上同一區域網路（也可使用手機熱點），並保持接收裝置的傳送設定畫面開啟。照片只會經區域網路直接傳到這台裝置。</p>
-  <div class="card">
-    <label for="photos">選擇手機或雲端硬碟中的照片</label>
-    <input id="photos" type="file" accept="image/*" multiple>
-    <p class="hint">若手機的檔案選擇器有顯示 Google Drive 等雲端來源，可直接從那裡選取；若沒有，先在雲端硬碟 App 下載照片到手機再選。</p>
-    <button id="send" type="button">壓縮並傳送照片</button>
-    <p id="status" role="status" aria-live="polite"></p>
-  </div>
-  <p class="hint">每張照片會在手機縮至最長邊 1920 像素並壓縮至 2 MB 以下。再次傳送會累加；可在接收裝置清空手機傳入的照片。</p>
+  <nav class="tabs" aria-label="功能分頁">
+    <button id="tab-photos" class="tab active" type="button" aria-pressed="true">傳照片</button>
+    <button id="tab-songs" class="tab" type="button" aria-pressed="false">點歌</button>
+  </nav>
+  <section id="page-photos">
+    <h1>傳送照片到 MusicCabin 相框</h1>
+    <p>手機與接收裝置連上同一區域網路（也可使用手機熱點）。相框畫面開啟期間，傳照片與點歌服務都會持續運行；離開相框畫面後服務才會停止。照片只會經區域網路直接傳到這台裝置。</p>
+    <div class="card">
+      <label for="photos">選擇手機或雲端硬碟中的照片</label>
+      <input id="photos" type="file" accept="image/*" multiple>
+      <p class="hint">若手機的檔案選擇器有顯示 Google Drive 等雲端來源，可直接從那裡選取；若沒有，先在雲端硬碟 App 下載照片到手機再選。</p>
+      <button id="send" type="button">壓縮並傳送照片</button>
+      <p id="status" role="status" aria-live="polite"></p>
+    </div>
+    <p class="hint">每張照片會在手機縮至最長邊 1920 像素並壓縮至 2 MB 以下。再次傳送會累加；可在接收裝置清空手機傳入的照片。</p>
+  </section>
+  <section id="page-songs" hidden>
+    <h1>點歌</h1>
+    <p>搜尋歌曲後插播或加到待播清單；清單與播放狀態每 4 秒自動更新。</p>
+    <p id="song-connection" class="hint" role="status" aria-live="polite">正在連線到相框…</p>
+    <div class="card">
+      <p class="field-label"><span class="badge">目前播放</span><span id="now-title">—</span></p>
+      <p class="sub" id="now-artists">尚未播放</p>
+    </div>
+    <div class="card">
+      <label class="field-label" for="query">搜尋歌曲</label>
+      <input id="query" type="search" placeholder="輸入歌名或歌手" autocomplete="off" enterkeyhint="search">
+      <button id="search" type="button">搜尋</button>
+      <div id="results"></div>
+    </div>
+    <div class="card">
+      <p class="field-label">待播清單</p>
+      <div id="queue"></div>
+    </div>
+  </section>
 </main>
 <script>
 (() => {
@@ -100,6 +143,209 @@
       setStatus(`已傳送 ${complete} 張；${error.message}`);
     } finally { sendButton.disabled = false; }
   });
+
+  // ----- 分頁切換 -----
+  const tabPhotos = document.getElementById('tab-photos');
+  const tabSongs = document.getElementById('tab-songs');
+  const pagePhotos = document.getElementById('page-photos');
+  const pageSongs = document.getElementById('page-songs');
+  function showSongs(show) {
+    pageSongs.hidden = !show;
+    pagePhotos.hidden = show;
+    tabSongs.classList.toggle('active', show);
+    tabPhotos.classList.toggle('active', !show);
+    tabSongs.setAttribute('aria-pressed', String(show));
+    tabPhotos.setAttribute('aria-pressed', String(!show));
+    if (show) { refreshState(); runSearch(); }
+  }
+  tabPhotos.addEventListener('click', () => showSongs(false));
+  tabSongs.addEventListener('click', () => showSongs(true));
+
+  // ----- 點歌：狀態與搜尋 -----
+  const songConnection = document.getElementById('song-connection');
+  const nowTitle = document.getElementById('now-title');
+  const nowArtists = document.getElementById('now-artists');
+  const queryField = document.getElementById('query');
+  const searchButton = document.getElementById('search');
+  const resultsBox = document.getElementById('results');
+  const queueBox = document.getElementById('queue');
+
+  function formatDuration(seconds) {    if (seconds == null || seconds <= 0) return '--:--';
+    const total = Math.round(seconds);
+    return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
+  }
+
+  function songRow(song, buttons) {
+    const row = document.createElement('div');
+    row.className = 'song-row';
+    const thumb = document.createElement('img');
+    thumb.className = 'thumb';
+    if (song.thumbnail) { thumb.src = song.thumbnail; thumb.referrerPolicy = 'no-referrer'; }
+    thumb.alt = '';
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    const title = document.createElement('p');
+    title.className = 'title';
+    title.textContent = song.title || '（無標題）';
+    const sub = document.createElement('p');
+    sub.className = 'sub';
+    sub.textContent = `${song.artists || '未知歌手'} · ${formatDuration(song.duration)}`;
+    meta.append(title, sub);
+    const ops = document.createElement('div');
+    ops.className = 'ops';
+    for (const button of buttons) ops.append(button);
+    row.append(thumb, meta, ops);
+    return row;
+  }
+
+  function rowButton(label, primary, onClick) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = `row-btn${primary ? ' primary' : ''}`;
+    button.textContent = label;
+    button.addEventListener('click', onClick);
+    return button;
+  }
+
+  async function postJson(url, payload) {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!response.ok) {
+      const text = await response.text().catch(() => '');
+      throw new Error(text || `操作失敗（${response.status}）`);
+    }
+  }
+
+  function reportActionError(error) {
+    if (error.name === 'AbortError') return;
+    setStatusSongs(`${error.name === 'TypeError' ? '無法連線到相框。' : (error.message || '操作失敗。')}`);
+  }
+
+  function setStatusSongs(text) {
+    songConnection.textContent = text;
+  }
+
+  function renderState(state) {
+    setStatusSongs('已連線到相框；每 4 秒自動更新。');
+    const now = state.nowPlaying;
+    nowTitle.textContent = now ? now.title : '—';
+    nowArtists.textContent = now ? `${now.artists || '未知歌手'} · ${formatDuration(now.duration)}` : '尚未播放';
+    queueBox.textContent = '';
+    const queue = state.queue || [];
+    if (now) {
+      const current = songRow(now, []);
+      current.classList.add('current');
+      const badge = document.createElement('span');
+      badge.className = 'badge';
+      badge.textContent = '播放中';
+      current.querySelector('.title').prepend(badge);
+      queueBox.append(current);
+    }
+    if (!queue.length) {
+      const empty = document.createElement('p');
+      empty.className = 'empty';
+      empty.textContent = now ? '待播清單沒有歌曲；搜尋後插播或加到最後。' : '目前沒有播放任何歌曲。';
+      queueBox.append(empty);
+      return;
+    }
+    for (const song of queue) {
+      const remove = rowButton('移除', false, async event => {
+        const button = event.currentTarget;
+        button.disabled = true;
+        try {
+          await postJson('/remove', { index: song.index, videoId: song.videoId });
+          await refreshState();
+        } catch (error) { reportActionError(error); button.disabled = false; }
+      });
+      queueBox.append(songRow(song, [remove]));
+    }
+  }
+
+  async function refreshState() {
+    try {
+      const response = await fetch('/state');
+      if (response.status === 503) {
+        setStatusSongs('相框的播放器尚未就緒；每 4 秒會自動重試。');
+        return;
+      }
+      if (!response.ok) throw new Error(`狀態取得失敗（${response.status}）`);
+      renderState(await response.json());
+    } catch (error) {
+      setStatusSongs('無法連線到相框；請確認相框畫面仍開啟，每 4 秒會自動重試。');
+    }
+  }
+
+  let searchController = null;
+  let searchTimer = null;
+
+  async function runSearch() {
+    const query = queryField.value.trim();
+    if (searchTimer) { clearTimeout(searchTimer); searchTimer = null; }
+    if (searchController) searchController.abort();
+    searchController = new AbortController();
+    const controller = searchController;
+    resultsBox.textContent = '';
+    if (!query) {
+      const empty = document.createElement('p');
+      empty.className = 'empty';
+      empty.textContent = '輸入歌名或歌手後按搜尋。';
+      resultsBox.append(empty);
+      return;
+    }
+    searchButton.disabled = true;
+    try {
+      const response = await fetch(`/search?q=${encodeURIComponent(query)}`, { signal: controller.signal });
+      if (!response.ok) throw new Error(`搜尋失敗（${response.status}）`);
+      const { songs } = await response.json();
+      if (controller !== searchController) return;
+      if (!songs.length) {
+        const empty = document.createElement('p');
+        empty.className = 'empty';
+        empty.textContent = '找不到符合的歌曲。';
+        resultsBox.append(empty);
+        return;
+      }
+      for (const song of songs) {
+        const playNext = rowButton('插播', true, async event => {
+          const button = event.currentTarget;
+          button.disabled = true;
+          try { await postJson('/play-next', { videoId: song.videoId }); await refreshState(); button.disabled = false; }
+          catch (error) { reportActionError(error); button.disabled = false; }
+        });
+        const addEnd = rowButton('加到最後', false, async event => {
+          const button = event.currentTarget;
+          button.disabled = true;
+          try { await postJson('/add-end', { videoId: song.videoId }); await refreshState(); button.disabled = false; }
+          catch (error) { reportActionError(error); button.disabled = false; }
+        });
+        resultsBox.append(songRow(song, [playNext, addEnd]));
+      }
+    } catch (error) {
+      if (error.name !== 'AbortError') {
+        const empty = document.createElement('p');
+        empty.className = 'empty';
+        empty.textContent = error.name === 'TypeError' ? '無法連線到相框。' : (error.message || '搜尋失敗。');
+        resultsBox.append(empty);
+      }
+    } finally {
+      if (controller === searchController) searchButton.disabled = false;
+    }
+  }
+
+  searchButton.addEventListener('click', runSearch);
+  queryField.addEventListener('keydown', event => { if (event.key === 'Enter') runSearch(); });
+  queryField.addEventListener('input', () => {
+    if (searchTimer) clearTimeout(searchTimer);
+    searchTimer = setTimeout(runSearch, 600);
+  });
+
+  setInterval(() => {
+    if (document.hidden || pageSongs.hidden) return;
+    refreshState();
+  }, 4000);
 })();
 </script>
 </body>

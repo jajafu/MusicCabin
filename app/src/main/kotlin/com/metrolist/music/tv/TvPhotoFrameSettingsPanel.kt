@@ -25,7 +25,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -97,10 +96,6 @@ internal fun TvPhotoFrameSettingsPanel(
             page = if (source == TvPhotoFrameViewModel.Source.TRANSFER) TvFrameSettingsPage.TRANSFER
                 else TvFrameSettingsPage.LOCAL
         }
-    }
-    DisposableEffect(page) {
-        if (page == TvFrameSettingsPage.TRANSFER) viewModel.startReceiver()
-        onDispose { if (page == TvFrameSettingsPage.TRANSFER) viewModel.stopReceiver() }
     }
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {

@@ -9,7 +9,9 @@ import com.metrolist.music.photo.FrameError
 import com.metrolist.music.photo.FramePlaybackSession
 import com.metrolist.music.photo.FrameSettings
 import com.metrolist.music.photo.FramePhotoReceiver
+import com.metrolist.music.photo.FrameSongRequestController
 import com.metrolist.music.photo.PhotoCatalog
+import com.metrolist.music.playback.PlayerConnection
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
@@ -66,6 +68,23 @@ class PhotoFrameViewModel @Inject constructor(
     private var receiverRequested = false
     private var receiving = false
 
+    // Attached by the frame screen from LocalPlayerConnection; the song request
+    // controller reads it from the receiver's background threads.
+    @Volatile private var playerConnection: PlayerConnection? = null
+    @Volatile private var listenTogetherGuest = false
+    private val songRequests = FrameSongRequestController(
+        playerProvider = { playerConnection },
+        guestProvider = { listenTogetherGuest },
+    )
+
+    fun attachPlayer(connection: PlayerConnection?) {
+        playerConnection = connection
+    }
+
+    fun attachGuestRole(isGuest: Boolean) {
+        listenTogetherGuest = isGuest
+    }
+
     fun initialize() {
         if (!state.value.initialized) runOperation { catalog.initialize() }
     }
@@ -109,14 +128,18 @@ class PhotoFrameViewModel @Inject constructor(
         val current = ++receiverGeneration
         _transfer.value = TransferState()
         receiverJob = viewModelScope.launch {
-            val server = FramePhotoReceiver(context) { file ->
-                runBlocking { catalog.addPhotos(listOf(file.toUri())) }
-                if (state.value.sources.none { it.uri == file.toUri().toString() }) {
-                    throw IOException("Cannot add received photo")
-                }
-                _generation.value++
-                _transfer.value = _transfer.value.copy(count = _transfer.value.count + 1)
-            }
+            val server = FramePhotoReceiver(
+                context,
+                onPhoto = { file ->
+                    runBlocking { catalog.addPhotos(listOf(file.toUri())) }
+                    if (state.value.sources.none { it.uri == file.toUri().toString() }) {
+                        throw IOException("Cannot add received photo")
+                    }
+                    _generation.value++
+                    _transfer.value = _transfer.value.copy(count = _transfer.value.count + 1)
+                },
+                songRequests = songRequests,
+            )
             try {
                 val url = withContext(Dispatchers.IO) { server.start() }
                 if (receiving && receiverGeneration == current) {
@@ -204,6 +227,7 @@ class PhotoFrameViewModel @Inject constructor(
 
     override fun onCleared() {
         stopReceiver()
+        songRequests.close()
         super.onCleared()
     }
 }

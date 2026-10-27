@@ -16,22 +16,30 @@ import java.net.Socket
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.Executors
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
 
 /** Serves the phone picker while the receiving device's transfer settings are open. */
 internal class FramePhotoReceiver(
     private val context: Context,
     private val onPhoto: (File) -> Unit,
+    private val songRequests: FrameSongRequestController? = null,
 ) : AutoCloseable {
     private val directory = importsDirectory(context)
     private val executor = Executors.newSingleThreadExecutor()
     @Volatile private var server: ServerSocket? = null
     @Volatile private var activeClient: Socket? = null
     private val page by lazy { context.assets.open("tv_photo_sender.html").use { it.readBytes() } }
+    private val songRequestJson = Json { ignoreUnknownKeys = true }
 
     fun start(): String {
         page
         val address = privateAddress(context) ?: throw IOException("No local network address")
-        val socket = ServerSocket(PORT, 4, address)
+        // The server now restarts on every frame-screen foreground/rotation, so
+        // allow rebinding while leftover sockets from the previous run linger.
+        val socket = ServerSocket()
+        socket.reuseAddress = true
+        socket.bind(java.net.InetSocketAddress(address, PORT), 4)
         server = socket
         executor.execute {
             while (!socket.isClosed) {
@@ -67,15 +75,39 @@ internal class FramePhotoReceiver(
             if (split <= 0) return
             headers[line.substring(0, split).lowercase()] = line.substring(split + 1).trim()
         }
+        val expectedOrigin = "http://${socket.localAddress.hostAddress}:$PORT"
         if (request[0] == "GET" && request[1] == "/") {
             respond(output, 200, page, "text/html; charset=utf-8")
+            return
+        }
+        if (request[0] == "GET" && (request[1] == "/state" || request[1].startsWith("/search?") || request[1] == "/search")) {
+            handleSongRequest(output, request[0], request[1], headers = null, body = null, expectedOrigin = expectedOrigin)
+            return
+        }
+        if (request[0] == "POST" && request[1] in SONG_REQUEST_POST_PATHS) {
+            val length = headers["content-length"]?.toIntOrNull()
+            val body = when {
+                length == null || length !in 0..MAX_JSON_BYTES -> {
+                    respond(output, 400, "Invalid request body")
+                    return
+                }
+                length == 0 -> ByteArray(0)
+                else -> ByteArray(length).also { bytes ->
+                    var read = 0
+                    while (read < length) {
+                        val count = input.read(bytes, read, length - read)
+                        if (count < 0) return
+                        read += count
+                    }
+                }
+            }
+            handleSongRequest(output, request[0], request[1], headers, body, expectedOrigin = expectedOrigin)
             return
         }
         if (request[0] != "POST" || request[1] != "/photo") {
             respond(output, 404, "Not found")
             return
         }
-        val expectedOrigin = "http://${socket.localAddress.hostAddress}:$PORT"
         if (headers["origin"] != expectedOrigin) {
             respond(output, 403, "Forbidden")
             return
@@ -125,13 +157,73 @@ internal class FramePhotoReceiver(
         }
     }
 
+    /**
+     * Runs the song-request endpoints. GETs are read-only and skip the Origin
+     * check (same-origin GET fetches may omit the header); POSTs require it,
+     * exactly like the photo upload, so cross-site pages cannot mutate the queue.
+     */
+    private fun handleSongRequest(
+        output: BufferedOutputStream,
+        method: String,
+        path: String,
+        headers: Map<String, String>?,
+        body: ByteArray?,
+        expectedOrigin: String,
+    ) {
+        val controller = songRequests
+        if (controller == null) {
+            respond(output, 503, "Song requests unavailable")
+            return
+        }
+        if (method == "POST") {
+            if (headers?.get("origin") != expectedOrigin) {
+                respond(output, 403, "Forbidden")
+                return
+            }
+            if (headers["content-type"]?.startsWith("application/json") != true) {
+                respond(output, 400, "Invalid content type")
+                return
+            }
+        }
+        val result = when {
+            method == "GET" && path == "/state" -> controller.state()
+            method == "GET" && path.startsWith("/search") -> {
+                val query = path.substringAfter('?', "").split('&')
+                    .firstOrNull { it.startsWith("q=") }
+                    ?.let { parameter ->
+                        runCatching { URLDecoder.decode(parameter.substring(2), StandardCharsets.UTF_8.name()) }.getOrNull()
+                    }.orEmpty()
+                controller.search(query)
+            }
+            method == "POST" && (path == "/play-next" || path == "/add-end") -> {
+                val parsed = body?.decodeToString()?.let { text ->
+                    runCatching { songRequestJson.decodeFromString<FrameVideoIdBody>(text) }.getOrNull()
+                }
+                when {
+                    parsed == null -> FrameSongRequestResult(400, "Invalid JSON body")
+                    path == "/play-next" -> controller.playNext(parsed.videoId)
+                    else -> controller.addToEnd(parsed.videoId)
+                }
+            }
+            method == "POST" && path == "/remove" -> {
+                val parsed = body?.decodeToString()?.let { text ->
+                    runCatching { songRequestJson.decodeFromString<FrameRemoveBody>(text) }.getOrNull()
+                }
+                if (parsed == null) FrameSongRequestResult(400, "Invalid JSON body")
+                else controller.remove(parsed.index, parsed.videoId)
+            }
+            else -> FrameSongRequestResult(404, "Not found")
+        }
+        respond(output, result.status, result.body)
+    }
+
     private fun respond(output: BufferedOutputStream, status: Int, message: String) =
         respond(output, status, message.toByteArray(StandardCharsets.UTF_8), "text/plain; charset=utf-8")
 
     private fun respond(output: BufferedOutputStream, status: Int, body: ByteArray, contentType: String) {
         val reason = when (status) {
             200 -> "OK"; 400 -> "Bad Request"; 401 -> "Unauthorized"; 403 -> "Forbidden"
-            404 -> "Not Found"; else -> "Internal Server Error"
+            404 -> "Not Found"; 409 -> "Conflict"; 503 -> "Service Unavailable"; else -> "Internal Server Error"
         }
         output.write(("HTTP/1.1 $status $reason\r\n" +
             "Content-Type: $contentType\r\n" +
@@ -162,6 +254,8 @@ internal class FramePhotoReceiver(
         const val PORT = 38747
         const val MAX_BYTES = 2 * 1024 * 1024
         const val MAX_EDGE = 4096
+        const val MAX_JSON_BYTES = 4096
+        private val SONG_REQUEST_POST_PATHS = setOf("/play-next", "/add-end", "/remove")
         // filesDir never moves within a process, so canonicalize the imports
         // root once instead of on every isImportedUri() call. Each call still
         // canonicalizes its own file, which is required for correctness.

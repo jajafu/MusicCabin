@@ -13,6 +13,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -25,8 +27,10 @@ import coil3.Image
 import com.metrolist.music.R
 import com.metrolist.music.photo.FrameCatalogState
 import com.metrolist.music.photo.FrameError
+import com.metrolist.music.photo.FramePhotoReceiver
 import com.metrolist.music.photo.FrameSelectionType
 import com.metrolist.music.photo.FrameSettings
+import com.metrolist.music.photo.FramePhotoQrCode
 import com.metrolist.music.photo.v2.drive.DriveAuthorizationUi
 import com.metrolist.music.photo.v2.drive.DriveProbeController
 import com.metrolist.music.photo.v2.drive.DriveProbeState
@@ -40,6 +44,8 @@ internal fun PhotoFrameV2SettingsPanel(
     state: FrameCatalogState,
     busy: Boolean,
     error: FrameError?,
+    transfer: LocalPhotoFrameViewModel.TransferState,
+    onClearReceived: () -> Unit,
     onDismiss: () -> Unit,
     onBrowsePhotos: () -> Unit,
     onRescan: () -> Unit,
@@ -57,6 +63,11 @@ internal fun PhotoFrameV2SettingsPanel(
     onToggleSlideshow: () -> Unit,
 ) {
     var confirmClear by rememberSaveable { mutableStateOf(false) }
+    var confirmClearReceived by rememberSaveable { mutableStateOf(false) }
+    val context = LocalContext.current
+    val receivedCount = remember(state.sources, context) {
+        state.sources.count { FramePhotoReceiver.isImportedUri(context, it.uri) }
+    }
     val enabled = state.initialized && !busy
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -122,6 +133,42 @@ internal fun PhotoFrameV2SettingsPanel(
                     }
                 }
                 if (source == FrameV2Source.LOCAL && error != null) item { FrameSettingsError(stringResource(frameErrorMessage(error))) }
+                item {
+                    // The receiver runs while the frame screen is in the foreground;
+                    // this section only shows its status, the QR code, and received
+                    // photo management.
+                    FrameSettingsSectionTitle(frameTransferString(R.string.tv_photo_pair_title, R.string.tv_photo_pair_title_zh_tw))
+                    FrameSettingsCard {
+                        Text(frameTransferString(R.string.frame_transfer_hint, R.string.frame_transfer_hint_zh_tw),
+                            style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        if (transfer.url != null) {
+                            Box(Modifier.fillMaxWidth().padding(top = 12.dp), contentAlignment = Alignment.Center) {
+                                FramePhotoQrCode(transfer.url,
+                                    frameTransferString(R.string.frame_transfer_qr_hint, R.string.frame_transfer_qr_hint_zh_tw))
+                            }
+                            Text(frameTransferString(R.string.tv_photo_pair_address, R.string.tv_photo_pair_address_zh_tw, transfer.url),
+                                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
+                        } else {
+                            Text(frameTransferString(
+                                if (transfer.error) R.string.frame_transfer_error else R.string.tv_photo_pair_waiting,
+                                if (transfer.error) R.string.frame_transfer_error_zh_tw else R.string.tv_photo_pair_waiting_zh_tw,
+                            ), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Text(frameTransferString(R.string.tv_photo_pair_received, R.string.tv_photo_pair_received_zh_tw, transfer.count),
+                            modifier = Modifier.padding(top = 8.dp), style = MaterialTheme.typography.bodyMedium)
+                        Text(frameTransferString(R.string.frame_transfer_stored, R.string.frame_transfer_stored_zh_tw, receivedCount),
+                            style = MaterialTheme.typography.bodyMedium)
+                        OutlinedButton(
+                            onClick = { confirmClearReceived = true },
+                            enabled = enabled && receivedCount > 0,
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                        ) {
+                            Text(frameTransferString(R.string.tv_photo_pair_clear, R.string.tv_photo_pair_clear_zh_tw))
+                        }
+                    }
+                }
                 item {
                     FrameSettingsSectionTitle(stringResource(R.string.photo_frame_display))
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -264,6 +311,37 @@ internal fun PhotoFrameV2SettingsPanel(
             },
         )
     }
+    if (confirmClearReceived) {
+        AlertDialog(
+            onDismissRequest = { confirmClearReceived = false },
+            title = { Text(frameTransferString(R.string.tv_photo_pair_clear, R.string.tv_photo_pair_clear_zh_tw)) },
+            text = { Text(frameTransferString(R.string.frame_transfer_clear_confirm, R.string.frame_transfer_clear_confirm_zh_tw)) },
+            confirmButton = {
+                Button(
+                    onClick = { confirmClearReceived = false; onClearReceived() },
+                    enabled = enabled,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError,
+                    ),
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) {
+                    Text(frameTransferString(R.string.tv_photo_pair_clear, R.string.tv_photo_pair_clear_zh_tw))
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { confirmClearReceived = false }, modifier = Modifier.heightIn(min = 48.dp)) {
+                    Text(stringResource(R.string.photo_frame_cancel))
+                }
+            },
+        )
+    }
+}
+
+@Composable
+private fun frameTransferString(english: Int, chinese: Int, vararg args: Any): String {
+    val locale = LocalConfiguration.current.locales[0].language
+    return stringResource(if (locale == "zh") chinese else english, *args)
 }
 
 @Composable
