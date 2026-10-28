@@ -230,7 +230,7 @@ internal class FrameSongRequestController(
     companion object {
         private val VIDEO_ID = Regex("[A-Za-z0-9_-]{6,32}")
         private const val MAX_QUERY_LENGTH = 100
-        private const val MAX_SEARCH_RESULTS = 20
+        private const val MAX_SEARCH_RESULTS = 10
         private const val SEARCH_TIMEOUT_MS = 8_000L
         private const val QUEUE_FETCH_TIMEOUT_MS = 10_000L
     }

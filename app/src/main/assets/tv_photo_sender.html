@@ -24,13 +24,14 @@
     .tab.active { background: #83c5ff; border-color: #83c5ff; color: #0d263c; }
     .field-label { margin: 0 0 6px; }
     #query { width: 100%; min-height: 50px; border-radius: 10px; border: 2px solid #7187a5; background: #101827; color: white; padding: 12px; font-size: 1.05rem; }
-    .song-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid #273952; }
+    .song-row { display: flex; flex-direction: column; gap: 6px; padding: 10px 0; border-top: 1px solid #273952; }
     .song-row:first-child { border-top: 0; }
+    .song-row .song-main { display: flex; align-items: center; gap: 12px; min-width: 0; }
     .song-row .thumb { width: 48px; height: 48px; border-radius: 8px; object-fit: cover; flex: none; background: #101827; }
     .song-row .meta { flex: 1; min-width: 0; }
     .song-row .title { margin: 0; color: #f2f6ff; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .song-row .sub { margin: 0; color: #9fb2cc; font-size: .88rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .song-row .ops { display: flex; gap: 6px; flex: none; }
+    .song-row .ops { display: flex; gap: 8px; flex: none; flex-wrap: wrap; margin-left: 60px; }
     .song-row.current .title { color: #83c5ff; }
     .badge { display: inline-block; margin-right: 6px; padding: 1px 8px; border-radius: 999px; background: #27425f; color: #9fd0ff; font-size: .75rem; vertical-align: middle; }
     button.row-btn { width: auto; min-height: 38px; margin: 0; padding: 6px 12px; font-size: .9rem; border-radius: 10px; background: #27425f; color: #cfe4ff; }
@@ -178,6 +179,8 @@
   function songRow(song, buttons) {
     const row = document.createElement('div');
     row.className = 'song-row';
+    const main = document.createElement('div');
+    main.className = 'song-main';
     const thumb = document.createElement('img');
     thumb.className = 'thumb';
     if (song.thumbnail) { thumb.src = song.thumbnail; thumb.referrerPolicy = 'no-referrer'; }
@@ -191,10 +194,14 @@
     sub.className = 'sub';
     sub.textContent = `${song.artists || '未知歌手'} · ${formatDuration(song.duration)}`;
     meta.append(title, sub);
-    const ops = document.createElement('div');
-    ops.className = 'ops';
-    for (const button of buttons) ops.append(button);
-    row.append(thumb, meta, ops);
+    main.append(thumb, meta);
+    row.append(main);
+    if (buttons.length) {
+      const ops = document.createElement('div');
+      ops.className = 'ops';
+      for (const button of buttons) ops.append(button);
+      row.append(ops);
+    }
     return row;
   }
 

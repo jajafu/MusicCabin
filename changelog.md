@@ -4,6 +4,20 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.87
+
+### 中文
+
+- 點歌網頁的搜尋結果從 20 筆減為 10 筆，縮短清單長度。
+- 點歌網頁的搜尋結果與待播清單改為兩行式排版：第一行顯示封面、歌名與歌手資訊，插播／加到最後／上下移／移除等按鈕移到第二行，直式手機畫面上歌名不再被按鈕擠壓省略。
+- 版本 code 317；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- The song-request page's search results are trimmed from 20 to 10 items.
+- The song-request page's search results and upcoming queue now use a two-line layout: the first line shows the cover, title, and artist info, while the play-next / add-to-end / move / remove buttons move to a second line, so titles are no longer squeezed off-screen on portrait phones.
+- Version code 317; no database schema change and no data migration is required.
+
 ## 13.7.86
 
 ### 中文
