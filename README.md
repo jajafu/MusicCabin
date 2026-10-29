@@ -30,10 +30,16 @@ What this fork adds on top of Metrolist. Full version history lives in [`changel
   - The sidebar Account page shows a QR code, TV address, and 6-digit pairing code while logged out; authorize from the phone account menu on the same Wi-Fi to log in.
   - After login, YouTube playlists and likes sync to the TV.
 
-- **Car playback**: independent music volume, which can be lowered so music does not drown out navigation guidance.
 - **Car UI**:
   - MiniPlayer and frame text scale from the phone-size 1× baseline with the screen short edge up to the auto-scale cap (default 2×, up to 3×; Settings → Appearance, or TV frame Display settings).
   - Home shows category chips, 12 quick-access items, and account playlists.
+  - Independent music volume, which can be lowered so music does not drown out navigation guidance. On the song page, tap the three dots at the bottom right to open volume adjustment and EQ settings.
+
+- **MusicCabin suits these scenarios**:
+
+  - Passengers who want to sing along can switch to the photo frame KTV or the song lyrics page.
+  - Families singing together on the TV, with travel, landscape, or other personal photos in the background, enjoying memories of good times while singing.
+  - Friends and family gathering at home: basic KTV features without buying professional KTV gear, and every guest can upload photos to join in.
 
 - **Branding and variants**: `MusicCabin` name with the black music-car logo across launcher, About, notifications, and store artwork. FOSS (`com.jajafu.musiccabin`) and GMS (`com.jajafu.musiccabin.gms`) install side by side with independent data; FOSS updates in-app from GitHub Releases while GMS updates manually.
 
