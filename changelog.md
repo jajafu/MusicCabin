@@ -4,6 +4,18 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.88
+
+### 中文
+
+- 修正部分歌曲播放到一半失敗（錯誤代碼 IO_UNSPECIFIED (2000)，Source error／EOFException）：YouTube 對某些串流來源只會給前段資料就切斷連線，原本重試時會一再挑中同一個來源直到重試次數用完。現在偵測到這種「播放中途被斷線」時，會把該串流來源標記為這首歌失敗，重試自動改用下一個備援串流來源，大多數情況不必再手動重試或調整串流來源設定。
+- 版本 code 318；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Fixed some songs failing mid-playback (error code IO_UNSPECIFIED (2000), Source error / EOFException): YouTube sometimes serves only the first portion of a stream from a given source and then cuts the connection, and retries previously kept re-picking the same source until the retry limit was hit. When such a mid-stream cut is detected, the source is now marked as failed for that song and the next retry automatically falls through to the next fallback stream source, so manual retries or stream-source setting changes are no longer needed in most cases.
+- Version code 318; no database schema change and no data migration is required.
+
 ## 13.7.87
 
 ### 中文

@@ -60,6 +60,14 @@ object YTPlayerUtils {
         webRemixFailedIds.clear()
     }
 
+    // Tracks clients whose stream was cut mid-play (EOF) for a given video, so the next resolution
+    // skips them and falls through to the next fallback client (see StreamClientFailureTracker).
+    private val streamClientFailures = StreamClientFailureTracker()
+
+    fun markStreamClientFailed(videoId: String, clientName: String) {
+        streamClientFailures.markFailed(videoId, clientName)
+    }
+
     // Fire-and-forget scope for the cipher config self-heal triggered when a cipher client fails
     // stream validation during resolution. Only WEB_REMIX skips HEAD validation (so its bad URL
     // 403s on ExoPlayer and hits MusicService's handler); WEB_CREATOR / TVHTML5 / WEB are validated
@@ -198,7 +206,12 @@ object YTPlayerUtils {
                 ?: musicVideoType.contains("LIVE", ignoreCase = true).takeIf { it },
             isUploaded = isUploadedTrack,
         )
-        val streamClients = fallbackStrategy.resolveClients(effectiveHints)
+        val streamClients =
+            fallbackStrategy.resolveClients(effectiveHints).let { resolvedClients ->
+                // Skip clients whose stream already got cut (EOF) for this video during an
+                // earlier attempt; falls back to the full chain when every client was marked.
+                streamClientFailures.filterFailed(videoId, resolvedClients) { it.clientName }
+            }
 
         var bestFallbackFormat: PlayerResponse.StreamingData.Format? = null
         var bestFallbackUrl: String? = null

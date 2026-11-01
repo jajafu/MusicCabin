@@ -256,6 +256,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import timber.log.Timber
+import java.io.EOFException
 import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
 import java.time.LocalDateTime
@@ -341,6 +342,11 @@ class MusicService :
     val waitingForNetworkConnection = MutableStateFlow(false)
     private val isNetworkConnected = MutableStateFlow(false)
     val currentStreamClient = MutableStateFlow<String?>(null)
+    // The media item [currentStreamClient] was resolved for; guards against marking a failure
+    // against a stale client name when the erroring item was served from cache without a re-resolve.
+    // Written on the ExoPlayer loader thread, read on the main thread in onPlayerError.
+    @Volatile
+    private var currentStreamClientForMediaId: String? = null
 
     private lateinit var audioQuality: com.metrolist.music.constants.AudioQuality
 
@@ -3439,6 +3445,28 @@ class MusicService :
     }
 
     /**
+     * Checks whether the error's cause chain contains a cause of the given type.
+     */
+    private inline fun <reified T : Throwable> hasCauseOfType(error: PlaybackException): Boolean {
+        var cause: Throwable? = error.cause
+        while (cause != null) {
+            if (cause is T) return true
+            cause = cause.cause
+        }
+        return false
+    }
+
+    /**
+     * Checks if the error is a stream that ended prematurely: the server closed the connection
+     * (or short-changed the response body) before the extractor read the data the container
+     * still expected. Surfaces as a plain EOFException under IO_UNSPECIFIED and previously
+     * retried the same stream client until the retry limit hit.
+     */
+    private fun isStreamCutError(error: PlaybackException): Boolean =
+        error.errorCode == PlaybackException.ERROR_CODE_IO_UNSPECIFIED &&
+            hasCauseOfType<EOFException>(error)
+
+    /**
      * Checks if the error is caused by an expired/forbidden URL (HTTP 403).
      * This typically happens when a YouTube stream URL expires.
      */
@@ -3607,6 +3635,17 @@ class MusicService :
         if (error.errorCode == PlaybackException.ERROR_CODE_IO_UNSPECIFIED ||
             error.errorCode == PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS
         ) {
+            // A mid-stream cut means the client that served this URL is being short-changed by
+            // YouTube for this track. Mark it so the re-resolution in handleGenericIOError falls
+            // through to the next fallback client instead of re-picking the same cut stream and
+            // burning all retries on it.
+            if (isStreamCutError(error)) {
+                val failedClient = currentStreamClient.value
+                if (mediaId != null && failedClient != null && currentStreamClientForMediaId == mediaId) {
+                    YTPlayerUtils.markStreamClientFailed(mediaId, failedClient)
+                    Timber.tag(TAG).d("Stream cut (EOF) — marked client %s failed for %s", failedClient, mediaId)
+                }
+            }
             Timber.tag(TAG).d("HTTP IO error detected (${error.errorCode}), attempting bounded recovery")
             handleGenericIOError(mediaId)
             return
@@ -4441,6 +4480,7 @@ class MusicService :
 
                 val streamUrl = nonNullPlayback.streamUrl
                 currentStreamClient.value = nonNullPlayback.streamClient
+                currentStreamClientForMediaId = mediaId
 
                 songUrlCache[mediaId] =
                     streamUrl to System.currentTimeMillis() + (nonNullPlayback.streamExpiresInSeconds * 1000L)
