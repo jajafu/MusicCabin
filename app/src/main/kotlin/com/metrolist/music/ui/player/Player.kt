@@ -171,6 +171,7 @@ import com.metrolist.music.ui.component.Lyrics
 import com.metrolist.music.ui.component.PlayerSliderTrack
 import com.metrolist.music.ui.component.ResizableIconButton
 import com.metrolist.music.ui.component.SquigglySlider
+import com.metrolist.music.ui.component.VolumeSlider
 import com.metrolist.music.ui.component.WavySlider
 import com.metrolist.music.ui.component.rememberBottomSheetState
 import com.metrolist.music.ui.menu.PlayerMenu
@@ -346,6 +347,8 @@ fun BottomSheetPlayer(
     val castPosition by castHandler?.castPosition?.collectAsStateWithLifecycle() ?: remember { mutableLongStateOf(0L) }
     val castDuration by castHandler?.castDuration?.collectAsStateWithLifecycle() ?: remember { mutableLongStateOf(0L) }
     val castIsPlaying by castHandler?.castIsPlaying?.collectAsState() ?: remember { mutableStateOf(false) }
+    val castVolume by castHandler?.castVolume?.collectAsStateWithLifecycle() ?: remember { mutableFloatStateOf(1f) }
+    val playerVolume = playerConnection.service.playerVolume.collectAsStateWithLifecycle()
 
     val focusRequester = remember { FocusRequester() }
 
@@ -1835,6 +1838,22 @@ fun BottomSheetPlayer(
                             }
                         }
                     }
+
+                    // Volume control on the player page (same slider as the player menu)
+                    Spacer(Modifier.height(12.dp))
+
+                    VolumeSlider(
+                        value = if (isCasting) castVolume else playerVolume.value,
+                        onValueChange = { volume ->
+                            if (isCasting) {
+                                castHandler?.setVolume(volume)
+                            } else {
+                                playerConnection.service.playerVolume.value = volume
+                            }
+                        },
+                        modifier = Modifier.padding(horizontal = PlayerHorizontalPadding),
+                        accentColor = textButtonColor,
+                    )
                 }
             }
         }

@@ -4,6 +4,20 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.89
+
+### 中文
+
+- 播放頁面頂部不再顯示一起聽的「Listening Together／Hosting Listen Together」英文標題，改為與一般播放相同（例如「現在播放」），下方歌單名稱照舊顯示。
+- 播放頁面在上一首、播放／暫停、下一首按鈕下方新增音量調整滑桿（與右下角三點選單最上方的音量調整相同），直式與橫式畫面都會顯示；全螢幕歌詞模式仍會隨按鈕一起隱藏。
+- 版本 code 319；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- The player page no longer shows the Listen Together "Listening Together / Hosting Listen Together" header; it now shows the same "Now Playing" title as normal playback, with the queue title below unchanged.
+- The player page now has a volume slider below the previous / play-pause / next buttons (the same slider as the one at the top of the three-dot menu). It shows in both portrait and landscape; full-screen lyrics mode still hides it together with the buttons.
+- Version code 319; no database schema change and no data migration is required.
+
 ## 13.7.88
 
 ### 中文
