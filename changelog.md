@@ -4,6 +4,20 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.90
+
+### 中文
+
+- 徹底停用一起聽（Listen Together）功能：之前只是隱藏了選單入口，功能本體仍留在程式裡，裝置上殘留的房間連線資訊可能在網路恢復時自動重新加入房間，讓播放頁出現「Listening Together」並被房間控制播放。現在移除最後幾個殘留入口（連結自動加入、通知按鈕接收器、內部頁面路由），一起聽的連線系統再也不會被啟動，播放行為完全回到一般模式。
+- 升級注意：若裝置曾進過一起聽房間，建議安裝後強制關閉 App 再重新開啟，讓舊的連線狀態徹底清掉。
+- 版本 code 320；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Fully disabled the Listen Together feature: previously only the menu entries were hidden, but the feature engine stayed in the app. A leftover room session on the device could silently rejoin a room when the network recovered, showing "Listening Together" on the player and letting the room control playback. The last remaining activation paths (invite-link deep link, notification action receiver, internal navigation routes) are now removed, so the Listen Together connection system can never start again and playback behaves fully normally.
+- Upgrade note: if the device has ever joined a Listen Together room, force-stop the app once after installing and reopen it to clear the old connection state.
+- Version code 320; no database schema change and no data migration is required.
+
 ## 13.7.89
 
 ### 中文

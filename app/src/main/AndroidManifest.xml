@@ -79,18 +79,6 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
 
-            <!-- Listen Together invite link -->
-            <intent-filter android:autoVerify="true">
-                <action android:name="android.intent.action.VIEW" />
-
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-
-                <data android:scheme="https" />
-                <data android:host="metrolist.cc" />
-                <data android:pathPrefix="/listen" />
-            </intent-filter>
-
             <!-- TV login handoff: the TV QR opens a browser page that links back here -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
@@ -290,11 +278,6 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </service>
-
-        <!-- Receiver for Listen Together notification actions (Approve/Reject) -->
-        <receiver
-            android:name=".listentogether.ListenTogetherActionReceiver"
-            android:exported="false" />
 
         <receiver
             android:name=".playback.alarm.MusicAlarmReceiver"

@@ -137,7 +137,6 @@ import com.metrolist.music.constants.EnableHighRefreshRateKey
 import com.metrolist.music.constants.EnableLandscapeScalingKey
 import com.metrolist.music.constants.ExperimentalLyricsKey
 import com.metrolist.music.constants.LastSeenVersionKey
-import com.metrolist.music.constants.ListenTogetherInTopBarKey
 import com.metrolist.music.constants.LyricsProviderOrderKey
 import com.metrolist.music.constants.MiniPlayerBottomSpacing
 import com.metrolist.music.constants.NavigationBarAnimationSpec
@@ -158,7 +157,6 @@ import com.metrolist.music.constants.UseNewMiniPlayerDesignKey
 import com.metrolist.music.db.MusicDatabase
 import com.metrolist.music.db.entities.SearchHistory
 import com.metrolist.music.extensions.toEnum
-import com.metrolist.music.listentogether.ListenTogetherManager
 import com.metrolist.music.lyrics.LyricsProviderRegistry
 import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.playback.DownloadUtil
@@ -217,7 +215,6 @@ import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.util.Locale
 import javax.inject.Inject
-import javax.inject.Provider
 
 @Suppress("DEPRECATION", "ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
 @AndroidEntryPoint
@@ -242,26 +239,6 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var syncUtils: SyncUtils
 
-    @Inject
-    lateinit var listenTogetherManagerProvider: Provider<ListenTogetherManager>
-
-    /**
-     * Listen Together is an optional feature. Keep its manager out of the startup object graph
-     * until the user opens the feature or follows a Listen Together link.
-     */
-    private var activeListenTogetherManager by mutableStateOf<ListenTogetherManager?>(null)
-
-    internal fun ensureListenTogetherManager(): ListenTogetherManager {
-        activeListenTogetherManager?.let { return it }
-        return synchronized(this) {
-            activeListenTogetherManager ?: listenTogetherManagerProvider.get().also { manager ->
-                manager.initialize()
-                manager.setPlayerConnection(playerConnection)
-                activeListenTogetherManager = manager
-            }
-        }
-    }
-
     private lateinit var navController: NavHostController
     private var pendingIntent: Intent? = null
     private var latestVersionName by mutableStateOf(BuildConfig.VERSION_NAME)
@@ -285,13 +262,10 @@ class MainActivity : ComponentActivity() {
                 if (service is MusicBinder) {
                     playerConnection = PlayerConnection(this@MainActivity, service, database, lifecycleScope)
                     playerConnectionSnapshot = playerConnection
-                    activeListenTogetherManager?.setPlayerConnection(playerConnection)
                 }
             }
 
             override fun onServiceDisconnected(name: ComponentName?) {
-                // Disconnect Listen Together manager
-                activeListenTogetherManager?.setPlayerConnection(null)
                 playerConnection?.dispose()
                 // DO NOT null out playerConnection here - keep it for when service reconnects
                 // DO NOT update playerConnectionSnapshot - this is the key to preventing recomposition
@@ -306,7 +280,6 @@ class MainActivity : ComponentActivity() {
             Timber.tag("MainActivity").w(e, "Service was not bound when attempting to unbind in $source")
         } finally {
             isServiceBound = false
-            activeListenTogetherManager?.setPlayerConnection(null)
             playerConnection?.dispose()
             // DO NOT null out playerConnection here - keep it for reconnection
             // DO NOT update playerConnectionSnapshot - this prevents UI recomposition
@@ -355,18 +328,13 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onStop() {
-        // Keep the service binding, PlayerConnection and Listen Together wiring alive while
-        // the Activity is backgrounded. The MusicService is a foreground service and keeps
-        // running, so the host must keep reporting playback state to the LT server; detaching
-        // the player listener here used to break LT for any host that wasn't staring at the
-        // app the whole session. Full teardown happens in onDestroy() via safeUnbindService().
+        // Keep the service binding and PlayerConnection alive while the Activity is backgrounded.
+        // The MusicService is a foreground service and keeps running. Full teardown happens in
+        // onDestroy() via safeUnbindService().
         super.onStop()
     }
 
     override fun onDestroy() {
-        if (isFinishing) {
-            activeListenTogetherManager?.disconnect()
-        }
         super.onDestroy()
         // Use effective playing state so Cast (local player paused, remote playing) is included.
         val stopServiceOnClear =
@@ -730,7 +698,6 @@ class MainActivity : ComponentActivity() {
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val (previousTab, setPreviousTab) = rememberSaveable { mutableStateOf("home") }
 
-                val (listenTogetherInTopBar) = rememberPreference(ListenTogetherInTopBarKey, defaultValue = false)
                 val navigationItems = Screens.MainScreens
                 val routeIndexMap = remember(navigationItems) {
                     navigationItems.mapIndexed { i, s -> s.route to i }.toMap()
@@ -759,7 +726,6 @@ class MainActivity : ComponentActivity() {
                         listOf(
                             Screens.Home.route,
                             Screens.Library.route,
-                            Screens.ListenTogether.route,
                             "settings",
                         )
                     }
@@ -958,14 +924,9 @@ class MainActivity : ComponentActivity() {
 
                 var shouldShowTopBar by rememberSaveable { mutableStateOf(false) }
 
-                LaunchedEffect(navBackStackEntry, listenTogetherInTopBar) {
+                LaunchedEffect(navBackStackEntry) {
                     val currentRoute = navBackStackEntry?.destination?.route
-                    val isListenTogetherScreen =
-                        currentRoute == Screens.ListenTogether.route ||
-                            currentRoute == "listen_together_from_topbar"
-                    shouldShowTopBar = currentRoute in topLevelScreens &&
-                        currentRoute != "settings" &&
-                        !(isListenTogetherScreen && listenTogetherInTopBar)
+                    shouldShowTopBar = currentRoute in topLevelScreens && currentRoute != "settings"
                 }
 
                 val coroutineScope = rememberCoroutineScope()
@@ -1008,7 +969,6 @@ class MainActivity : ComponentActivity() {
                             Screens.Home.route -> R.string.home
                             Screens.Search.route -> R.string.search
                             Screens.Library.route -> R.string.filter_library
-                            Screens.ListenTogether.route -> R.string.together
                             else -> null
                         }
                     }
@@ -1034,7 +994,6 @@ class MainActivity : ComponentActivity() {
                     LocalDownloadUtil provides downloadUtil,
                     LocalShimmerTheme provides ShimmerTheme,
                     LocalSyncUtils provides syncUtils,
-                    LocalListenTogetherManager provides activeListenTogetherManager,
                     LocalChangelogState provides showChangelog,
                     LocalArtistNameAliases provides artistNameAliases,
                 ) {
