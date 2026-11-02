@@ -12,6 +12,7 @@ What this fork adds on top of Metrolist. Full version history lives in [`changel
   - Full-screen local/USB photo slideshow with clock, song info, music and photo controls, and in-frame settings.
   - Playback interval slider (5/10/15/30/60 s).
   - Fit to screen / crop to fill.
+  - Shows the current song's cover when no photo is available (nothing imported, all photos unreadable, or no cloud photo yet).
   - Mismatched-orientation photos pair up on the same interval.
   - Show lyrics toggle and Simplified-to-Traditional lyrics toggle.
   - Lyrics at the bottom of the screen show the previous, current and next line together, sliding with the playback direction and sweeping word by word.

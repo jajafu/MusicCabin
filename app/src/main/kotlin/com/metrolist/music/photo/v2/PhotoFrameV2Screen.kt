@@ -69,6 +69,7 @@ import com.metrolist.music.R
 import com.metrolist.music.listentogether.RoomRole
 import com.metrolist.music.photo.FrameOverlayContent
 import com.metrolist.music.photo.FramePlaybackCommand
+import com.metrolist.music.photo.FrameCoverFallback
 import com.metrolist.music.photo.FrameError
 import com.metrolist.music.photo.FrameLyricsOverlay
 import com.metrolist.music.photo.FrameLyricsSourcePicker
@@ -245,8 +246,17 @@ fun PhotoFrameV2Screen(
         }
 
         val scale = if (state.settings.crop) ContentScale.Crop else ContentScale.Fit
+        // No photo to show (nothing imported, every local photo unreadable, or
+        // the Drive source has no slide yet): fall back to the current song's
+        // cover instead of a black screen.
+        val empty = when (source) {
+            FrameV2Source.LOCAL -> uris.isEmpty() || slides.exhausted
+            FrameV2Source.DRIVE -> cloudSlides.current == null
+            null -> true
+        }
         val toggleLabel = stringResource(R.string.photo_frame_toggle_controls)
         Box(Modifier.fillMaxSize().clickable(onClickLabel = toggleLabel) { showControls = !showControls }) {
+            if (empty) FrameCoverFallback(frameMetadata?.thumbnailUrl, scale)
             if (source == FrameV2Source.DRIVE && foreground) {
                 Crossfade(targetState = cloudSlides.current, animationSpec = tween(350), label = "Drive photo") { slide ->
                     if (slide != null) {
@@ -260,11 +270,6 @@ fun PhotoFrameV2Screen(
             slides.incoming?.let { incoming ->
                 FrameSlideDisplay(incoming, isLandscape, scale, Modifier.graphicsLayer { alpha = fade.value })
             }
-        }
-        val empty = when (source) {
-            FrameV2Source.LOCAL -> uris.isEmpty() || slides.exhausted
-            FrameV2Source.DRIVE -> cloudSlides.current == null
-            null -> true
         }
         if (source == null || (source == FrameV2Source.LOCAL && (!state.initialized || busy) && slides.current == null) ||
             (source == FrameV2Source.DRIVE && (drive.busy || cloudSlides.loading) && cloudSlides.current == null)) {

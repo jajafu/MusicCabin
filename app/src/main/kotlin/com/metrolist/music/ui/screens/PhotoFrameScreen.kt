@@ -67,6 +67,7 @@ import com.metrolist.music.R
 import com.metrolist.music.listentogether.RoomRole
 import com.metrolist.music.photo.FrameLyricsOverlay
 import com.metrolist.music.photo.FrameLyricsSourcePicker
+import com.metrolist.music.photo.FrameCoverFallback
 import com.metrolist.music.photo.FrameOverlayContent
 import com.metrolist.music.photo.FramePlaybackCommand
 import com.metrolist.music.photo.FramePlaybackState
@@ -203,8 +204,12 @@ fun PhotoFrameScreen(navController: NavHostController, viewModel: PhotoFrameView
         }
 
         val scale = if (state.settings.crop) ContentScale.Crop else ContentScale.Fit
+        // No photo to show (nothing imported or every photo unreadable):
+        // fall back to the current song's cover instead of a black screen.
+        val showCoverFallback = uris.isEmpty() || slides.exhausted
         val toggleLabel = stringResource(R.string.photo_frame_toggle_controls)
         Box(Modifier.fillMaxSize().clickable(onClickLabel = toggleLabel) { showControls = !showControls }) {
+            if (showCoverFallback) FrameCoverFallback(frameMetadata?.thumbnailUrl, scale)
             FrameSlideDisplay(slides.current, isLandscape, scale)
             slides.incoming?.let { incoming ->
                 FrameSlideDisplay(incoming, isLandscape, scale, Modifier.graphicsLayer { alpha = fade.value })

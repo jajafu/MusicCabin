@@ -81,6 +81,7 @@ import coil3.request.SuccessResult
 import coil3.size.Precision
 import coil3.size.Scale
 import com.metrolist.music.photo.FrameSlideDisplay
+import com.metrolist.music.photo.FrameCoverFallback
 import com.metrolist.music.photo.coilFrameOrientation
 import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerConnection
@@ -270,8 +271,12 @@ fun TvPhotoFrameScreen(onExit: () -> Unit, viewModel: TvPhotoFrameViewModel = hi
         }
 
         val scale = if (state.settings.crop) ContentScale.Crop else ContentScale.Fit
+        // No photo to show (nothing imported or every photo unreadable):
+        // fall back to the current song's cover instead of a black screen.
+        val showCoverFallback = uris.isEmpty() || slides.exhausted
         val toggleLabel = stringResource(R.string.photo_frame_toggle_controls)
         Box(Modifier.fillMaxSize().clickable(onClickLabel = toggleLabel) { showControls = !showControls }) {
+            if (showCoverFallback) FrameCoverFallback(frameMetadata?.thumbnailUrl, scale)
             FrameSlideDisplay(slides.current, isLandscape, scale)
             slides.incoming?.let { incoming ->
                 FrameSlideDisplay(incoming, isLandscape, scale, Modifier.graphicsLayer { alpha = fade.value })

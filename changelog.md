@@ -4,6 +4,18 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.91
+
+### 中文
+
+- 相框沒有照片可顯示時，改為直接顯示目前播放歌曲的封面：三個相框（相框KTV、TV版相框KTV、相框KTV2）都適用——未導入任何照片、照片全部讀取失敗，或相框KTV2 雲端來源還沒有照片時，背景不再是一片黑色，而是顯示與播放頁相同的歌曲封面，換歌時封面跟著換。封面同樣遵守「完整顯示／裁切填滿」設定，歌詞、時鐘、歌曲資訊與操作列照舊疊在上方；歌曲沒有封面資訊時維持原本黑畫面。
+- 版本 code 321；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Photo frames now show the current song's cover art when there is no photo to display: applies to all three frames (Photo frame KTV, the TV frame and Photo frame KTV 2). When no photos are imported, every photo is unreadable, or the Photo frame KTV 2 cloud source has no photo yet, the background shows the same cover as the player page instead of plain black, and it follows the current song as playback changes. The cover honors the fit/crop setting while lyrics, the clock, song info and the control row stay on top; if the song has no cover, the screen stays black as before.
+- Version code 321; no database schema change and no data migration is required.
+
 ## 13.7.90
 
 ### 中文
