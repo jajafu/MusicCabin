@@ -4,6 +4,20 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.93
+
+### 中文
+
+- 播放與音訊設定的「其他」區塊新增「開啟 App 時自動進入相框」開關（預設關閉）：開啟後，每次開啟 App 都會自動跳到主選單的相框畫面——FOSS 版跳到相框KTV、GMS 版跳到相框KTV2，方便上車點一下圖示就進入相框模式；旋轉畫面、切回 App 或從最近使用重新開啟不會重複跳轉。透過小工具、辨識、更新通知或深連結等指定畫面開啟 App 時也不會跳轉。
+- TV 版同樣支援：在 TV 相框的「顯示」設定加入相同開關（預設關閉），開啟後 TV 版開啟 App 會直接進入 TV 相框。
+- 版本 code 323；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Added an "Open the photo frame when the app starts" switch (off by default) to the Misc section of the Player and audio settings: when enabled, every fresh app open jumps straight to the photo frame shown in the main menu — Photo frame KTV on FOSS builds, Photo frame KTV 2 on GMS builds — so a single tap on the launcher icon enters frame mode in the car. It does not re-trigger on rotation, when switching back to the app, or when reopening from recents, and it is skipped when the app is opened for something specific such as a widget, recognition, updater, shortcut or deep link.
+- The TV build supports the same behavior: the same switch (off by default) was added to the TV frame's Display settings, and the TV app opens straight into the TV frame when enabled.
+- Version code 323; no database schema change and no data migration is required.
+
 ## 13.7.92
 
 ### 中文

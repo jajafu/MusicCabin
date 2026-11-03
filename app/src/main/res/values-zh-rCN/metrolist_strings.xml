@@ -298,6 +298,7 @@
     <string name="crop_album_art">裁剪专辑封面</string>
     <string name="crop_album_art_desc">通过裁剪视频缩略图强制使用正方形宽高比</string>
     <string name="keep_screen_on_when_player_is_expanded">当播放页面最大化时保持屏幕打开</string>
+    <string name="auto_open_photo_frame_on_launch">打开应用时自动进入相框</string>
     <string name="listen_together">一起听</string>
     <string name="listen_together_server_url">服务器网址</string>
     <string name="listen_together_username">用户名</string>

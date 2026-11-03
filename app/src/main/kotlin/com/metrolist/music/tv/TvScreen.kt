@@ -72,6 +72,7 @@ import com.metrolist.innertube.models.filterYoutubeShorts
 import com.metrolist.music.R
 import com.metrolist.music.BuildConfig
 import com.metrolist.music.LocalPlayerConnection
+import com.metrolist.music.constants.AutoOpenPhotoFrameKey
 import com.metrolist.music.constants.CheckForUpdatesKey
 import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.HideVideoSongsKey
@@ -184,6 +185,15 @@ fun TvScreen(
                 )
             }
         }
+    }
+
+    // Open the TV photo frame automatically right after launch when enabled
+    // (toggle in the frame's Display settings).
+    LaunchedEffect(Unit) {
+        val autoOpen = withContext(Dispatchers.IO) {
+            context.dataStore.get(AutoOpenPhotoFrameKey, false)
+        }
+        if (autoOpen) page = TvPage.FRAME
     }
     BackHandler(page != TvPage.HOME) {
         if (page == TvPage.PLAYLIST) {

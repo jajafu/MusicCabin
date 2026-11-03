@@ -19,6 +19,7 @@ MusicCabin 是 [Metrolist](https://github.com/MetrolistGroup/Metrolist) 的 Andr
    - 歌詞於畫面下方，同時顯示前一句、目前句與後一句，依播放方向滑動，逐字掃光
    - 控制列可一鍵更換歌詞來源
    - 控制列均有歌詞偏移 −／＋按鈕，每次 50ms
+   - 可選：開啟 App 時自動進入相框（手機在設定 → 播放與音訊 → 其他；TV 在相框的「顯示」設定）。FOSS 版為相框KTV、GMS 版為相框KTV2
    - 車機顯示 QR code，手機掃描後開啟網址(可走手機熱點同區域網路下)，手機選擇照片後先壓縮再直接傳入相框，不需USB裝置，同一手機網頁還有「點歌」分頁：搜尋歌曲、插播、加到待播清單最後、調整待播順序或移除待播歌曲，並每 10 秒自動更新目前播放與待播清單
    - GMS可自行編譯設定google Oauth，直接存取個人雲端硬碟照片，請參閱 [Google Drive 測試指南](docs/photo-frame-google-drive-testing.zh-TW.md)。
 

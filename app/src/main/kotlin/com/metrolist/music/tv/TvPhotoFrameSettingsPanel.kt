@@ -48,6 +48,7 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.metrolist.music.R
 import com.metrolist.music.constants.AdaptiveScaleMaxKey
+import com.metrolist.music.constants.AutoOpenPhotoFrameKey
 import com.metrolist.music.photo.FramePhotoQrCode
 import com.metrolist.music.photo.FramePhotoReceiver
 import com.metrolist.music.ui.component.FRAME_UI_SCALE_DEFAULT
@@ -82,6 +83,10 @@ internal fun TvPhotoFrameSettingsPanel(
     val (savedUiScaleMax, onUiScaleMaxChange) = rememberPreference(
         AdaptiveScaleMaxKey,
         defaultValue = FRAME_UI_SCALE_DEFAULT,
+    )
+    val (autoOpenPhotoFrame, onAutoOpenPhotoFrameChange) = rememberPreference(
+        AutoOpenPhotoFrameKey,
+        defaultValue = false,
     )
     val uiScaleMax = normalizeAdaptiveScaleMax(savedUiScaleMax)
     val closeFocus = remember { FocusRequester() }
@@ -282,6 +287,9 @@ internal fun TvPhotoFrameSettingsPanel(
                                 } }
                                 item { SettingsToggle(tvLocalizedString(R.string.photo_frame_s2t, R.string.photo_frame_s2t_zh_tw), state.settings.s2tEnabled, !busy) {
                                     viewModel.updateSettings(state.settings.copy(s2tEnabled = !state.settings.s2tEnabled))
+                                } }
+                                item { SettingsToggle(stringResource(R.string.auto_open_photo_frame_on_launch), autoOpenPhotoFrame, true) {
+                                    onAutoOpenPhotoFrameChange(!autoOpenPhotoFrame)
                                 } }
                             }
                         }

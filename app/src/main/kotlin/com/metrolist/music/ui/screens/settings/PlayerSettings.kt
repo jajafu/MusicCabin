@@ -42,6 +42,7 @@ import com.metrolist.music.constants.AudioTrackPlaybackParamsKey
 import com.metrolist.music.constants.AudioQuality
 import com.metrolist.music.constants.AudioQualityKey
 import com.metrolist.music.constants.AutoDownloadOnLikeKey
+import com.metrolist.music.constants.AutoOpenPhotoFrameKey
 import com.metrolist.music.constants.CrossfadeDurationKey
 import com.metrolist.music.constants.CrossfadeEnabledKey
 import com.metrolist.music.constants.CrossfadeGaplessKey
@@ -216,6 +217,10 @@ fun PlayerSettings(
     )
     val (keepScreenOn, onKeepScreenOnChange) = rememberPreference(
         KeepScreenOn,
+        defaultValue = false
+    )
+    val (autoOpenPhotoFrame, onAutoOpenPhotoFrameChange) = rememberPreference(
+        AutoOpenPhotoFrameKey,
         defaultValue = false
     )
     val (historyDuration, onHistoryDurationChange) = rememberPreference(
@@ -1085,6 +1090,26 @@ fun PlayerSettings(
                         )
                     },
                     onClick = { onKeepScreenOnChange(!keepScreenOn) }
+                ),
+                Material3SettingsItem(
+                    icon = painterResource(R.drawable.insert_photo),
+                    title = { Text(stringResource(R.string.auto_open_photo_frame_on_launch)) },
+                    trailingContent = {
+                        Switch(
+                            checked = autoOpenPhotoFrame,
+                            onCheckedChange = onAutoOpenPhotoFrameChange,
+                            thumbContent = {
+                                Icon(
+                                    painter = painterResource(
+                                        id = if (autoOpenPhotoFrame) R.drawable.check else R.drawable.close
+                                    ),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(SwitchDefaults.IconSize)
+                                )
+                            }
+                        )
+                    },
+                    onClick = { onAutoOpenPhotoFrameChange(!autoOpenPhotoFrame) }
                 )
             )
         )

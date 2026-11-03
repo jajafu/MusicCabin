@@ -128,6 +128,7 @@ import com.metrolist.innertube.models.SongItem
 import com.metrolist.innertube.models.WatchEndpoint
 import com.metrolist.music.constants.AppBarHeight
 import com.metrolist.music.constants.AppLanguageKey
+import com.metrolist.music.constants.AutoOpenPhotoFrameKey
 import com.metrolist.music.constants.CheckForUpdatesKey
 import com.metrolist.music.constants.DarkModeKey
 import com.metrolist.music.constants.DefaultOpenTabKey
@@ -241,6 +242,10 @@ class MainActivity : ComponentActivity() {
 
     private lateinit var navController: NavHostController
     private var pendingIntent: Intent? = null
+
+    // Set when this is a fresh app open (not a recreation) so the photo frame can
+    // be opened automatically once, right after the first intent handling.
+    private var autoOpenPhotoFramePending = false
     private var latestVersionName by mutableStateOf(BuildConfig.VERSION_NAME)
 
     // Keep PlayerConnection as regular property - NOT mutableStateOf to prevent UI recomposition
@@ -376,6 +381,12 @@ class MainActivity : ComponentActivity() {
         }
         window.decorView.layoutDirection = View.LAYOUT_DIRECTION_LTR
         WindowCompat.setDecorFitsSystemWindows(window, false)
+
+        // Auto-open the photo frame only for a normal launch from the launcher:
+        // not on rotation/recreation, and not for widget, recognizer, updater,
+        // shortcut or deep-link intents that ask for a specific screen.
+        autoOpenPhotoFramePending = savedInstanceState == null &&
+            (intent.action == null || intent.action == Intent.ACTION_MAIN)
 
         lifecycleScope.launch {
             dataStore.data
@@ -948,6 +959,7 @@ class MainActivity : ComponentActivity() {
                         handleUpdaterIntent(intent, navController)
                         handleDeepLinkIntent(intent, navController)
                     }
+                    handleAutoOpenPhotoFrame(navController)
                 }
 
                 DisposableEffect(Unit) {
@@ -1402,6 +1414,32 @@ class MainActivity : ComponentActivity() {
      * Handles the ACTION_OPEN_UPDATER intent sent from the update notification.
      * Always navigates to the in-app updater screen for download and install.
      */
+    /**
+     * Opens the photo frame automatically right after a fresh app open when the
+     * "open Photo frame KTV when the app starts" setting is enabled. Runs at most
+     * once per app open and never when the app was started for something specific
+     * (widget, recognizer, updater, shortcut or deep link).
+     */
+    private fun handleAutoOpenPhotoFrame(
+        navController: NavHostController,
+    ) {
+        if (!autoOpenPhotoFramePending) return
+        autoOpenPhotoFramePending = false
+        lifecycleScope.launch {
+            val enabled = dataStore.data.first()[AutoOpenPhotoFrameKey] ?: false
+            if (enabled) {
+                // Jump to the photo frame shown in the main menu: Photo frame KTV on
+                // FOSS builds, Photo frame KTV 2 on GMS builds.
+                val frameRoute =
+                    if (BuildConfig.PHOTO_FRAME_V2_AVAILABLE) Screens.PhotoFrameV2.route
+                    else Screens.PhotoFrame.route
+                navController.navigate(frameRoute) {
+                    launchSingleTop = true
+                }
+            }
+        }
+    }
+
     private fun handleUpdaterIntent(
         intent: Intent,
         navController: NavHostController,
