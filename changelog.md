@@ -4,6 +4,20 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.92
+
+### 中文
+
+- 修正 Android Auto（車機）一連上就一直轉圈、無法開啟 app 的問題。原因是播放服務啟動後，播放核心（媒體工作階段）要稍晚才建立好；Android Auto 一連上就立刻連線，此時服務只能交出內部專用連線，Android Auto 無法使用也不會重試，畫面就一直轉圈。現在改為服務啟動時先讀完設定、當場把播放核心建立好，確保車機連進來就能拿到正確連線。此時前台通知已先送出，不會被系統判定逾時。
+- 另外把 Android Auto 瀏覽根目錄標記為可瀏覽（isBrowsable），加強部分車機版本載入子項目時的相容性。
+- 版本 code 322；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Fixed Android Auto spinning forever and never opening the app on connect. The playback core (media session) was built slightly after the service started, but Android Auto binds immediately on connect; the service could only hand back its internal binder, which Android Auto cannot use and does not retry, so the car screen kept spinning. The service now reads its settings and builds the playback core synchronously on startup, so a connecting car browser always gets a valid session. The foreground notification is already posted by then, so the system does not time out.
+- Also marked the Android Auto browse root as browsable (isBrowsable) to improve compatibility when some car versions load its children.
+- Version code 322; no database schema change and no data migration is required.
+
 ## 13.7.91
 
 ### 中文

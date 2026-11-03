@@ -227,6 +227,7 @@ import com.metrolist.music.widget.WidgetActionSecurity
 import com.metrolist.music.ui.utils.resize
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlin.coroutines.coroutineContext
 import kotlin.time.Duration.Companion.seconds
@@ -654,20 +655,19 @@ class MusicService :
             return
         }
 
-        // Finish service initialization after DataStore is ready without blocking
-        // the main thread. PlayerConnection observes playerInitialized and waits
-        // for this setup before exposing player controls.
-        scope.launch {
-            val preferences =
-                try {
-                    dataStore.data.first()
-                } catch (error: CancellationException) {
-                    throw error
-                } catch (error: Exception) {
-                    Timber.tag(TAG).e(error, "Failed to load playback settings")
-                    stopSelf()
-                    return@launch
-                }
+        // The media session must exist before onBind returns. Media browsers such as
+        // Android Auto bind right after onCreate; a missing session makes onBind hand
+        // them the internal binder and the car UI spins forever. The service is
+        // already in the foreground here, so a short synchronous settings read is safe.
+        val preferences =
+            try {
+                runBlocking(Dispatchers.IO) { dataStore.data.first() }
+            } catch (error: Exception) {
+                Timber.tag(TAG).e(error, "Failed to load playback settings")
+                stopSelf()
+                return
+            }
+        scope.launch(start = CoroutineStart.UNDISPATCHED) {
             startupPrefs = preferences
             launch {
                 dataStore.data.collect { startupPrefs = it }
