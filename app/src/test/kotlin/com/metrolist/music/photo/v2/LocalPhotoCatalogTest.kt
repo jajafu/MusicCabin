@@ -63,6 +63,13 @@ class LocalPhotoCatalogTest {
         assertEquals(listOf(first.toString()), restored.state.value.photos.map { it.uri })
     }
 
+    @Test fun `unreadable photo is skipped silently without a catalog error`() = runBlocking {
+        val catalog = local()
+        catalog.addPhotos(listOf(first))
+        catalog.markUnreadable(first.toString())
+        assertNull(catalog.state.value.error)
+    }
+
     private class MemoryPreferences : DataStore<Preferences> {
         override val data = MutableStateFlow(emptyPreferences())
         override suspend fun updateData(transform: suspend (Preferences) -> Preferences): Preferences =

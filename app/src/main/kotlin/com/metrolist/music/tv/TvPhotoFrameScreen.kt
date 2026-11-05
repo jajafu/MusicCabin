@@ -39,6 +39,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
@@ -117,7 +118,7 @@ fun TvPhotoFrameScreen(onExit: () -> Unit, viewModel: TvPhotoFrameViewModel = hi
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val actionError by viewModel.error.collectAsStateWithLifecycle()
+    val displayError by viewModel.displayError.collectAsStateWithLifecycle()
     val generation by viewModel.generation.collectAsStateWithLifecycle()
     val source by viewModel.source.collectAsStateWithLifecycle()
     var foreground by remember(lifecycle) { mutableStateOf(lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) }
@@ -258,7 +259,11 @@ fun TvPhotoFrameScreen(onExit: () -> Unit, viewModel: TvPhotoFrameViewModel = hi
                     state.settings.intervalSeconds * 1000L,
                     isLandscape = { landscapeNow },
                     orientationOf = ::coilFrameOrientation,
-                ) { slides = it }
+                ) {
+                    slides = it
+                    // A visible slide means photos do read: drop a stale unreadable alarm.
+                    if (it.current != null) viewModel.onSlideDisplayed()
+                }
                 // Keep image ownership within this effect, including single-photo/empty states.
                 kotlinx.coroutines.awaitCancellation()
             } finally {
@@ -268,6 +273,13 @@ fun TvPhotoFrameScreen(onExit: () -> Unit, viewModel: TvPhotoFrameViewModel = hi
         LaunchedEffect(slides.incoming) {
             fade.snapTo(0f)
             if (slides.incoming != null) fade.animateTo(1f, tween(350))
+        }
+        // "Nothing readable" also waits out the grace window: a USB stick that is
+        // still mounting must not be reported as broken the moment playback starts.
+        val exhaustedAlarm by produceState(initialValue = false, slides.exhausted) {
+            if (!slides.exhausted) { value = false; return@produceState }
+            delay(FRAME_ERROR_GRACE_MILLIS)
+            value = true
         }
 
         val scale = if (state.settings.crop) ContentScale.Crop else ContentScale.Fit
@@ -305,9 +317,9 @@ fun TvPhotoFrameScreen(onExit: () -> Unit, viewModel: TvPhotoFrameViewModel = hi
                     onHideControls = { showControls = false },
                     onSwitchLyrics = { showLyricsPicker = true },
                 )
-                val error = actionError ?: state.error
-                if (error != null) Text(stringResource(frameErrorMessage(error)), color = Color.White, style = MaterialTheme.typography.bodySmall)
-                else if (slides.exhausted) Text(stringResource(R.string.photo_frame_unreadable), color = Color.White)
+                val shownError = displayError
+                if (shownError != null) Text(stringResource(frameErrorMessage(shownError)), color = Color.White, style = MaterialTheme.typography.bodySmall)
+                else if (exhaustedAlarm) Text(stringResource(R.string.photo_frame_unreadable), color = Color.White)
                 else if (source == TvPhotoFrameViewModel.Source.TRANSFER && uris.isEmpty()) {
                     Text(tvLocalizedString(R.string.tv_photo_pair_open_settings, R.string.tv_photo_pair_open_settings_zh_tw),
                         color = Color.White)

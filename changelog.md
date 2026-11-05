@@ -4,6 +4,20 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.94
+
+### 中文
+
+- 修正 TV 相框剛進入時容易誤跳出「部分照片無法讀取。請確認 USB 連線…」的問題：剛進入相框、USB 隨身碟還沒準備好時，程式會先把這個訊息壓住約 5 秒，真的持續讀不到才會顯示；若照片隨後恢復正常輪播，訊息會自動撤銷不會出現。「完全沒有照片可播放」的提示也同樣等 5 秒才顯示。
+- 單張照片讀取失敗改為靜默跳過：不再因為一兩張壞照片就把整體狀態設為錯誤，幾百張照片中壞一兩張會直接跳過繼續輪播，不顯示任何錯誤（手機與 TV 相框都適用）。
+- 版本 code 324；無資料庫 schema 變更，升級不需遷移資料。
+
+### English
+
+- Fixed the TV photo frame flashing "Some photos cannot be read. Check the USB connection…" right after entering: when the frame opens before a USB stick has finished mounting, the message is now held back for about 5 seconds and only shown if it truly persists; if photos recover and keep playing, the message is dropped automatically. The "nothing readable to play" hint waits out the same grace period.
+- A single unreadable photo is now skipped silently: one or two bad photos among hundreds no longer raise a catalog-wide error — playback just skips them and keeps going, with no error shown (applies to both the phone and TV photo frames).
+- Version code 324; no database schema change and no data migration is required.
+
 ## 13.7.93
 
 ### 中文

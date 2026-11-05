@@ -24,12 +24,41 @@ import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+
+/** How long an unreadable-photos alarm must persist before the UI may show it. */
+const val FRAME_ERROR_GRACE_MILLIS = 5_000L
+
+/**
+ * Gates what the UI may show: an UNREADABLE alarm is usually transient (the USB
+ * stick has not finished mounting yet), so it passes through only after it has
+ * persisted for the whole grace window; any newer emission cancels the pending
+ * one and the alarm is dropped without ever surfacing. Every other error passes
+ * at once. [wait] is an injection point for deterministic tests.
+ */
+internal fun Flow<FrameError?>.shownAfterGrace(
+    graceMillis: Long,
+    wait: suspend (Long) -> Unit = { delay(it) },
+): Flow<FrameError?> = transformLatest { error ->
+    if (error != FrameError.UNREADABLE) emit(error)
+    else {
+        wait(graceMillis)
+        emit(error)
+    }
+}
 
 @HiltViewModel
 class TvPhotoFrameViewModel @Inject constructor(
@@ -46,6 +75,11 @@ class TvPhotoFrameViewModel @Inject constructor(
     private var sourceLoaded = false
     private val mutableError = MutableStateFlow<FrameError?>(null)
     val error = mutableError.asStateFlow()
+    // What the UI may show: UNREADABLE waits out the grace window (a USB stick
+    // that is still mounting must not flash a false alarm), everything else
+    // surfaces at once.
+    private val mutableDisplayError = MutableStateFlow<FrameError?>(null)
+    val displayError = mutableDisplayError.asStateFlow()
     private val mutableBusy = MutableStateFlow(false)
     val busy = mutableBusy.asStateFlow()
     private val mutableGeneration = MutableStateFlow(0)
@@ -75,6 +109,17 @@ class TvPhotoFrameViewModel @Inject constructor(
 
     fun attachGuestRole(isGuest: Boolean) {
         listenTogetherGuest = isGuest
+    }
+
+    init {
+        // UNREADABLE is often transient (USB not ready yet on entry): hold it for
+        // the grace window and show it only if it still persists afterwards. Any
+        // other error is actionable and surfaces immediately.
+        combine(error, state.map { it.error }) { action, catalogError -> action ?: catalogError }
+            .distinctUntilChanged()
+            .shownAfterGrace(FRAME_ERROR_GRACE_MILLIS)
+            .onEach { mutableDisplayError.value = it }
+            .launchIn(viewModelScope)
     }
 
     fun initialize() {
@@ -246,6 +291,16 @@ class TvPhotoFrameViewModel @Inject constructor(
 
     fun cancelOperation() { operation?.cancel() }
     fun dismissError() { mutableError.value = null; catalog.clearError() }
+
+    /**
+     * Photos are visibly on screen, so a lingering unreadable-photos alarm is
+     * stale. Only the catalog error clears here: action errors (e.g. storage
+     * failures of explicit operations) stay until the user dismisses them.
+     */
+    fun onSlideDisplayed() {
+        if (state.value.error == FrameError.UNREADABLE) catalog.clearError()
+    }
+
     suspend fun markUnreadable(uri: String) = catalog.markUnreadable(uri)
 
     fun unavailableUris(): Set<String> {

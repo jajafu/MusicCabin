@@ -135,8 +135,10 @@ class LocalPhotoCatalog internal constructor(
                 unreadableCount = if (rootUnavailable || needsPermission) members.size else members.count { it in failedPhotos },
             )
         }
-        // Keep the playback snapshot stable; the controller skips failed URIs for this session.
-        mutableState.update { it.copy(sources = affected, error = FrameError.UNREADABLE) }
+        // Keep the playback snapshot stable; the controller skips failed URIs for
+        // this session. One unreadable photo among hundreds is skipped silently:
+        // only entry/rescan validation raises the catalog-wide UNREADABLE alarm.
+        mutableState.update { it.copy(sources = affected) }
     }
 
     private suspend fun initializeLocked() {

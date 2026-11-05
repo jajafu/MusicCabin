@@ -21,6 +21,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -158,6 +159,18 @@ class PhotoCatalogTest {
         catalog.rescan()
         assertFalse(catalog.state.value.sources.single().unavailable)
         assertEquals(photos, catalog.state.value.photos)
+    }
+
+    @Test
+    fun `unreadable photos never raise a catalog-wide error`() = runBlocking {
+        documents.childCount = 3
+        val catalog = catalogWithLegacyFolder()
+        val photos = catalog.state.value.photos
+        catalog.markUnreadable(photos[0].uri)
+        assertNull(catalog.state.value.error)
+        documents.readError = FileNotFoundException("USB unplugged")
+        catalog.markUnreadable(photos[1].uri)
+        assertNull(catalog.state.value.error)
     }
 
     @Test

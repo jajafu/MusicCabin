@@ -68,7 +68,7 @@ internal fun TvPhotoFrameSettingsPanel(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val source by viewModel.source.collectAsStateWithLifecycle()
     val busy by viewModel.busy.collectAsStateWithLifecycle()
-    val error by viewModel.error.collectAsStateWithLifecycle()
+    val displayError by viewModel.displayError.collectAsStateWithLifecycle()
     val transfer by viewModel.transfer.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val localSources = remember(state.sources) {
@@ -293,7 +293,7 @@ internal fun TvPhotoFrameSettingsPanel(
                                 } }
                             }
                         }
-                        val visibleError = error ?: state.error
+                        val visibleError = displayError
                         if (visibleError != null) item {
                             Text(stringResource(frameErrorMessage(visibleError)), color = MaterialTheme.colorScheme.error)
                         }
