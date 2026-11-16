@@ -1203,6 +1203,7 @@ class SyncUtils @Inject constructor(
                                     song.copy(
                                         liked = reconciledLiked,
                                         likedDate = if (reconciledLiked) song.likedDate else null,
+                                        likedOrder = if (reconciledLiked) song.likedOrder else null,
                                     ),
                                 )
                             }
@@ -1251,6 +1252,7 @@ class SyncUtils @Inject constructor(
                                         dbSong.copy(
                                             liked = reconciledLiked,
                                             likedDate = reconciledLikedDate,
+                                            likedOrder = if (reconciledLiked) dbSong.likedOrder else null,
                                             isVideo = isVideoSong,
                                         ),
                                     )
@@ -2242,7 +2244,7 @@ class SyncUtils @Inject constructor(
                 // Clear liked songs
                 val likedSongs = database.likedSongsByNameAsc().first()
                 likedSongs.forEach {
-                    database.update(it.song.copy(liked = false, likedDate = null))
+                    database.update(it.song.copy(liked = false, likedDate = null, likedOrder = null))
                 }
 
                 // Clear library songs

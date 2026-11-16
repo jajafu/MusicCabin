@@ -341,6 +341,7 @@ enum class PlaylistSongSortType {
 }
 
 enum class AutoPlaylistSongSortType {
+    CUSTOM,
     CREATE_DATE,
     NAME,
     ARTIST,

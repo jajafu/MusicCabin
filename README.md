@@ -43,6 +43,8 @@ What this fork adds on top of Metrolist. Full version history lives in [`changel
   - Families singing together on the TV, with travel, landscape, or other personal photos in the background, enjoying memories of good times while singing.
   - Friends and family gathering at home: basic KTV features without buying professional KTV gear, and every guest can upload photos to join in.
 
+- **Liked songs custom ordering**: pick "Custom order" in the liked songs sort menu to press and hold the drag handle and arrange songs yourself; the order is stored locally (not synced to YouTube Music) and is also followed when browsing liked songs on Android Auto.
+
 - **Branding and variants**: `MusicCabin` name with the black music-car logo across launcher, About, notifications, and store artwork. FOSS (`com.jajafu.musiccabin`) and GMS (`com.jajafu.musiccabin.gms`) install side by side with independent data; FOSS updates in-app from GitHub Releases while GMS updates manually.
 
 ## Features

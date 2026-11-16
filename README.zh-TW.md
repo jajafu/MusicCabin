@@ -44,6 +44,8 @@ MusicCabin 是 [Metrolist](https://github.com/MetrolistGroup/Metrolist) 的 Andr
   - 家庭使用電視進行歡唱，背景可以是家庭旅遊照片、風景照片、或其他個人喜好照片，一邊唱歌一邊欣賞過往精彩照片回顧。
   - 親朋好友共同在家歡樂，提供KTV基礎功能，毋需另購KTV專業設備，並可讓所有親友上傳照片同樂。
 
+- **喜愛歌曲自訂排序**：在「喜愛的歌曲」的排序選單切到「自訂」後，可按住拖曳把手自行排列順序；順序只存在本機、不會同步到 YouTube Music，Android Auto 瀏覽喜愛歌曲時也會跟隨。
+
 - **品牌與版本**：`MusicCabin` 名稱搭配黑色音樂車 Logo，統一用於啟動器、關於頁、通知與商店素材。FOSS（`com.jajafu.musiccabin`）與 GMS（`com.jajafu.musiccabin.gms`）可同時安裝、資料各自獨立；FOSS 在 App 內從 GitHub Releases 更新，GMS 手動更新。
 
 ## 核心音樂功能

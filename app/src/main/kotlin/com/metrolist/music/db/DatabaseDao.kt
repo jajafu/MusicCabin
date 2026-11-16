@@ -24,6 +24,7 @@ import com.metrolist.innertube.pages.ArtistPage
 import com.metrolist.music.constants.AlbumSortType
 import com.metrolist.music.constants.ArtistSongSortType
 import com.metrolist.music.constants.ArtistSortType
+import com.metrolist.music.constants.AutoPlaylistSongSortType
 import com.metrolist.music.constants.PlaylistSortType
 import com.metrolist.music.constants.SongSortType
 import com.metrolist.music.db.entities.Album
@@ -203,6 +204,12 @@ interface DatabaseDao : AndroidAutoDao {
     @Query("SELECT * FROM song WHERE liked ORDER BY totalPlayTime")
     fun likedSongsByPlayTimeAsc(): Flow<List<Song>>
 
+    // Custom order: songs the user has arranged come first (ascending likedOrder),
+    // freshly liked songs without an order yet are appended by liked date.
+    @Transaction
+    @Query("SELECT * FROM song WHERE liked ORDER BY likedOrder IS NULL, likedOrder, likedDate DESC, rowId DESC")
+    fun likedSongsByLikedOrderAsc(): Flow<List<Song>>
+
     fun likedSongs(
         sortType: SongSortType,
         descending: Boolean,
@@ -236,6 +243,41 @@ interface DatabaseDao : AndroidAutoDao {
 
         SongSortType.PLAY_TIME -> likedSongsByPlayTimeAsc()
     }.map { it.reversed(descending) }
+
+    fun likedSongs(
+        sortType: AutoPlaylistSongSortType,
+        descending: Boolean,
+    ) = when (sortType) {
+        AutoPlaylistSongSortType.CUSTOM -> likedSongsByLikedOrderAsc()
+        AutoPlaylistSongSortType.CREATE_DATE -> likedSongsByCreateDateAsc()
+        AutoPlaylistSongSortType.NAME ->
+            likedSongsByNameAsc().map { songs ->
+                val collator = Collator.getInstance(Locale.getDefault())
+                collator.strength = Collator.PRIMARY
+                songs.sortedWith(compareBy(collator) { it.song.title })
+            }
+
+        AutoPlaylistSongSortType.ARTIST ->
+            likedSongsByRowIdAsc().map { songs ->
+                val collator = Collator.getInstance(Locale.getDefault())
+                collator.strength = Collator.PRIMARY
+                songs
+                    .sortedWith(
+                        compareBy(collator) { song ->
+                            song.orderedArtists.joinToString("") { it.name }
+                        },
+                    ).groupBy { it.album?.title }
+                    .flatMap { (_, songsByAlbum) ->
+                        songsByAlbum.sortedBy { album ->
+                            album.orderedArtists.joinToString(
+                                "",
+                            ) { it.name }
+                        }
+                    }
+            }
+
+        AutoPlaylistSongSortType.PLAY_TIME -> likedSongsByPlayTimeAsc()
+    }.map { it.reversed(descending && sortType != AutoPlaylistSongSortType.CUSTOM) }
 
     @Transaction
     @Query("SELECT COUNT(1) FROM song WHERE liked")
@@ -1709,6 +1751,59 @@ interface DatabaseDao : AndroidAutoDao {
         fromPosition: Int,
         toPosition: Int,
     )
+
+    @Query("SELECT COALESCE(MAX(likedOrder) + 1, 0) FROM song WHERE liked AND likedOrder IS NOT NULL")
+    suspend fun nextLikedOrder(): Int
+
+    @Query("SELECT id FROM song WHERE liked AND likedOrder IS NULL ORDER BY likedDate DESC, rowId DESC")
+    suspend fun likedSongIdsWithoutOrder(): List<String>
+
+    @Query("UPDATE song SET likedOrder = :order WHERE id = :songId")
+    suspend fun setLikedOrder(songId: String, order: Int)
+
+    @Query("SELECT likedOrder FROM song WHERE id = :songId")
+    suspend fun likedOrderOf(songId: String): Int?
+
+    /**
+     * Gives every liked song without an explicit order a position at the tail of the current
+     * custom order, newest first. Before the first drag this mirrors the default
+     * "date added, descending" view, so switching to custom order causes no visual jump.
+     */
+    @Transaction
+    suspend fun backfillLikedOrders() {
+        var order = nextLikedOrder()
+        likedSongIdsWithoutOrder().forEach { songId ->
+            setLikedOrder(songId, order++)
+        }
+    }
+
+    /**
+     * Moves [fromSongId] so that it lands right before (moving up) or right after (moving down)
+     * [toSongId] in the liked songs custom order. Gaps left by unliked songs are harmless:
+     * only relative order matters.
+     */
+    @Transaction
+    suspend fun moveLikedSong(fromSongId: String, toSongId: String) {
+        if (fromSongId == toSongId) return
+        backfillLikedOrders()
+        val fromOrder = likedOrderOf(fromSongId) ?: return
+        val toOrder = likedOrderOf(toSongId) ?: return
+        if (fromOrder == toOrder) return
+        moveLikedOrder(fromOrder, toOrder)
+    }
+
+    @Query(
+        """
+        UPDATE song SET likedOrder =
+            CASE
+                WHEN likedOrder < :fromOrder THEN likedOrder + 1
+                WHEN likedOrder > :fromOrder THEN likedOrder - 1
+                ELSE :toOrder
+            END
+        WHERE liked AND likedOrder IS NOT NULL AND likedOrder BETWEEN MIN(:fromOrder, :toOrder) AND MAX(:fromOrder, :toOrder)
+    """,
+    )
+    suspend fun moveLikedOrder(fromOrder: Int, toOrder: Int)
 
     @Transaction
     @Query("DELETE FROM playlist_song_map WHERE playlistId = :playlistId")

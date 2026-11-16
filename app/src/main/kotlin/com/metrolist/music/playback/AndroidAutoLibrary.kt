@@ -45,7 +45,8 @@ internal class AndroidAutoLibrary(
             parentId == MusicService.SONG ->
                 "SELECT id FROM song WHERE inLibrary IS NOT NULL ORDER BY inLibrary, rowId"
             parentId == "${MusicService.PLAYLIST}/${PlaylistEntity.LIKED_PLAYLIST_ID}" ->
-                "SELECT id FROM song WHERE liked ORDER BY likedDate DESC, rowId DESC"
+                // Follow the local custom order when one exists; fall back to liked date.
+                "SELECT id FROM song WHERE liked ORDER BY likedOrder IS NULL, likedOrder, likedDate DESC, rowId DESC"
             parentId.startsWith("${MusicService.ARTIST}/") -> {
                 args.add(parentId.removePrefix("${MusicService.ARTIST}/"))
                 """SELECT song.id FROM song_artist_map JOIN song ON song.id = songId

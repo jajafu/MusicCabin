@@ -4,6 +4,24 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.95
+
+### 中文
+
+- 「喜愛的歌曲」新增「自訂」排序：在排序選單選擇「自訂」後，每首歌右側會出現拖曳把手，可以按住把手上下拖動，自行排列喜愛歌曲的順序；順序只存在手機本機，不會同步到 YouTube Music，也不影響其他排序方式的切換。
+- 首次切到「自訂」時，順序會沿用目前「加入時間（新到舊）」的排列，不會跳動；之後新按讚的歌會排在已排過的歌曲之後，取消按讚再重新按讚的歌同樣排到後面。
+- 喜愛清單的排序偏好改為獨立記憶（原本與「收藏歌曲」分頁共用一組設定），更新後喜愛清單的排序會回到預設的加入時間排序，請重新選擇一次。
+- Android Auto（車機）瀏覽「喜愛的歌曲」時，若本機排過自訂順序會跟著採用；沒排過則維持原本的加入時間排序。
+- 版本 code 325；資料庫 schema 由 38 升級到 39（`song` 表新增一個排序欄位，Room 自動遷移），升級不需手動操作，資料不受影響。
+
+### English
+
+- "Liked songs" now offers a "Custom order" sort: pick "Custom order" from the sort menu and a drag handle appears on each row, letting you press and hold it to drag songs into your own order. The order is stored locally only — it is not synced to YouTube Music and does not affect the other sort options.
+- The first switch to custom order keeps the current "date added (newest first)" arrangement, so nothing jumps; songs liked afterwards are placed after the arranged songs, and a song that is unliked and liked again goes to the back too.
+- The liked playlist now stores its sort preference separately (it used to share one with the library "Songs" tab); after updating, the liked playlist's sorting resets to the default date-added order once.
+- Android Auto now follows the local custom order when browsing liked songs; without one it keeps the previous date-added ordering.
+- Version code 325; the database schema moves from 38 to 39 (a new ordering column on the `song` table via Room auto-migration). The upgrade is automatic and does not affect existing data.
+
 ## 13.7.94
 
 ### 中文

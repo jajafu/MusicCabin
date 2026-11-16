@@ -39,6 +39,9 @@ data class SongEntity(
     val dateModified: LocalDateTime? = null, // file property
     val liked: Boolean = false,
     val likedDate: LocalDateTime? = null,
+    // Local-only manual ordering for the liked songs playlist; NULL = not arranged yet (sorts last).
+    @ColumnInfo(name = "likedOrder", defaultValue = "NULL")
+    val likedOrder: Int? = null,
     val totalPlayTime: Long = 0, // in milliseconds
     val inLibrary: LocalDateTime? = null,
     val dateDownload: LocalDateTime? = null,
@@ -69,12 +72,14 @@ data class SongEntity(
         copy(
             liked = !liked,
             likedDate = if (!liked) LocalDateTime.now() else null,
+            likedOrder = null,
         )
 
     fun toggleLike() =
         copy(
             liked = !liked,
             likedDate = if (!liked) LocalDateTime.now() else null,
+            likedOrder = null,
             inLibrary = if (!liked) inLibrary ?: LocalDateTime.now() else inLibrary,
         )
 
@@ -83,6 +88,7 @@ data class SongEntity(
             liked = if (inLibrary == null) liked else false,
             inLibrary = if (inLibrary == null) LocalDateTime.now() else null,
             likedDate = if (inLibrary == null) likedDate else null,
+            likedOrder = if (inLibrary == null) likedOrder else null,
         ).also {
             if (syncToYouTube) {
                 CoroutineScope(Dispatchers.IO).launch {

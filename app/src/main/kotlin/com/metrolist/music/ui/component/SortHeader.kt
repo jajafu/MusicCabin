@@ -30,7 +30,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.metrolist.music.R
-import com.metrolist.music.constants.PlaylistSongSortType
 
 @Composable
 inline fun <reified T : Enum<T>> SortHeader(
@@ -99,7 +98,9 @@ inline fun <reified T : Enum<T>> SortHeader(
             }
         }
 
-        if (sortType != PlaylistSongSortType.CUSTOM && showDescending == true) {
+        // Compared by name so one check covers both PlaylistSongSortType and
+        // AutoPlaylistSongSortType, the two enums that have a CUSTOM member.
+        if (sortType.name != "CUSTOM" && showDescending == true) {
             ResizableIconButton(
                 icon = if (sortDescending) R.drawable.arrow_downward else R.drawable.arrow_upward,
                 color = MaterialTheme.colorScheme.primary,
