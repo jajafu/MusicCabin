@@ -10,6 +10,9 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.widget.Toast
 import androidx.annotation.DrawableRes
 import androidx.core.net.toUri
 import androidx.media3.common.C
@@ -75,6 +78,15 @@ internal fun isManualSkipCommand(command: Int): Boolean =
         command == COMMAND_SEEK_TO_NEXT_MEDIA_ITEM ||
         command == COMMAND_SEEK_TO_PREVIOUS ||
         command == COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM
+
+/**
+ * mediaId scheme for car items that were fetched live from YouTube (online playlist fallback and
+ * Mixes children). Top-level and pure so the cross-file contract with the YOUTUBE_PLAYLIST
+ * branch of [MediaLibrarySessionCallback.onSetMediaItems] — split("/") must yield
+ * [MusicService.YOUTUBE_PLAYLIST, browseId, videoId] — stays unit-testable.
+ */
+internal fun carOnlineSongMediaId(playlistBrowseId: String, videoId: String): String =
+    "${MusicService.YOUTUBE_PLAYLIST}/$playlistBrowseId/$videoId"
 
 internal fun Player.Commands.containsManualSkipCommand(): Boolean =
     (0 until size()).any { index -> isManualSkipCommand(get(index)) }
@@ -404,42 +416,70 @@ constructor(
                         if (!context.dataStore.get(AndroidAutoYouTubePlaylistsKey, false)) {
                             emptyList()
                         } else {
-                            try {
-                                val allSections = mutableListOf<com.metrolist.innertube.pages.HomePage.Section>()
-                                var continuation: String? = null
-                                val maxPages = 4
+                            // Drop playlists already saved to the local library,
+                            // which are exposed under MusicService.PLAYLIST.
+                            val savedBrowseIds = database.androidAutoSavedBrowseIds().toSet()
 
-                                for (page in 0 until maxPages) {
-                                    val result = YouTube.home(continuation)
-                                        .onFailure { reportException(it) }
-                                        .getOrNull() ?: break
-                                    allSections.addAll(result.sections)
-                                    continuation = result.continuation
-                                    if (continuation == null) break
-                                }
-
-                                // Drop playlists already saved to the local library,
-                                // which are exposed under MusicService.PLAYLIST.
-                                val savedBrowseIds = database.androidAutoSavedBrowseIds().toSet()
-
-                                val playlists = allSections
-                                    .flatMap { it.items }
-                                    .filterIsInstance<PlaylistItem>()
+                            // Offline: skip the live fetch entirely and serve the cached list
+                            // right away, instead of waiting out HTTP retries/timeouts.
+                            val entries = if (!service.isNetworkAvailable()) {
+                                AndroidAutoMixesCache.load(context)
                                     .filterNot { it.id in savedBrowseIds }
-                                    .distinctBy { it.id }
+                            } else {
+                                var paginationIncomplete = false
+                                val liveItems = runCatching {
+                                    val allSections = mutableListOf<com.metrolist.innertube.pages.HomePage.Section>()
+                                    var continuation: String? = null
+                                    val maxPages = 4
 
-                                playlists.slicePage(offset, limit).map { playlist ->
-                                    browsableMediaItem(
-                                        "${MusicService.YOUTUBE_PLAYLIST}/${playlist.id}",
-                                        playlist.title,
-                                        playlist.author?.name,
-                                        playlist.thumbnail?.toUri(),
-                                        MediaMetadata.MEDIA_TYPE_PLAYLIST,
-                                    )
+                                    for (page in 0 until maxPages) {
+                                        val result = YouTube.home(continuation)
+                                            .onFailure { reportException(it) }
+                                            .getOrNull() ?: run {
+                                                // A failed page leaves the fetch partial: display what
+                                                // we have, but never overwrite the last complete cache
+                                                // with a truncated list.
+                                                paginationIncomplete = true
+                                                break
+                                            }
+                                        allSections.addAll(result.sections)
+                                        continuation = result.continuation
+                                        if (continuation == null) break
+                                    }
+
+                                    allSections
+                                        .flatMap { it.items }
+                                        .filterIsInstance<PlaylistItem>()
+                                        .distinctBy { it.id }
+                                }.getOrNull().orEmpty()
+
+                                val liveEntries = liveItems
+                                    .filterNot { it.id in savedBrowseIds }
+                                    .map { it.toCacheEntry() }
+
+                                // Only a fully successful fetch may replace the last complete cache.
+                                if (!paginationIncomplete && liveEntries.isNotEmpty()) {
+                                    AndroidAutoMixesCache.save(context, liveEntries)
                                 }
-                            } catch (e: Exception) {
-                                reportException(e)
-                                emptyList()
+
+                                // Online display stays uncapped — the MAX_ENTRIES cap applies to the
+                                // stored cache only (handled inside AndroidAutoMixesCache).
+                                if (liveItems.isNotEmpty()) {
+                                    liveEntries
+                                } else {
+                                    AndroidAutoMixesCache.load(context)
+                                        .filterNot { it.id in savedBrowseIds }
+                                }
+                            }
+
+                            entries.slicePage(offset, limit).map { playlist ->
+                                browsableMediaItem(
+                                    "${MusicService.YOUTUBE_PLAYLIST}/${playlist.id}",
+                                    playlist.title,
+                                    playlist.author,
+                                    playlist.thumbnail?.toUri(),
+                                    MediaMetadata.MEDIA_TYPE_PLAYLIST,
+                                )
                             }
                         }
                     }
@@ -451,42 +491,78 @@ constructor(
                                 carLibrary.songs(carLibrary.songIds(sourceId, limit, offset))
                                     .map { it.toMediaItem(sourceId) }
 
-                            sourceId.startsWith("${MusicService.PLAYLIST}/") ->
-                                loadCarPage(listOf(shuffleItem(sourceId)), offset, limit) { count, start ->
-                                    carLibrary.songs(carLibrary.songIds(sourceId, count, start))
-                                        .map { it.toMediaItem(sourceId) }
+                            sourceId.startsWith("${MusicService.PLAYLIST}/") -> {
+                                val hasLocalSongs = carLibrary.songIds(sourceId, 1, 0L).isNotEmpty()
+                                if (hasLocalSongs) {
+                                    loadCarPage(listOf(shuffleItem(sourceId)), offset, limit) { count, start ->
+                                        carLibrary.songs(carLibrary.songIds(sourceId, count, start))
+                                            .map { it.toMediaItem(sourceId) }
+                                    }
+                                } else {
+                                    // An un-synced saved YouTube playlist has no local song cache:
+                                    // try one live fetch so it stays browsable; when that fails
+                                    // (e.g. offline) show a hint instead of a silently empty list.
+                                    val playlistId = sourceId.removePrefix("${MusicService.PLAYLIST}/")
+                                    // browseId == null means a purely local playlist (possibly a
+                                    // genuinely empty one): it intentionally gets no "not synced"
+                                    // hint — that message would be misleading for it.
+                                    val browseId = database.playlist(playlistId).first()?.playlist?.browseId
+                                    // Offline: skip the live fetch (no HTTP retry wait) — the hint
+                                    // below covers it. Online: one live fetch self-heals the playlist.
+                                    val remoteSongs = if (!browseId.isNullOrBlank() && service.isNetworkAvailable()) {
+                                        runCatching { YouTube.playlist(browseId).getOrNull()?.songs?.take(100) }
+                                            .getOrNull()
+                                    } else null
+
+                                    buildList {
+                                        add(shuffleItem(sourceId))
+                                        if (remoteSongs != null) {
+                                            addAll(
+                                                remoteSongs
+                                                    .filterExplicit(context.dataStore.get(HideExplicitKey, false))
+                                                    .filterVideoSongs(context.dataStore.get(HideVideoSongsKey, false))
+                                                    .map { onlineSongItem(browseId!!, it) }
+                                            )
+                                        } else if (!browseId.isNullOrBlank()) {
+                                            add(
+                                                hintItem(
+                                                    carLocalizedString(
+                                                        R.string.android_auto_playlist_not_synced,
+                                                        R.string.android_auto_playlist_not_synced_zh_tw,
+                                                    )
+                                                )
+                                            )
+                                        }
+                                    }.slicePage(offset, limit)
                                 }
+                            }
 
                             sourceId.startsWith("${MusicService.YOUTUBE_PLAYLIST}/") -> {
                                 val playlistId = sourceId.removePrefix("${MusicService.YOUTUBE_PLAYLIST}/")
-                                try {
-                                    val songs = YouTube.playlist(playlistId).getOrNull()?.songs
+                                val songs = runCatching {
+                                    YouTube.playlist(playlistId).getOrNull()?.songs
                                         ?.take(100)
                                         ?.filterExplicit(context.dataStore.get(HideExplicitKey, false))
                                         ?.filterVideoSongs(context.dataStore.get(HideVideoSongsKey, false))
-                                        ?: emptyList()
+                                }.getOrNull()
 
-                                    // Add shuffle item at the top
-                                    (listOf(shuffleItem(sourceId)) + songs.map { songItem ->
-                                        MediaItem.Builder()
-                                            .setMediaId("$sourceId/${songItem.id}")
-                                            .setMediaMetadata(
-                                                MediaMetadata.Builder()
-                                                    .setTitle(songItem.title)
-                                                    .setSubtitle(songItem.artists.joinToArtistString(getArtistSeparator(context)) { it.name })
-                                                    .setArtist(songItem.artists.joinToArtistString(getArtistSeparator(context)) { it.name })
-                                                    .setArtworkUri(songItem.thumbnail.toUri())
-                                                    .setIsPlayable(true)
-                                                    .setIsBrowsable(false)
-                                                    .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
-                                                    .build()
+                                // Shuffle first; when the fetch failed entirely (e.g. offline)
+                                // show a hint row instead of a silently empty playlist.
+                                buildList {
+                                    add(shuffleItem(sourceId))
+                                    if (songs != null) {
+                                        addAll(songs.map { onlineSongItem(playlistId, it) })
+                                    } else {
+                                        add(
+                                            hintItem(
+                                                carLocalizedString(
+                                                    R.string.android_auto_playlist_load_failed,
+                                                    R.string.android_auto_playlist_load_failed_zh_tw,
+                                                )
                                             )
-                                            .build()
-                                    }).slicePage(offset, limit)
-                                } catch (e: Exception) {
-                                    reportException(e)
-                                    emptyList()
-                                }
+                                        )
+                                    }
+                                }.slicePage(offset, limit)
                             }
 
                             else -> emptyList()
@@ -638,7 +714,35 @@ constructor(
                     val parentId = path.dropLast(1).joinToString("/")
                     val ids = carLibrary.songIds(parentId)
                     val shuffle = songId == MusicService.SHUFFLE_ACTION
-                    val items = carLibrary.queueItems(if (shuffle) ids.shuffled() else ids)
+                    var items = carLibrary.queueItems(if (shuffle) ids.shuffled() else ids)
+
+                    // Un-synced saved YouTube playlist: no local song cache. Load once online;
+                    // offline, surface a clear hint instead of a silent empty queue.
+                    if (items.isEmpty() && path.first() == MusicService.PLAYLIST) {
+                        val localId = parentId.removePrefix("${MusicService.PLAYLIST}/")
+                        val browseId = database.playlist(localId).first()?.playlist?.browseId
+                        if (!browseId.isNullOrBlank()) {
+                            if (!service.isNetworkAvailable()) {
+                                showToast(
+                                    carLocalizedString(
+                                        R.string.android_auto_offline_cannot_play,
+                                        R.string.android_auto_offline_cannot_play_zh_tw,
+                                    )
+                                )
+                            } else {
+                                val remote = runCatching {
+                                    YouTube.playlist(browseId).getOrNull()?.songs
+                                }.getOrNull().orEmpty()
+                                    .filterExplicit(context.dataStore.get(HideExplicitKey, false))
+                                    .filterVideoSongs(context.dataStore.get(HideVideoSongsKey, false))
+                                if (remote.isNotEmpty()) {
+                                    val queue = remote.map { it.toMediaItem() }
+                                    items = if (shuffle) queue.shuffled() else queue
+                                }
+                            }
+                        }
+                    }
+
                     MediaItemsWithStartPosition(
                         items,
                         if (shuffle) 0 else items.indexOfFirst { it.mediaId == songId }.coerceAtLeast(0),
@@ -649,6 +753,16 @@ constructor(
                 MusicService.YOUTUBE_PLAYLIST -> {
                     val songId = path.getOrNull(2) ?: return@future defaultResult
                     val playlistId = path.getOrNull(1) ?: return@future defaultResult
+
+                    if (!service.isNetworkAvailable()) {
+                        showToast(
+                            carLocalizedString(
+                                R.string.android_auto_offline_cannot_play,
+                                R.string.android_auto_offline_cannot_play_zh_tw,
+                            )
+                        )
+                        return@future defaultResult
+                    }
 
                     val songs = try {
                         YouTube.playlist(playlistId).getOrNull()?.songs?.map {
@@ -784,6 +898,65 @@ constructor(
                 .setMediaType(mediaType)
                 .build(),
         ).build()
+
+    private fun PlaylistItem.toCacheEntry() =
+        AndroidAutoMixesCache.Entry(id = id, title = title, author = author?.name, thumbnail = thumbnail)
+
+    /**
+     * A song fetched live from YouTube (online playlist fallback / Mixes children). The mediaId
+     * follows the `youtube_playlist/<browseId>/<videoId>` scheme so tapping it resolves through
+     * the YOUTUBE_PLAYLIST playback path, which re-fetches the playlist queue.
+     */
+    private fun onlineSongItem(playlistBrowseId: String, songItem: SongItem): MediaItem =
+        MediaItem.Builder()
+            .setMediaId(carOnlineSongMediaId(playlistBrowseId, songItem.id))
+            .setMediaMetadata(
+                MediaMetadata.Builder()
+                    .setTitle(songItem.title)
+                    .setSubtitle(songItem.artists.joinToArtistString(getArtistSeparator(context)) { it.name })
+                    .setArtist(songItem.artists.joinToArtistString(getArtistSeparator(context)) { it.name })
+                    .setArtworkUri(songItem.thumbnail.toUri())
+                    .setIsPlayable(true)
+                    .setIsBrowsable(false)
+                    .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
+                    .build()
+            )
+            .build()
+
+    /** A non-playable, non-browsable row explaining why a list has no content (e.g. offline). */
+    private fun hintItem(text: String): MediaItem =
+        MediaItem.Builder()
+            // Derive the id from the message so different hints in one list stay unique
+            // (some car clients get confused by duplicate mediaIds when diffing children).
+            .setMediaId("offline_hint-${Integer.toHexString(text.hashCode())}")
+            .setMediaMetadata(
+                MediaMetadata.Builder()
+                    .setTitle(text)
+                    .setIsPlayable(false)
+                    .setIsBrowsable(false)
+                    .build()
+            )
+            .build()
+
+    /**
+     * MusicCabin ships a single strings file with zh-TW companion strings
+     * (`*_zh_tw`, translatable=false): pick the companion on Chinese locales.
+     */
+    private fun carLocalizedString(englishRes: Int, chineseRes: Int): String {
+        val id = if (context.resources.configuration.locales[0].language == "zh") chineseRes else englishRes
+        return context.getString(id)
+    }
+
+    /**
+     * Best-effort notice for car clients: toasts from a background media service may be
+     * dropped on newer Android versions, but there is no dedicated car UI channel for
+     * playback-resolution failures, so this is the closest visible feedback available.
+     */
+    private fun showToast(text: String) {
+        Handler(Looper.getMainLooper()).post {
+            runCatching { Toast.makeText(context, text, Toast.LENGTH_SHORT).show() }
+        }
+    }
 
     private fun Song.toMediaItem(path: String, isPlayable: Boolean = true, isBrowsable: Boolean = false): MediaItem =
         toCarMediaItem(path, getArtistSeparator(context), isPlayable, isBrowsable)

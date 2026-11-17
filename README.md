@@ -46,6 +46,8 @@ What this fork adds on top of Metrolist. Full version history lives in [`changel
 
 - **Liked songs custom ordering**: pick "Custom order" in the liked songs sort menu to press and hold the drag handle and arrange songs yourself; the order is stored locally (not synced to YouTube Music) and is also followed when browsing liked songs on Android Auto.
 
+- **Offline browsing of saved playlists on Android Auto**: the "Mixes" (YouTube suggested playlists) list keeps the last successfully loaded result and stays browsable without a network connection; saved playlists that never finished syncing are fetched live once when browsing or playing online, with a hint shown when offline.
+
 - **Branding and variants**: `MusicCabin` name with the black music-car logo across launcher, About, notifications, and store artwork. FOSS (`com.jajafu.musiccabin`) and GMS (`com.jajafu.musiccabin.gms`) install side by side with independent data; FOSS updates in-app from GitHub Releases while GMS updates manually.
 
 ## Features

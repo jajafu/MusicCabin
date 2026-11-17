@@ -4,6 +4,22 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.8.1
+
+### 中文
+
+- 車機（Android Auto）「YouTube 建議歌單」離線可見：每次成功載入的建議歌單清單會保存在本機，沒有網路（隧道、地下停車場等）時改顯示最後一次成功載入的清單，不再整片空白；單一建議歌單的內容仍需連網載入，離線時會顯示「無法載入歌單內容，請確認網路連線」提示。
+- 未同步完成的已存歌單可線上補救：剛收藏、同步尚未成功的歌單，在車機上瀏覽或播放時若本機沒有歌曲快取，會自動連線載入一次歌單內容；離線時顯示「歌曲尚未同步，連線後即可載入」或「目前離線，無法播放此歌單」提示，不再靜默失敗。
+- 已同步過的歌曲快取行為不變，資料庫 schema 無變更。
+- 版本 code 327。
+
+### English
+
+- The Android Auto "Mixes" (YouTube suggested playlists) list now works offline: every successfully loaded list is kept on the device, and when there is no network connection (tunnels, underground parking, etc.) the last known list is shown instead of an empty node; individual suggested playlist contents still require a connection and show a "Can't load this playlist" hint when offline.
+- Un-synced saved playlists can now self-heal online: for a playlist that was saved but never finished syncing, browsing or playing it on the car with no local song cache fetches the contents once from YouTube; when offline, a "Songs not synced yet" or "Offline — this playlist can't be played right now" hint is shown instead of failing silently.
+- Previously synced song caches behave as before; no database schema change.
+- Version code 327.
+
 ## 13.7.96
 
 ### 中文

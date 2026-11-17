@@ -47,6 +47,8 @@ MusicCabin 是 [Metrolist](https://github.com/MetrolistGroup/Metrolist) 的 Andr
 
 - **喜愛歌曲自訂排序**：在「喜愛的歌曲」的排序選單切到「自訂」後，可按住拖曳把手自行排列順序；順序只存在本機、不會同步到 YouTube Music，Android Auto 瀏覽喜愛歌曲時也會跟隨。
 
+- **車機離線瀏覽已存歌單**：Android Auto 沒有網路時（隧道、地下停車場等）仍可瀏覽「YouTube 建議歌單」清單（顯示最後一次成功載入的結果）；收藏後尚未同步完成的歌單，瀏覽或播放時會自動連線載入一次，離線則顯示提示文字。
+
 - **品牌與版本**：`MusicCabin` 名稱搭配黑色音樂車 Logo，統一用於啟動器、關於頁、通知與商店素材。FOSS（`com.jajafu.musiccabin`）與 GMS（`com.jajafu.musiccabin.gms`）可同時安裝、資料各自獨立；FOSS 在 App 內從 GitHub Releases 更新，GMS 手動更新。
 
 ## 核心音樂功能

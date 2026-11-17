@@ -349,6 +349,16 @@ class MusicService :
     lateinit var connectivityObserver: NetworkConnectivityObserver
     val waitingForNetworkConnection = MutableStateFlow(false)
     private val isNetworkConnected = MutableStateFlow(false)
+
+    /**
+     * Current connectivity snapshot for callers that only need a one-shot check (e.g. car browse
+     * paths). Prefers the live ConnectivityManager query because the [isNetworkConnected] flow
+     * starts as `false` and is only populated once the observer's collector runs — a playback
+     * request arriving before that must not be misread as "offline".
+     */
+    fun isNetworkAvailable(): Boolean =
+        if (::connectivityObserver.isInitialized) connectivityObserver.isCurrentlyConnected()
+        else isNetworkConnected.value
     val currentStreamClient = MutableStateFlow<String?>(null)
     // The media item [currentStreamClient] was resolved for; guards against marking a failure
     // against a stale client name when the erroring item was served from cache without a re-resolve.
