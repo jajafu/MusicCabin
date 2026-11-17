@@ -104,6 +104,7 @@ import com.metrolist.music.photo.FramePlaybackState
 import com.metrolist.music.photo.FramePlaybackSession
 import com.metrolist.music.photo.MediaStorePhotoBrowser
 import com.metrolist.music.photo.PhotoFramePlayback
+import com.metrolist.music.playback.audio.VocalReductionController
 import com.metrolist.music.ui.component.AutoResizeText
 import com.metrolist.music.ui.component.FontSizeRange
 import com.metrolist.music.ui.component.rememberFrameUiScale
@@ -162,7 +163,12 @@ fun TvPhotoFrameScreen(onExit: () -> Unit, viewModel: TvPhotoFrameViewModel = hi
     // Leaving the screen does not always stop the owner's lifecycle first (the
     // TV frame page is swapped out directly), so stop the receiver on dispose.
     DisposableEffect(Unit) {
-        onDispose { viewModel.stopReceiver() }
+        onDispose {
+            // The TV frame's view model is activity-scoped, so onCleared does not
+            // fire on page switch: end the vocal reduction session here instead.
+            VocalReductionController.endSession()
+            viewModel.stopReceiver()
+        }
     }
     DisposableEffect(framePlayerConnection) {
         viewModel.attachPlayer(framePlayerConnection)

@@ -197,6 +197,8 @@ import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.playback.alarm.MusicAlarmScheduler
 import com.metrolist.music.playback.alarm.MusicAlarmStore
 import com.metrolist.music.playback.audio.SilenceDetectorAudioProcessor
+import com.metrolist.music.playback.audio.VocalReductionAudioProcessor
+import com.metrolist.music.playback.audio.VocalReductionController
 import com.metrolist.music.playback.audio.VolumeNormalizationAudioProcessor
 import com.metrolist.music.playback.queues.EmptyQueue
 import com.metrolist.music.playback.queues.ListQueue
@@ -316,6 +318,11 @@ class MusicService :
         object : Player.Listener {
             override fun onPlayerError(error: PlaybackException) {
                 Timber.tag(TAG).e(error, "Secondary player error")
+                secondaryPlayer?.let { abandonedPlayer ->
+                    playerNormalizationProcessors.remove(abandonedPlayer)
+                    playerVocalReductionProcessors.remove(abandonedPlayer)
+                    playerSilenceProcessors.remove(abandonedPlayer)
+                }
                 secondaryPlayer?.stop()
                 secondaryPlayer?.clearMediaItems()
                 secondaryPlayer = null
@@ -447,6 +454,7 @@ class MusicService :
     private var isAudioEffectSessionOpened = false
     private var openedAudioEffectSessionId: Int = C.AUDIO_SESSION_ID_UNSET
     private val playerNormalizationProcessors = HashMap<Player, VolumeNormalizationAudioProcessor>()
+    private val playerVocalReductionProcessors = HashMap<Player, VocalReductionAudioProcessor>()
 
     private var loudnessSetupJob: Job? = null
     private var loudnessSetupGeneration: Long = 0L
@@ -968,6 +976,13 @@ class MusicService :
                 }
             }
 
+        VocalReductionController.enabled
+            .collectLatest(scope) { vocalReductionEnabled ->
+                playerVocalReductionProcessors.values.forEach { processor ->
+                    processor.setEnabled(vocalReductionEnabled)
+                }
+            }
+
         combine(
             currentFormat,
             dataStore.data
@@ -1022,6 +1037,7 @@ class MusicService :
                 player.removeListener(this@MusicService)
                 sleepTimer?.let { player.removeListener(it) }
                 playerNormalizationProcessors.remove(player)
+                playerVocalReductionProcessors.remove(player)
                 playerSilenceProcessors.remove(player)
                 player.release()
 
@@ -1391,6 +1407,9 @@ class MusicService :
         }
         val eqProcessor = CustomEqualizerAudioProcessor()
         equalizerService.addAudioProcessor(eqProcessor)
+        val vocalProcessor = VocalReductionAudioProcessor().also {
+            it.setEnabled(VocalReductionController.enabled.value)
+        }
 
         var silenceSourcePlayer: ExoPlayer? = null
         val silenceProcessor = SilenceDetectorAudioProcessor {
@@ -1407,7 +1426,15 @@ class MusicService :
             ExoPlayer
                 .Builder(this)
                 .setMediaSourceFactory(createMediaSourceFactory())
-                .setRenderersFactory(createRenderersFactory(normalizationProcessor, eqProcessor, silenceProcessor, useAudioTrackPlaybackParams))
+                .setRenderersFactory(
+                    createRenderersFactory(
+                        normalizationProcessor,
+                        eqProcessor,
+                        vocalProcessor,
+                        silenceProcessor,
+                        useAudioTrackPlaybackParams,
+                    )
+                )
                 .setLoadControl(
                     // Start playback once ~750ms is buffered (media3's default is 1000ms) so first
                     // audio is audible a touch sooner. min/max/after-rebuffer match the media3 1.x
@@ -1433,6 +1460,7 @@ class MusicService :
         silenceSourcePlayer = player
 
         playerNormalizationProcessors[player] = normalizationProcessor
+        playerVocalReductionProcessors[player] = vocalProcessor
         playerSilenceProcessors[player] = silenceProcessor
 
         val offload = effectivePrefs?.get(AudioOffload) ?: false
@@ -4505,6 +4533,7 @@ class MusicService :
     private fun createRenderersFactory(
         normalizationProcessor: VolumeNormalizationAudioProcessor,
         eqProcessor: CustomEqualizerAudioProcessor,
+        vocalProcessor: VocalReductionAudioProcessor,
         silenceProcessor: SilenceDetectorAudioProcessor,
         useAudioTrackPlaybackParams: Boolean,
     ) = object : DefaultRenderersFactory(this) {
@@ -4565,6 +4594,7 @@ class MusicService :
                     arrayOf(
                         normalizationProcessor,
                         eqProcessor,
+                        vocalProcessor,
                         silenceProcessor,
                     ),
                     SilenceSkippingAudioProcessor(2_000_000, 20_000, 256),
@@ -4827,6 +4857,7 @@ class MusicService :
         player.removeListener(this)
         sleepTimer?.let { player.removeListener(it) }
         playerNormalizationProcessors.remove(player)
+        playerVocalReductionProcessors.remove(player)
         playerSilenceProcessors.remove(player)
         controllerFuture?.let { MediaController.releaseFuture(it) }
         controllerFuture = null
@@ -5416,6 +5447,8 @@ class MusicService :
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Failed to prepare secondary player for crossfade")
             playerNormalizationProcessors.remove(secPlayer)
+            playerVocalReductionProcessors.remove(secPlayer)
+            playerSilenceProcessors.remove(secPlayer)
             secPlayer.release()
             secondaryPlayer = null
             return
@@ -5526,6 +5559,8 @@ class MusicService :
 
     private fun cleanupCrossfade(fadingPlayerSessionId: Int = C.AUDIO_SESSION_ID_UNSET) {
         fadingPlayer?.let { playerNormalizationProcessors.remove(it) }
+        fadingPlayer?.let { playerVocalReductionProcessors.remove(it) }
+        fadingPlayer?.let { playerSilenceProcessors.remove(it) }
         fadingPlayer?.stop()
         fadingPlayer?.clearMediaItems()
         fadingPlayer?.release()

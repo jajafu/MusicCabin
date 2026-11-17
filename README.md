@@ -15,6 +15,7 @@ What this fork adds on top of Metrolist. Full version history lives in [`changel
   - Shows the current song's cover when no photo is available (nothing imported, all photos unreadable, or no cloud photo yet).
   - Mismatched-orientation photos pair up on the same interval.
   - Show lyrics toggle and Simplified-to-Traditional lyrics toggle.
+  - Vocal reduction toggle: reduces centre-panned vocals for easier sing-along and turns off automatically when leaving the frame (available in photo frame KTV, KTV 2, and the TV frame; the state is shared).
   - Lyrics at the bottom of the screen show the previous, current and next line together, sliding with the playback direction and sweeping word by word.
   - One-tap lyrics-source switch in the control row.
   - Lyrics-offset −/+ buttons in the control row, 50 ms per tap.

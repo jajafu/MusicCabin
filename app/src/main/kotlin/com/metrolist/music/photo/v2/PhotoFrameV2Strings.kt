@@ -50,6 +50,7 @@ enum class FrameV2Text(@StringRes val english: Int, @StringRes val traditionalCh
     Reauthorize(R.string.photo_frame_v2_reauthorize, R.string.photo_frame_v2_reauthorize_zh_tw),
     Configuration(R.string.photo_frame_v2_configuration, R.string.photo_frame_v2_configuration_zh_tw),
     S2tMode(R.string.photo_frame_s2t, R.string.photo_frame_s2t_zh_tw),
+    VocalReduction(R.string.photo_frame_vocal_reduction, R.string.photo_frame_vocal_reduction_zh_tw),
     Network(R.string.photo_frame_v2_network, R.string.photo_frame_v2_network_zh_tw),
     PermissionDenied(R.string.photo_frame_v2_permission_denied, R.string.photo_frame_v2_permission_denied_zh_tw),
     NotFound(R.string.photo_frame_v2_not_found, R.string.photo_frame_v2_not_found_zh_tw),

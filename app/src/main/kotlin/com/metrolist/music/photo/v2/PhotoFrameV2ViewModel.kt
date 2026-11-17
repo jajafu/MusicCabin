@@ -16,6 +16,7 @@ import com.metrolist.music.BuildConfig
 import com.metrolist.music.constants.MaxImageCacheSizeKey
 import com.metrolist.music.photo.coilFrameOrientation
 import com.metrolist.music.photo.v2.drive.*
+import com.metrolist.music.playback.audio.VocalReductionController
 import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.safeDataStoreEdit
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -194,7 +195,11 @@ class PhotoFrameV2ViewModel @Inject constructor(
         controller.requireReconnect()
     }
 
-    override fun onCleared() = controller.stop()
+    override fun onCleared() {
+        // Leaving the frame screen ends the vocal reduction session.
+        VocalReductionController.endSession()
+        controller.stop()
+    }
 
     private companion object {
         val SourceKey = stringPreferencesKey("photo_frame_v2_source")

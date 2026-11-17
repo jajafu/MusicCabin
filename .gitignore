@@ -115,7 +115,7 @@ app/src/main/cpp/coverart/
 .cursor*
 .codeium
 .cortexkit
-
+.openchamber/
 # Local reference documents (never commit)
 /doc/
 /photo_plan.md

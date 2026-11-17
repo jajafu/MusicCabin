@@ -12,6 +12,7 @@ import com.metrolist.music.photo.FramePhotoReceiver
 import com.metrolist.music.photo.FrameSongRequestController
 import com.metrolist.music.photo.PhotoCatalog
 import com.metrolist.music.playback.PlayerConnection
+import com.metrolist.music.playback.audio.VocalReductionController
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
@@ -226,6 +227,8 @@ class PhotoFrameViewModel @Inject constructor(
     }
 
     override fun onCleared() {
+        // Leaving the frame screen ends the vocal reduction session.
+        VocalReductionController.endSession()
         stopReceiver()
         songRequests.close()
         super.onCleared()

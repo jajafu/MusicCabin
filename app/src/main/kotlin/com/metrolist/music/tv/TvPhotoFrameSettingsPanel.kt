@@ -51,6 +51,7 @@ import com.metrolist.music.constants.AdaptiveScaleMaxKey
 import com.metrolist.music.constants.AutoOpenPhotoFrameKey
 import com.metrolist.music.photo.FramePhotoQrCode
 import com.metrolist.music.photo.FramePhotoReceiver
+import com.metrolist.music.playback.audio.VocalReductionController
 import com.metrolist.music.ui.component.FRAME_UI_SCALE_DEFAULT
 import com.metrolist.music.ui.component.normalizeAdaptiveScaleMax
 import com.metrolist.music.ui.component.uiScaleLabel
@@ -88,6 +89,7 @@ internal fun TvPhotoFrameSettingsPanel(
         AutoOpenPhotoFrameKey,
         defaultValue = false,
     )
+    val vocalReduction by VocalReductionController.enabled.collectAsStateWithLifecycle()
     val uiScaleMax = normalizeAdaptiveScaleMax(savedUiScaleMax)
     val closeFocus = remember { FocusRequester() }
     var closeFocused by remember { mutableStateOf(false) }
@@ -287,6 +289,9 @@ internal fun TvPhotoFrameSettingsPanel(
                                 } }
                                 item { SettingsToggle(tvLocalizedString(R.string.photo_frame_s2t, R.string.photo_frame_s2t_zh_tw), state.settings.s2tEnabled, !busy) {
                                     viewModel.updateSettings(state.settings.copy(s2tEnabled = !state.settings.s2tEnabled))
+                                } }
+                                item { SettingsToggle(tvLocalizedString(R.string.photo_frame_vocal_reduction, R.string.photo_frame_vocal_reduction_zh_tw), vocalReduction, !busy) {
+                                    VocalReductionController.enabled.value = !vocalReduction
                                 } }
                                 item { SettingsToggle(stringResource(R.string.auto_open_photo_frame_on_launch), autoOpenPhotoFrame, true) {
                                     onAutoOpenPhotoFrameChange(!autoOpenPhotoFrame)

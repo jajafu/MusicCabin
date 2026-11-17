@@ -1191,6 +1191,8 @@
     <string name="photo_frame_lyrics">Show lyrics</string>
     <string name="photo_frame_s2t">Convert lyrics to Traditional Chinese</string>
     <string name="photo_frame_s2t_zh_tw" translatable="false">歌詞簡轉繁</string>
+    <string name="photo_frame_vocal_reduction">Vocal reduction</string>
+    <string name="photo_frame_vocal_reduction_zh_tw" translatable="false">人聲減弱</string>
     <string name="photo_frame_sources">Photos: %1$d</string>
     <string name="photo_frame_rescan">Rescan sources</string>
     <string name="photo_frame_clear">Clear selection</string>

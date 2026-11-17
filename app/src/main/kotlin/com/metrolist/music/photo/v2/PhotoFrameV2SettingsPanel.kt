@@ -23,6 +23,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.Image
 import com.metrolist.music.R
 import com.metrolist.music.photo.FrameCatalogState
@@ -34,6 +35,7 @@ import com.metrolist.music.photo.FramePhotoQrCode
 import com.metrolist.music.photo.v2.drive.DriveAuthorizationUi
 import com.metrolist.music.photo.v2.drive.DriveProbeController
 import com.metrolist.music.photo.v2.drive.DriveProbeState
+import com.metrolist.music.playback.audio.VocalReductionController
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
 import kotlin.math.roundToInt
@@ -64,6 +66,7 @@ internal fun PhotoFrameV2SettingsPanel(
 ) {
     var confirmClear by rememberSaveable { mutableStateOf(false) }
     var confirmClearReceived by rememberSaveable { mutableStateOf(false) }
+    val vocalReduction by VocalReductionController.enabled.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val receivedCount = remember(state.sources, context) {
         state.sources.count { FramePhotoReceiver.isImportedUri(context, it.uri) }
@@ -219,6 +222,14 @@ internal fun PhotoFrameV2SettingsPanel(
                                     enabled = enabled,
                                     trailingContent = {
                                         FrameSettingSwitch(frameV2String(FrameV2Text.S2tMode), state.settings.s2tEnabled, enabled) { onSettings(state.settings.copy(s2tEnabled = it)) }
+                                    },
+                                ),
+                                Material3SettingsItem(
+                                    icon = painterResource(R.drawable.mic),
+                                    title = { Text(frameV2String(FrameV2Text.VocalReduction)) },
+                                    enabled = enabled,
+                                    trailingContent = {
+                                        FrameSettingSwitch(frameV2String(FrameV2Text.VocalReduction), vocalReduction, enabled) { VocalReductionController.enabled.value = it }
                                     },
                                 ),
                             ),

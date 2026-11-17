@@ -49,12 +49,14 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.metrolist.music.R
 import com.metrolist.music.photo.FrameCatalogState
 import com.metrolist.music.photo.FrameError
 import com.metrolist.music.photo.FrameSettings
 import com.metrolist.music.photo.FramePhotoQrCode
 import com.metrolist.music.photo.FramePhotoReceiver
+import com.metrolist.music.playback.audio.VocalReductionController
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.viewmodels.PhotoFrameViewModel
@@ -89,6 +91,7 @@ internal fun PhotoFrameSettingsPanel(
         state.photos.count { !FramePhotoReceiver.isImportedUri(context, it.uri) }
     }
     val enabled = state.initialized && !busy
+    val vocalReduction by VocalReductionController.enabled.collectAsStateWithLifecycle()
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -202,6 +205,16 @@ internal fun PhotoFrameSettingsPanel(
                             title = { Text(frameTransferString(R.string.photo_frame_s2t, R.string.photo_frame_s2t_zh_tw)) },
                             trailingContent = {
                                 FrameSettingSwitch(frameTransferString(R.string.photo_frame_s2t, R.string.photo_frame_s2t_zh_tw), state.settings.s2tEnabled, enabled) { onSettings(state.settings.copy(s2tEnabled = it)) }
+                            },
+                        ),
+                        Material3SettingsItem(
+                            title = { Text(frameTransferString(R.string.photo_frame_vocal_reduction, R.string.photo_frame_vocal_reduction_zh_tw)) },
+                            trailingContent = {
+                                FrameSettingSwitch(
+                                    frameTransferString(R.string.photo_frame_vocal_reduction, R.string.photo_frame_vocal_reduction_zh_tw),
+                                    vocalReduction,
+                                    enabled,
+                                ) { VocalReductionController.enabled.value = it }
                             },
                         ),
                     ),

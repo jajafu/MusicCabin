@@ -4,6 +4,22 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.7.96
+
+### 中文
+
+- 相框KTV、相框KTV2 與 TV 相框的設定頁新增「人聲減弱」開關：開啟後播放中的歌曲會壓低中間的人聲（以左右聲道抵消方式處理），保留低頻的鼓與貝斯，適合跟著唱。三個相框的開關共用同一份狀態，在任何一邊開或關都會同步。
+- 效果為行程內即時套用：離開相框畫面（返回、切到其他頁面、關閉 TV 相框）會自動關閉並恢復完整人聲；開關設定面板或把 App 切到背景（音樂繼續播）不會影響。App 完全重啟後預設關閉，要再進相框手動開啟。
+- 限制：此做法開啟後聲音接近單聲道（立體聲寬度消失），且對人聲帶寬度效果或大量和聲的歌曲可能殘留淡淡人聲，程度視混音而定。
+- 版本 code 326。
+
+### English
+
+- The photo frame KTV, photo frame KTV 2, and TV photo frame settings pages gain a "Vocal reduction" toggle: while enabled, the currently playing song has its centre-panned vocals reduced via left/right channel cancellation, keeping low-frequency drums and bass so you can sing along. The three frames share one state; toggling it in any of them applies everywhere.
+- The effect applies immediately within the app session: leaving a frame screen (back navigation, switching to another page, or closing the TV frame) turns it off and restores the full vocals automatically. Opening/closing the settings panel or backgrounding the app while music keeps playing does not affect it. After a full app restart it defaults to off and must be re-enabled from a frame settings page.
+- Limitations: the output becomes effectively mono while enabled (stereo width collapses), and songs with wide-stereo vocals or heavy backing harmonies may keep a faint vocal residue depending on the mix.
+- Version code 326.
+
 ## 13.7.95
 
 ### 中文

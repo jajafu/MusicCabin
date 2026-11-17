@@ -321,6 +321,9 @@ class TvPhotoFrameViewModel @Inject constructor(
     }
 
     override fun onCleared() {
+        // Vocal reduction is NOT ended here: this view model is activity-scoped
+        // and outlives frame page switches, so its clear time has nothing to do
+        // with leaving the frame. TvPhotoFrameScreen's onDispose owns that.
         stopReceiver()
         songRequests.close()
         super.onCleared()
