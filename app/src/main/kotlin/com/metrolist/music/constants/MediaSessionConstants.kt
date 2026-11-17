@@ -16,6 +16,8 @@ object MediaSessionConstants {
     const val ACTION_TOGGLE_REPEAT_MODE = "TOGGLE_REPEAT_MODE"
     const val ACTION_ADD_TO_TARGET_PLAYLIST = "ADD_TO_TARGET_PLAYLIST"
     const val ACTION_SET_VOLUME = "SET_VOLUME"
+    const val ACTION_PLAY_NEXT = "PLAY_NEXT"
+    const val ACTION_ADD_TO_QUEUE = "ADD_TO_QUEUE"
 
     val CommandToggleLibrary = SessionCommand(ACTION_TOGGLE_LIBRARY, Bundle.EMPTY)
     val CommandToggleLike = SessionCommand(ACTION_TOGGLE_LIKE, Bundle.EMPTY)
@@ -24,6 +26,14 @@ object MediaSessionConstants {
     val CommandToggleRepeatMode = SessionCommand(ACTION_TOGGLE_REPEAT_MODE, Bundle.EMPTY)
     val CommandAddToTargetPlaylist = SessionCommand(ACTION_ADD_TO_TARGET_PLAYLIST, Bundle.EMPTY)
     val CommandSetVolume = SessionCommand(ACTION_SET_VOLUME, Bundle.EMPTY)
+    val CommandPlayNext = SessionCommand(ACTION_PLAY_NEXT, Bundle.EMPTY)
+    val CommandAddToQueue = SessionCommand(ACTION_ADD_TO_QUEUE, Bundle.EMPTY)
+
+    // Wire format of PLAY_NEXT / ADD_TO_QUEUE: the caller passes the car mediaId
+    // ("song/<id>", "playlist/<id>/<id>", "youtube_playlist/<browseId>/<videoId>", …) in
+    // EXTRA_MEDIA_ID; the session resolves it to a playable item and dispatches to
+    // MusicService.playNext / addToQueue.
+    const val EXTRA_MEDIA_ID = "media_id"
 
     // Wire format of the SET_VOLUME custom command: the caller passes a mode
     // (absolute set / relative step / state query) and, for absolute sets, the

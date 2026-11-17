@@ -65,6 +65,7 @@ enum class AndroidAutoSection(val id: String) {
     ARTISTS("artists"),
     ALBUMS("albums"),
     PLAYLISTS("playlists"),
+    PINNED("pinned"),
 }
 
 @Composable
@@ -74,20 +75,27 @@ fun AndroidAutoSection.label(): String = when (this) {
     AndroidAutoSection.ARTISTS -> stringResource(R.string.artists)
     AndroidAutoSection.ALBUMS -> stringResource(R.string.albums)
     AndroidAutoSection.PLAYLISTS -> stringResource(R.string.playlists)
+    AndroidAutoSection.PINNED -> stringResource(R.string.pinned_playlists)
 }
 
 fun serializeSections(sections: List<Pair<AndroidAutoSection, Boolean>>): String =
     sections.joinToString(",") { (section, enabled) -> "${section.id}:$enabled" }
 
 fun deserializeSections(raw: String): List<Pair<AndroidAutoSection, Boolean>> {
-    if (raw.isBlank()) return AndroidAutoSection.values().map { it to true }
-    return raw.split(",").mapNotNull { token ->
+    val all = AndroidAutoSection.values().toList()
+    if (raw.isBlank()) return all.map { it to true }
+    val parsed = raw.split(",").mapNotNull { token ->
         val parts = token.split(":")
         if (parts.size != 2) return@mapNotNull null
         val section = AndroidAutoSection.values().find { it.id == parts[0] } ?: return@mapNotNull null
         val enabled = parts[1].toBooleanStrictOrNull() ?: true
         section to enabled
     }
+    // Sections introduced after the user last saved an order (e.g. PINNED in 13.8.2) would be
+    // silently dropped by the token parse; append them enabled so they surface without a
+    // settings visit.
+    val missing = all.filter { known -> parsed.none { (section, _) -> section == known } }
+    return parsed + missing.map { it to true }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -183,6 +191,7 @@ fun AndroidAutoSettings(
                                         AndroidAutoSection.ARTISTS -> R.drawable.artist
                                         AndroidAutoSection.ALBUMS -> R.drawable.album
                                         AndroidAutoSection.PLAYLISTS -> R.drawable.queue_music
+                                        AndroidAutoSection.PINNED -> R.drawable.ic_push_pin
                                     }
                                 ),
                                 title = { Text(section.label()) },

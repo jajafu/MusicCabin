@@ -4,6 +4,22 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.8.2
+
+### 中文
+
+- Android Auto（車機）新增「釘選歌單」區塊：在 App 內對歌單長按選單釘選（速度撥號）的歌單，會出現在車機根目錄的「釘選歌單」區塊中（上限 10 筆），點開即可瀏覽與播放；區塊可在 Android Auto 設定中開關與排序。本機歌單與已收藏的遠端歌單走本機快取（離線可瀏覽）；未收藏的遠端歌單（如 Mix）以線上方式載入，離線時顯示提示。舊版已儲存過區塊排序的裝置，更新後新區塊會自動附加在清單最後並預設啟用。
+- 車機支援「下一首播放」與「加入佇列」：Android Auto 歌曲項目長按選單中的「下一首播放」「加入佇列」現在可用（先前會靜默失敗），插入位置由 Android Auto 決定；此路徑不套用「防止佇列重複歌曲」與隨機模式手動插入順序（那是 App 內操作與下方自訂指令的行為）。
+- 新增 PLAY_NEXT／ADD_TO_QUEUE 自訂指令（帶媒體 ID 參數），供信任的控制器（如語音助手、小工具等外部整合）以會話層級插入佇列；此路徑遵循「防止佇列重複歌曲」設定與隨機模式下的手動插入順序。
+- 版本 code 328；無資料庫 schema 變更。
+
+### English
+
+- Android Auto gains a "Pinned playlists" section: playlists pinned in the app UI via the long-press menu (speed dial) appear under the new root section (up to 10), browsable and playable right from the car; the section can be toggled and reordered in Android Auto settings. Local playlists and saved remote playlists are served from the local cache (offline-capable); remote playlists pinned without being saved to the library (e.g. a Mix) load online and show a hint when offline. Devices with a previously saved section order get the new section appended and enabled automatically.
+- "Play next" and "Add to queue" now work on Android Auto: the per-item content actions in the car's song menus used to fail silently — they now resolve and dispatch correctly. The insertion position is decided by Android Auto; this path does not apply the prevent-duplicate-tracks setting or the manual shuffle insertion order (those apply to in-app actions and the custom commands below).
+- New PLAY_NEXT / ADD_TO_QUEUE custom commands (parameterized by media ID) let trusted controllers such as voice assistants or widgets insert into the queue at session level; this path honors the prevent-duplicate-tracks setting and the manual insertion order under shuffle.
+- Version code 328; no database schema change.
+
 ## 13.8.1
 
 ### 中文

@@ -50,6 +50,7 @@ import com.metrolist.music.db.entities.PlaylistEntity
 import com.metrolist.music.db.entities.Song
 import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.extensions.toggleRepeatMode
+import com.metrolist.music.models.MediaMetadata as AppMediaMetadata
 import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.get
@@ -61,6 +62,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.guava.future
@@ -87,6 +89,41 @@ internal fun isManualSkipCommand(command: Int): Boolean =
  */
 internal fun carOnlineSongMediaId(playlistBrowseId: String, videoId: String): String =
     "${MusicService.YOUTUBE_PLAYLIST}/$playlistBrowseId/$videoId"
+
+/**
+ * Rebuilds a playable item for a YouTube song the car sent back but the Room database doesn't
+ * know. Mirrors [com.metrolist.music.extensions.toMediaItem]: uri and customCacheKey both carry
+ * the videoId — ResolvingDataSource injects the real stream URL from them, so an item without
+ * them cannot be added to the player. The app-model [AppMediaMetadata] tag MUST be set as well:
+ * the in-app queue/now-playing screens read it via [com.metrolist.music.extensions.metadata] and
+ * dereference it unconditionally, so a tag-less item would crash the queue page. Pure and
+ * internal so the contract stays unit-testable.
+ */
+internal fun rebuildCarYouTubeMediaItem(videoId: String, metadata: MediaMetadata): MediaItem {
+    val appMetadata = AppMediaMetadata(
+        id = videoId,
+        title = metadata.title?.toString().orEmpty(),
+        artists = listOf(AppMediaMetadata.Artist(id = null, name = metadata.artist?.toString().orEmpty())),
+        duration = 0,
+        thumbnailUrl = metadata.artworkUri?.toString(),
+    )
+    return MediaItem.Builder()
+        .setMediaId(videoId)
+        .setUri(videoId)
+        .setCustomCacheKey(videoId)
+        .setTag(appMetadata)
+        .setMediaMetadata(
+            metadata
+                .buildUpon()
+                .setIsPlayable(true)
+                .setIsBrowsable(false)
+                .build()
+        )
+        .build()
+}
+
+/** Cap for the car Pinned section so a long speed dial can't flood the browse tree. */
+internal const val MAX_PINNED_PLAYLISTS = 10
 
 internal fun Player.Commands.containsManualSkipCommand(): Boolean =
     (0 until size()).any { index -> isManualSkipCommand(get(index)) }
@@ -158,6 +195,8 @@ constructor(
                 .add(MediaSessionConstants.CommandToggleRepeatMode)
                 .add(MediaSessionConstants.CommandAddToTargetPlaylist)
                 .add(MediaSessionConstants.CommandSetVolume)
+                .add(MediaSessionConstants.CommandPlayNext)
+                .add(MediaSessionConstants.CommandAddToQueue)
                 .build(),
             connectionResult.availablePlayerCommands,
         )
@@ -200,6 +239,28 @@ constructor(
                 )
             }
 
+            MediaSessionConstants.ACTION_PLAY_NEXT ->
+                scope.future {
+                    val resolved = withContext(Dispatchers.IO) { resolveCarMediaItem(args.mediaIdArg()) }
+                    if (resolved == null) {
+                        SessionResult(SessionError.ERROR_BAD_VALUE)
+                    } else {
+                        service.playNext(listOf(resolved))
+                        SessionResult(SessionResult.RESULT_SUCCESS)
+                    }
+                }
+
+            MediaSessionConstants.ACTION_ADD_TO_QUEUE ->
+                scope.future {
+                    val resolved = withContext(Dispatchers.IO) { resolveCarMediaItem(args.mediaIdArg()) }
+                    if (resolved == null) {
+                        SessionResult(SessionError.ERROR_BAD_VALUE)
+                    } else {
+                        service.addToQueue(listOf(resolved))
+                        SessionResult(SessionResult.RESULT_SUCCESS)
+                    }
+                }
+
             else -> super.onCustomCommand(session, controller, customCommand, args)
         }
     }
@@ -218,6 +279,10 @@ constructor(
         action()
         return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
     }
+
+    /** The PLAY_NEXT / ADD_TO_QUEUE payload: the car mediaId of the song to enqueue. */
+    private fun Bundle.mediaIdArg(): MediaItem =
+        MediaItem.Builder().setMediaId(getString(MediaSessionConstants.EXTRA_MEDIA_ID).orEmpty()).build()
 
     /**
      * Applies a volume request (voice assistant, etc.) to the app's own
@@ -330,6 +395,13 @@ constructor(
                                         context.getString(R.string.playlists),
                                         null,
                                         drawableUri(R.drawable.queue_music),
+                                        MediaMetadata.MEDIA_TYPE_FOLDER_PLAYLISTS,
+                                    )
+                                    AndroidAutoSection.PINNED -> browsableMediaItem(
+                                        MusicService.PINNED,
+                                        carLocalizedString(R.string.pinned_playlists, R.string.pinned_playlists_zh_tw),
+                                        null,
+                                        drawableUri(R.drawable.ic_push_pin),
                                         MediaMetadata.MEDIA_TYPE_FOLDER_PLAYLISTS,
                                     )
                                 }
@@ -486,6 +558,53 @@ constructor(
 
                     else ->
                         when {
+                            sourceId == MusicService.PINNED -> {
+                                // Pinned playlists come from the speed dial table (the same items
+                                // the app UI pins): local playlists map to their Room row, remote
+                                // ones only when a saved copy exists in Room (id = browseId).
+                                // Children reuse the standard playlist/<id> paths wholesale.
+                                database.speedDialDao.getAll().first()
+                                    .filter { it.type == "LOCAL_PLAYLIST" || it.type == "PLAYLIST" }
+                                    // Resolve (and drop dead pins) BEFORE capping, so a deleted or
+                                    // missing playlist doesn't consume one of the 10 slots.
+                                    .mapNotNull { dial ->
+                                        val playlist = when (dial.type) {
+                                            "LOCAL_PLAYLIST" -> database.playlist(dial.id).first()
+                                            "PLAYLIST" -> database.playlistByBrowseId(dial.id).first()
+                                            else -> null
+                                        }
+                                        if (playlist != null) {
+                                            browsableMediaItem(
+                                                "${MusicService.PLAYLIST}/${playlist.playlist.id}",
+                                                playlist.playlist.name,
+                                                context.resources.getQuantityString(
+                                                    R.plurals.n_song,
+                                                    playlist.songCount,
+                                                    playlist.songCount,
+                                                ),
+                                                playlist.thumbnails.firstOrNull()?.toUri(),
+                                                MediaMetadata.MEDIA_TYPE_PLAYLIST,
+                                            )
+                                        } else if (dial.type == "PLAYLIST") {
+                                            // A pinned remote playlist without a saved copy (pinning
+                                            // in the app does not require saving it to the library):
+                                            // expose it through the youtube_playlist path, which
+                                            // loads online and shows the 13.8.1 hints when offline.
+                                            browsableMediaItem(
+                                                "${MusicService.YOUTUBE_PLAYLIST}/${dial.id}",
+                                                dial.title,
+                                                dial.subtitle,
+                                                dial.thumbnailUrl?.toUri(),
+                                                MediaMetadata.MEDIA_TYPE_PLAYLIST,
+                                            )
+                                        } else {
+                                            null
+                                        }
+                                    }
+                                    .take(MAX_PINNED_PLAYLISTS)
+                                    .slicePage(offset, limit)
+                            }
+
                             sourceId.startsWith("${MusicService.ARTIST}/") ||
                                 sourceId.startsWith("${MusicService.ALBUM}/") ->
                                 carLibrary.songs(carLibrary.songIds(sourceId, limit, offset))
@@ -835,6 +954,44 @@ constructor(
                 else -> defaultResult
             }
         }
+
+    /**
+     * Resolves the URILESS items Android Auto sends for its per-item "Play next" / "Add to
+     * queue" content actions (and the parameterized PLAY_NEXT / ADD_TO_QUEUE custom commands)
+     * into playable items, using the same mediaId path scheme as [onSetMediaItems]. Items that
+     * cannot be resolved (folders, shuffle pseudo-items, unknown paths) are dropped.
+     */
+    private suspend fun resolveCarMediaItem(item: MediaItem): MediaItem? {
+        val mediaId = item.mediaId
+        if (mediaId.isBlank() || mediaId.endsWith("/${MusicService.SHUFFLE_ACTION}")) return null
+        val path = mediaId.split("/")
+        return when (path.firstOrNull()) {
+            MusicService.SONG -> path.getOrNull(1)?.let { database.song(it).first()?.toMediaItem() }
+
+            MusicService.PLAYLIST, MusicService.ARTIST, MusicService.ALBUM, MusicService.SEARCH ->
+                path.getOrNull(2)?.let { database.song(it).first()?.toMediaItem() }
+
+            MusicService.YOUTUBE_PLAYLIST -> path.getOrNull(2)?.let { videoId ->
+                // Prefer the local copy when the song is known (title/artwork for the car
+                // display); otherwise rebuild from the browse metadata. The rebuilt item MUST
+                // carry uri + customCacheKey (like MediaItemExt.toMediaItem) — ResolvingDataSource
+                // injects the real stream URL from them, and items without a URI cannot be added
+                // to the player.
+                database.song(videoId).first()?.toMediaItem()
+                    ?: rebuildCarYouTubeMediaItem(videoId, item.mediaMetadata)
+            }
+
+            else -> null
+        }
+    }
+
+    override fun onAddMediaItems(
+        mediaSession: MediaSession,
+        controller: MediaSession.ControllerInfo,
+        mediaItems: MutableList<MediaItem>,
+    ): ListenableFuture<List<MediaItem>> = scope.future(Dispatchers.IO) {
+        mediaItems.mapNotNull { resolveCarMediaItem(it) }
+    }
 
     private suspend fun searchOnlineSongs(query: String): List<SongItem> {
         val summaries = YouTube.searchSummary(query).getOrNull()?.summaries ?: return emptyList()
