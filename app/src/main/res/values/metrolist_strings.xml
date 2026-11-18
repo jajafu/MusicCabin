@@ -543,7 +543,12 @@
     <string name="hidden_artists">Hidden artists</string>
     <string name="hidden_artists_count">%1$d hidden</string>
     <string name="no_hidden_artists">No hidden artists</string>
-    <string name="remove">Remove</string>
+    <string name="hidden_artist_remove">Remove</string>
+    <string name="hidden_artist_add">Add</string>
+    <string name="add_hidden_artist">Add hidden artist</string>
+    <string name="hidden_artist_name">Artist name</string>
+    <string name="hidden_artist_channel_id">YouTube channel ID</string>
+    <string name="hidden_artist_channel_id_desc">Usually starts with UC…</string>
 
     <string name="details_desc">View the song\'s details</string>
     <string name="edit_desc">Edit the title or artist</string>

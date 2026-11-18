@@ -34,6 +34,7 @@ import com.metrolist.innertube.models.ArtistItem
 import com.metrolist.music.LocalDatabase
 import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerConnection
+import com.metrolist.music.App
 import com.metrolist.music.R
 import com.metrolist.music.constants.HiddenArtistIdsKey
 import com.metrolist.music.constants.HiddenArtistLabelsKey
@@ -49,7 +50,6 @@ import com.metrolist.music.utils.ArtistNameAliases
 import com.metrolist.music.utils.safeDataStoreEdit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import androidx.compose.runtime.rememberCoroutineScope
 
 @OptIn(ExperimentalMaterial3Api::class)
 
@@ -65,7 +65,7 @@ fun YouTubeArtistMenu(
     val listenTogetherManager = LocalListenTogetherManager.current
     val isGuest = listenTogetherManager?.isInRoom == true && !listenTogetherManager.isHost
     val isPinned by database.speedDialDao.isPinned(artist.id).collectAsStateWithLifecycle(initialValue = false)
-    val coroutineScope = rememberCoroutineScope()
+    val applicationScope = (context.applicationContext as App).applicationScope
 
     YouTubeListItem(
         item = artist,
@@ -124,7 +124,7 @@ fun YouTubeArtistMenu(
                             },
                             text = if (isPinned) stringResource(R.string.unpin) else stringResource(R.string.pin),
                             onClick = {
-                                coroutineScope.launch(Dispatchers.IO) {
+                                applicationScope.launch(Dispatchers.IO) {
                                     if (isPinned) {
                                         database.speedDialDao.delete(artist.id)
                                     } else {
@@ -148,7 +148,7 @@ fun YouTubeArtistMenu(
                             },
                             text = stringResource(R.string.hide_artist),
                             onClick = {
-                                coroutineScope.launch(Dispatchers.IO) {
+                                applicationScope.launch(Dispatchers.IO) {
                                     context.safeDataStoreEdit { preferences ->
                                         preferences[HiddenArtistIdsKey] =
                                             preferences[HiddenArtistIdsKey].orEmpty() + artist.id

@@ -4,6 +4,20 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.8.4
+
+### 中文
+
+- 改善隱藏歌手管理：可從內容設定頁直接輸入 YouTube 頻道 ID 新增歌手，並修正歌手選單關閉後的儲存可靠性。
+- 內容設定與說明文字補上繁體中文、簡體中文翻譯。
+- 版本 code 330；無資料庫 schema 變更。
+
+### English
+
+- Improved hidden artist management: artists can be added directly from Content Settings with a YouTube channel ID, and saving from the artist menu remains reliable after dismissal.
+- Added Traditional and Simplified Chinese translations for the content filter settings.
+- Version code 330; no database schema change.
+
 ## 13.8.3
 
 ### 中文

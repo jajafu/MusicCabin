@@ -1,6 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="local_history">本地</string>
+    <string name="block_ai_artists">屏蔽疑似 AI 生成歌手</string>
+    <string name="block_ai_artists_desc">检测结果仅供参考；如需精确控制，请使用隐藏歌手列表。</string>
+    <string name="hide_podcasts">隐藏播客</string>
+    <string name="hide_podcasts_desc">从首页和搜索结果中隐藏播客节目与单集。</string>
+    <string name="hide_artist">隐藏歌手</string>
+    <string name="hidden_artists">已隐藏的歌手</string>
+    <string name="hidden_artists_count">已隐藏 %1$d 位</string>
+    <string name="no_hidden_artists">目前没有隐藏的歌手</string>
+    <string name="hidden_artist_remove">移除</string>
+    <string name="hidden_artist_add">添加</string>
+    <string name="add_hidden_artist">添加隐藏歌手</string>
+    <string name="hidden_artist_name">歌手名称</string>
+    <string name="hidden_artist_channel_id">YouTube 频道 ID</string>
+    <string name="hidden_artist_channel_id_desc">通常以 UC… 开头</string>
     <string name="remote_history">远程</string>
     <string name="charts">排行榜</string>
     <string name="back_button_desc">返回</string>

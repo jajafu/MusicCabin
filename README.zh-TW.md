@@ -50,7 +50,7 @@ MusicCabin 是 [Metrolist](https://github.com/MetrolistGroup/Metrolist) 的 Andr
 - **車機離線瀏覽已存歌單**：Android Auto 沒有網路時（隧道、地下停車場等）仍可瀏覽「YouTube 建議歌單」清單（顯示最後一次成功載入的結果）；收藏後尚未同步完成的歌單，瀏覽或播放時會自動連線載入一次，離線則顯示提示文字。
 
 - **車機釘選歌單與佇列控制**：App 內釘選（速度撥號）的歌單會出現在 Android Auto 根目錄的「釘選歌單」區塊（上限 10 筆，可在設定中開關排序）；本機與已收藏歌單離線可瀏覽，未收藏的遠端歌單以線上載入。車機上歌曲長按選單的「下一首播放」「加入佇列」可用（插入位置由 Android Auto 決定）。
-- **內容過濾**：可選擇隱藏播客、封鎖疑似 AI 生成歌手，並從 YouTube 歌手選單隱藏指定歌手；設定會套用到首頁與搜尋結果。
+- **內容過濾**：可選擇隱藏 Podcast、封鎖疑似 AI 生成歌手，並從 YouTube 歌手選單或「內容」設定頁加入指定歌手（輸入頻道 ID）到隱藏清單；設定會套用到首頁與搜尋結果。
 
 - **品牌與版本**：`MusicCabin` 名稱搭配黑色音樂車 Logo，統一用於啟動器、關於頁、通知與商店素材。FOSS（`com.jajafu.musiccabin`）與 GMS（`com.jajafu.musiccabin.gms`）可同時安裝、資料各自獨立；FOSS 在 App 內從 GitHub Releases 更新，GMS 手動更新。
 

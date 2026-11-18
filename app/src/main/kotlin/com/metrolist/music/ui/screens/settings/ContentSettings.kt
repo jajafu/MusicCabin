@@ -174,6 +174,56 @@ fun ContentSettings(
         mutableStateOf(false)
     }
     var showHiddenArtistsDialog by rememberSaveable { mutableStateOf(false) }
+    var showAddHiddenArtistDialog by rememberSaveable { mutableStateOf(false) }
+    var newHiddenArtistName by rememberSaveable { mutableStateOf("") }
+    var newHiddenArtistId by rememberSaveable { mutableStateOf("") }
+
+    if (showAddHiddenArtistDialog) {
+        AlertDialog(
+            onDismissRequest = { showAddHiddenArtistDialog = false },
+            title = { Text(stringResource(R.string.add_hidden_artist)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedTextField(
+                        value = newHiddenArtistName,
+                        onValueChange = { newHiddenArtistName = it },
+                        label = { Text(stringResource(R.string.hidden_artist_name)) },
+                        singleLine = true,
+                    )
+                    OutlinedTextField(
+                        value = newHiddenArtistId,
+                        onValueChange = { newHiddenArtistId = it },
+                        label = { Text(stringResource(R.string.hidden_artist_channel_id)) },
+                        supportingText = { Text(stringResource(R.string.hidden_artist_channel_id_desc)) },
+                        singleLine = true,
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAddHiddenArtistDialog = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = newHiddenArtistId.isNotBlank(),
+                    onClick = {
+                        val id = newHiddenArtistId.trim()
+                        val name = newHiddenArtistName.trim().ifBlank { id }
+                        onHiddenArtistIdsChange(hiddenArtistIds + id)
+                        onHiddenArtistLabelsChange(
+                            hiddenArtistLabels.filterNot { it.startsWith("$id\t") }.toSet() + "$id\t$name",
+                        )
+                        newHiddenArtistName = ""
+                        newHiddenArtistId = ""
+                        showAddHiddenArtistDialog = false
+                    },
+                ) {
+                    Text(stringResource(R.string.hidden_artist_add))
+                }
+            },
+        )
+    }
 
     if (showHiddenArtistsDialog) {
         AlertDialog(
@@ -202,13 +252,21 @@ fun ContentSettings(
                                             onHiddenArtistIdsChange(hiddenArtistIds - artistId)
                                             onHiddenArtistLabelsChange(hiddenArtistLabels.filterNot { it.startsWith("$artistId\t") }.toSet())
                                         }) {
-                                            Text(stringResource(R.string.remove))
+                                            Text(stringResource(R.string.hidden_artist_remove))
                                         }
                                     },
                                 )
                             },
                         )
                     }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showHiddenArtistsDialog = false
+                    showAddHiddenArtistDialog = true
+                }) {
+                    Text(stringResource(R.string.hidden_artist_add))
                 }
             },
             confirmButton = {
@@ -822,6 +880,14 @@ fun ContentSettings(
                     title = { Text(stringResource(R.string.hidden_artists)) },
                     description = { Text(stringResource(R.string.hidden_artists_count, hiddenArtistIds.size)) },
                     onClick = { showHiddenArtistsDialog = true },
+                    trailingContent = {
+                        TextButton(onClick = {
+                            showHiddenArtistsDialog = false
+                            showAddHiddenArtistDialog = true
+                        }) {
+                            Text(stringResource(R.string.hidden_artist_add))
+                        }
+                    },
                 )
             )
         )
