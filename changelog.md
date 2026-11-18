@@ -4,6 +4,20 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.8.3
+
+### 中文
+
+- 內容過濾設定新增封鎖疑似 AI 生成歌手與隱藏播客選項；首頁與搜尋結果會套用設定。
+- 可從 YouTube 歌手選單將歌手加入隱藏名單，之後從首頁與搜尋結果排除。
+- 版本 code 329；無資料庫 schema 變更。
+
+### English
+
+- Added content filters for suspected AI-generated artists and podcasts; the settings apply to Home and Search results.
+- Artists can be added to a hidden list from the YouTube artist menu and are then excluded from Home and Search results.
+- Version code 329; no database schema change.
+
 ## 13.8.2
 
 ### 中文

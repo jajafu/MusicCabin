@@ -49,6 +49,7 @@ What this fork adds on top of Metrolist. Full version history lives in [`changel
 - **Offline browsing of saved playlists on Android Auto**: the "Mixes" (YouTube suggested playlists) list keeps the last successfully loaded result and stays browsable without a network connection; saved playlists that never finished syncing are fetched live once when browsing or playing online, with a hint shown when offline.
 
 - **Pinned playlists and queue controls on Android Auto**: playlists pinned in the app UI (speed dial) appear under a "Pinned playlists" car section (up to 10, toggleable and reorderable in settings); local and saved remote playlists stay browsable offline, while unsaved remote ones load online. The car's per-song "Play next" and "Add to queue" actions now work (insertion position decided by Android Auto).
+- **Content filters**: optionally hide podcasts, block suspected AI-generated artists, and hide selected YouTube artists from Home and Search results.
 
 - **Branding and variants**: `MusicCabin` name with the black music-car logo across launcher, About, notifications, and store artwork. FOSS (`com.jajafu.musiccabin`) and GMS (`com.jajafu.musiccabin.gms`) install side by side with independent data; FOSS updates in-app from GitHub Releases while GMS updates manually.
 

@@ -35,6 +35,8 @@ import com.metrolist.music.LocalDatabase
 import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
+import com.metrolist.music.constants.HiddenArtistIdsKey
+import com.metrolist.music.constants.HiddenArtistLabelsKey
 import com.metrolist.music.db.entities.SpeedDialItem
 import com.metrolist.music.db.entities.ArtistEntity
 import com.metrolist.music.playback.queues.YouTubeQueue
@@ -44,6 +46,7 @@ import com.metrolist.music.ui.component.NewAction
 import com.metrolist.music.ui.component.NewActionGrid
 import com.metrolist.music.ui.component.YouTubeListItem
 import com.metrolist.music.utils.ArtistNameAliases
+import com.metrolist.music.utils.safeDataStoreEdit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
@@ -130,6 +133,32 @@ fun YouTubeArtistMenu(
                                 }
                                 onDismiss()
                             }
+                        )
+                    )
+
+                    add(
+                        NewAction(
+                            icon = {
+                                Icon(
+                                    painter = painterResource(R.drawable.hide_image),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(28.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            },
+                            text = stringResource(R.string.hide_artist),
+                            onClick = {
+                                coroutineScope.launch(Dispatchers.IO) {
+                                    context.safeDataStoreEdit { preferences ->
+                                        preferences[HiddenArtistIdsKey] =
+                                            preferences[HiddenArtistIdsKey].orEmpty() + artist.id
+                                        preferences[HiddenArtistLabelsKey] =
+                                            preferences[HiddenArtistLabelsKey].orEmpty() +
+                                                "${artist.id}\t${artist.title}"
+                                    }
+                                }
+                                onDismiss()
+                            },
                         )
                     )
 

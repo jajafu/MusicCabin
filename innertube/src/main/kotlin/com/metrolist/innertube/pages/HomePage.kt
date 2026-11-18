@@ -19,6 +19,9 @@ import com.metrolist.innertube.models.oddElements
 import com.metrolist.innertube.models.splitBySeparator
 import com.metrolist.innertube.models.filterExplicit
 import com.metrolist.innertube.models.filterVideoSongs
+import com.metrolist.innertube.models.filterAiArtists
+import com.metrolist.innertube.models.filterHiddenArtists
+import com.metrolist.innertube.models.filterPodcasts
 import com.metrolist.innertube.utils.parseTime
 import timber.log.Timber
 
@@ -369,4 +372,13 @@ data class HomePage(
                 section.copy(items = section.items.filterVideoSongs(true))
             })
         } else this
+
+    fun filterPodcasts(enabled: Boolean) = filterItems { it.filterPodcasts(enabled) }
+
+    fun filterHiddenArtists(hiddenArtistIds: Set<String>) = filterItems { it.filterHiddenArtists(hiddenArtistIds) }
+
+    fun filterAiArtists(enabled: Boolean) = filterItems { it.filterAiArtists(enabled) }
+
+    private fun filterItems(transform: (List<com.metrolist.innertube.models.YTItem>) -> List<com.metrolist.innertube.models.YTItem>) =
+        copy(sections = sections.map { section -> section.copy(items = transform(section.items)) }.filter { it.items.isNotEmpty() })
 }

@@ -21,6 +21,9 @@ import com.metrolist.innertube.models.YTItem
 import com.metrolist.innertube.models.filterExplicit
 import com.metrolist.innertube.models.filterVideoSongs
 import com.metrolist.innertube.models.filterYoutubeShorts
+import com.metrolist.innertube.models.filterAiArtists
+import com.metrolist.innertube.models.filterHiddenArtists
+import com.metrolist.innertube.models.filterPodcasts
 import com.metrolist.innertube.pages.ExplorePage
 import com.metrolist.innertube.pages.HomePage
 import com.metrolist.innertube.utils.completed
@@ -28,6 +31,9 @@ import com.metrolist.music.constants.AccountNameKey
 import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.HideVideoSongsKey
 import com.metrolist.music.constants.HideYoutubeShortsKey
+import com.metrolist.music.constants.BlockAiArtistsKey
+import com.metrolist.music.constants.HidePodcastsKey
+import com.metrolist.music.constants.HiddenArtistIdsKey
 import com.metrolist.music.constants.InnerTubeCookieKey
 import com.metrolist.music.constants.ShowWrappedCardKey
 import com.metrolist.music.constants.WrappedSeenKey
@@ -425,6 +431,9 @@ class HomeViewModel @Inject constructor(
             val hideExplicit = context.dataStore.get(HideExplicitKey, false)
             val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
             val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
+            val blockAiArtists = context.dataStore.get(BlockAiArtistsKey, false)
+            val hidePodcasts = context.dataStore.get(HidePodcastsKey, false)
+            val hiddenArtistIds = context.dataStore.get(HiddenArtistIdsKey, emptySet())
             val fromTimeStamp = LocalDateTime.now().minusWeeks(2)
 
             // Load only the car-friendly home sources: local quick access, recent
@@ -460,6 +469,9 @@ class HomeViewModel @Inject constructor(
                                                 .filterExplicit(hideExplicit)
                                                 .filterVideoSongs(hideVideoSongs)
                                                 .filterYoutubeShorts(hideYoutubeShorts)
+                                                .filterPodcasts(hidePodcasts)
+                                                .filterHiddenArtists(hiddenArtistIds)
+                                                .filterAiArtists(blockAiArtists)
                                         if (filtered.isEmpty()) null else section.copy(items = filtered)
                                     }.take(HOME_SECTION_LIMIT),
                         )
@@ -496,12 +508,16 @@ class HomeViewModel @Inject constructor(
             val hideExplicit = context.dataStore.get(HideExplicitKey, false)
             val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
             val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
+            val blockAiArtists = context.dataStore.get(BlockAiArtistsKey, false)
+            val hidePodcasts = context.dataStore.get(HidePodcastsKey, false)
+            val hiddenArtistIds = context.dataStore.get(HiddenArtistIdsKey, emptySet())
             val nextSections = YouTube.home(params = chip.endpoint?.params).getOrNull() ?: return@launch
 
             homePage.value = nextSections.copy(
                 chips = homePage.value?.chips,
                 sections = nextSections.sections.mapNotNull { section ->
-                    section.copy(items = section.items.filterOutNulls().filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs).filterYoutubeShorts(hideYoutubeShorts))
+                    val filtered = section.items.filterOutNulls().filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs).filterYoutubeShorts(hideYoutubeShorts).filterPodcasts(hidePodcasts).filterHiddenArtists(hiddenArtistIds).filterAiArtists(blockAiArtists)
+                    filtered.takeIf { it.isNotEmpty() }?.let { section.copy(items = it) }
                 }
             )
             selectedChip.value = chip
@@ -516,14 +532,16 @@ class HomeViewModel @Inject constructor(
     private suspend fun fetchPodcastData() {
         // Fetch saved podcast shows from official API
         YouTube.savedPodcastShows().onSuccess { shows ->
-            savedPodcastShows.value = shows.filterOutNulls()
+            val hidePodcasts = context.dataStore.get(HidePodcastsKey, false)
+            savedPodcastShows.value = shows.filterOutNulls().filterPodcasts(hidePodcasts)
         }.onFailure {
             reportException(it)
         }
 
         // Fetch episodes for later from official API
         YouTube.episodesForLater().onSuccess { episodes ->
-            episodesForLater.value = episodes.filterOutNulls()
+            val hidePodcasts = context.dataStore.get(HidePodcastsKey, false)
+            episodesForLater.value = episodes.filterOutNulls().filterPodcasts(hidePodcasts)
         }.onFailure {
             reportException(it)
         }
@@ -540,11 +558,17 @@ class HomeViewModel @Inject constructor(
 
     private suspend fun loadAccountPlaylists() {
         val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
+        val blockAiArtists = context.dataStore.get(BlockAiArtistsKey, false)
+        val hidePodcasts = context.dataStore.get(HidePodcastsKey, false)
+        val hiddenArtistIds = context.dataStore.get(HiddenArtistIdsKey, emptySet())
         YouTube.library("FEmusic_liked_playlists").completed().onSuccess {
             accountPlaylists.value = it.items.filterIsInstance<PlaylistItem>()
                 .filterOutNulls()
                 .filterNot { it.id == "SE" }
                 .filterYoutubeShorts(hideYoutubeShorts)
+                .filterPodcasts(hidePodcasts)
+                .filterHiddenArtists(hiddenArtistIds)
+                .filterAiArtists(blockAiArtists)
         }.onFailure {
             reportException(it)
         }
@@ -569,12 +593,16 @@ class HomeViewModel @Inject constructor(
                     val hideExplicit = context.dataStore.get(HideExplicitKey, false)
                     val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
                     val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
+                    val blockAiArtists = context.dataStore.get(BlockAiArtistsKey, false)
+                    val hidePodcasts = context.dataStore.get(HidePodcastsKey, false)
+                    val hiddenArtistIds = context.dataStore.get(HiddenArtistIdsKey, emptySet())
                     val nextSections = YouTube.home(params = currentChip.endpoint?.params).getOrNull()
                     if (nextSections != null) {
                         homePage.value = nextSections.copy(
                             chips = homePage.value?.chips,
                             sections = nextSections.sections.mapNotNull { section ->
-                                section.copy(items = section.items.filterOutNulls().filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs).filterYoutubeShorts(hideYoutubeShorts))
+                                val filtered = section.items.filterOutNulls().filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs).filterYoutubeShorts(hideYoutubeShorts).filterPodcasts(hidePodcasts).filterHiddenArtists(hiddenArtistIds).filterAiArtists(blockAiArtists)
+                                filtered.takeIf { it.isNotEmpty() }?.let { section.copy(items = it) }
                             }
                         )
                     }

@@ -180,3 +180,37 @@ fun <T : YTItem> List<T>.filterYoutubeShorts(enabled: Boolean = false) =
     } else {
         this
     }
+
+private val aiArtistNamePattern = Regex(
+    """(?<![A-Za-z0-9])(?:ai|a[.\s]*i)[\s.\u3000_-]*(?:(?:generated|music|artist|cover)(?![A-Za-z0-9])|歌手|生成|翻唱|語音|音樂|音乐|语音|作曲|演唱|合成|虚拟|人工智能)""",
+    RegexOption.IGNORE_CASE,
+)
+
+private fun Artist?.isHidden(hiddenArtistIds: Set<String>) = this?.id in hiddenArtistIds
+
+private fun YTItem.hasHiddenArtist(hiddenArtistIds: Set<String>): Boolean = when (this) {
+    is AlbumItem -> artists.orEmpty().any { it.id in hiddenArtistIds }
+    is ArtistItem -> id in hiddenArtistIds
+    is EpisodeItem -> author.isHidden(hiddenArtistIds)
+    is PlaylistItem -> author.isHidden(hiddenArtistIds)
+    is PodcastItem -> author.isHidden(hiddenArtistIds)
+    is SongItem -> artists.any { it.id in hiddenArtistIds }
+}
+
+private fun YTItem.hasAiArtistName(): Boolean = when (this) {
+    is AlbumItem -> artists.orEmpty().any { aiArtistNamePattern.containsMatchIn(it.name) }
+    is ArtistItem -> aiArtistNamePattern.containsMatchIn(title)
+    is EpisodeItem -> author?.let { aiArtistNamePattern.containsMatchIn(it.name) } == true
+    is PlaylistItem -> author?.let { aiArtistNamePattern.containsMatchIn(it.name) } == true
+    is PodcastItem -> author?.let { aiArtistNamePattern.containsMatchIn(it.name) } == true
+    is SongItem -> artists.any { aiArtistNamePattern.containsMatchIn(it.name) }
+}
+
+fun <T : YTItem> List<T>.filterPodcasts(enabled: Boolean = false) =
+    if (enabled) filterNot { it is PodcastItem || it is EpisodeItem || (it is SongItem && it.isEpisode) || (it is PlaylistItem && it.isPodcast) } else this
+
+fun <T : YTItem> List<T>.filterHiddenArtists(hiddenArtistIds: Set<String> = emptySet()) =
+    if (hiddenArtistIds.isEmpty()) this else filterNot { it.hasHiddenArtist(hiddenArtistIds) }
+
+fun <T : YTItem> List<T>.filterAiArtists(enabled: Boolean = false) =
+    if (enabled) filterNot { it.hasAiArtistName() } else this

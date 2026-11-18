@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -67,6 +68,10 @@ import com.metrolist.music.constants.EnableLyricsPlus
 import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.HideVideoSongsKey
 import com.metrolist.music.constants.HideYoutubeShortsKey
+import com.metrolist.music.constants.BlockAiArtistsKey
+import com.metrolist.music.constants.HidePodcastsKey
+import com.metrolist.music.constants.HiddenArtistIdsKey
+import com.metrolist.music.constants.HiddenArtistLabelsKey
 import com.metrolist.music.constants.LanguageCodeToName
 import com.metrolist.music.constants.LyricsProviderOrderKey
 import com.metrolist.music.constants.ProxyEnabledKey
@@ -108,6 +113,10 @@ fun ContentSettings(
     val (hideExplicit, onHideExplicitChange) = rememberPreference(key = HideExplicitKey, defaultValue = false)
     val (hideVideoSongs, onHideVideoSongsChange) = rememberPreference(key = HideVideoSongsKey, defaultValue = false)
     val (hideYoutubeShorts, onHideYoutubeShortsChange) = rememberPreference(key = HideYoutubeShortsKey, defaultValue = false)
+    val (blockAiArtists, onBlockAiArtistsChange) = rememberPreference(key = BlockAiArtistsKey, defaultValue = false)
+    val (hidePodcasts, onHidePodcastsChange) = rememberPreference(key = HidePodcastsKey, defaultValue = false)
+    val (hiddenArtistIds, onHiddenArtistIdsChange) = rememberPreference(key = HiddenArtistIdsKey, defaultValue = emptySet())
+    val (hiddenArtistLabels, onHiddenArtistLabelsChange) = rememberPreference(key = HiddenArtistLabelsKey, defaultValue = emptySet())
     val (showArtistDescription, onShowArtistDescriptionChange) = rememberPreference(key = ShowArtistDescriptionKey, defaultValue = true)
     val (showArtistSubscriberCount, onShowArtistSubscriberCountChange) = rememberPreference(key = ShowArtistSubscriberCountKey, defaultValue = true)
     val (showMonthlyListeners, onShowMonthlyListenersChange) = rememberPreference(key = ShowMonthlyListenersKey, defaultValue = true)
@@ -163,6 +172,51 @@ fun ContentSettings(
 
     var showProxyConfigurationDialog by rememberSaveable {
         mutableStateOf(false)
+    }
+    var showHiddenArtistsDialog by rememberSaveable { mutableStateOf(false) }
+
+    if (showHiddenArtistsDialog) {
+        AlertDialog(
+            onDismissRequest = { showHiddenArtistsDialog = false },
+            title = { Text(stringResource(R.string.hidden_artists)) },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .heightIn(max = 400.dp)
+                        .verticalScroll(rememberScrollState()),
+                ) {
+                    if (hiddenArtistIds.isEmpty()) {
+                        Text(stringResource(R.string.no_hidden_artists))
+                    } else {
+                        Material3SettingsGroup(
+                            items = hiddenArtistIds.sorted().map { artistId ->
+                                val label = hiddenArtistLabels.firstOrNull { it.startsWith("$artistId\t") }
+                                    ?.substringAfter('\t')
+                                    ?.takeIf(String::isNotBlank)
+                                    ?: artistId
+                                Material3SettingsItem(
+                                    title = { Text(label) },
+                                    description = { if (label != artistId) Text(artistId) },
+                                    trailingContent = {
+                                        TextButton(onClick = {
+                                            onHiddenArtistIdsChange(hiddenArtistIds - artistId)
+                                            onHiddenArtistLabelsChange(hiddenArtistLabels.filterNot { it.startsWith("$artistId\t") }.toSet())
+                                        }) {
+                                            Text(stringResource(R.string.remove))
+                                        }
+                                    },
+                                )
+                            },
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showHiddenArtistsDialog = false }) {
+                    Text(stringResource(R.string.close))
+                }
+            },
+        )
     }
 
     if (showProxyConfigurationDialog) {
@@ -724,6 +778,50 @@ fun ContentSettings(
                         )
                     },
                     onClick = { onHideYoutubeShortsChange(!hideYoutubeShorts) }
+                ),
+                Material3SettingsItem(
+                    icon = painterResource(R.drawable.person),
+                    title = { Text(stringResource(R.string.block_ai_artists)) },
+                    description = { Text(stringResource(R.string.block_ai_artists_desc)) },
+                    trailingContent = {
+                        Switch(
+                            checked = blockAiArtists,
+                            onCheckedChange = onBlockAiArtistsChange,
+                            thumbContent = {
+                                Icon(
+                                    painter = painterResource(if (blockAiArtists) R.drawable.check else R.drawable.close),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(SwitchDefaults.IconSize),
+                                )
+                            },
+                        )
+                    },
+                    onClick = { onBlockAiArtistsChange(!blockAiArtists) },
+                ),
+                Material3SettingsItem(
+                    icon = painterResource(R.drawable.hide_image),
+                    title = { Text(stringResource(R.string.hide_podcasts)) },
+                    description = { Text(stringResource(R.string.hide_podcasts_desc)) },
+                    trailingContent = {
+                        Switch(
+                            checked = hidePodcasts,
+                            onCheckedChange = onHidePodcastsChange,
+                            thumbContent = {
+                                Icon(
+                                    painter = painterResource(if (hidePodcasts) R.drawable.check else R.drawable.close),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(SwitchDefaults.IconSize),
+                                )
+                            },
+                        )
+                    },
+                    onClick = { onHidePodcastsChange(!hidePodcasts) },
+                ),
+                Material3SettingsItem(
+                    icon = painterResource(R.drawable.person),
+                    title = { Text(stringResource(R.string.hidden_artists)) },
+                    description = { Text(stringResource(R.string.hidden_artists_count, hiddenArtistIds.size)) },
+                    onClick = { showHiddenArtistsDialog = true },
                 )
             )
         )

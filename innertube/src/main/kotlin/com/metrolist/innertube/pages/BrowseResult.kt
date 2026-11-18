@@ -4,6 +4,9 @@ import com.metrolist.innertube.models.YTItem
 import com.metrolist.innertube.models.filterExplicit
 import com.metrolist.innertube.models.filterVideoSongs
 import com.metrolist.innertube.models.filterYoutubeShorts
+import com.metrolist.innertube.models.filterAiArtists
+import com.metrolist.innertube.models.filterHiddenArtists
+import com.metrolist.innertube.models.filterPodcasts
 
 data class BrowseResult(
     val title: String?,
@@ -64,4 +67,13 @@ data class BrowseResult(
         } else {
             this
         }
+
+    fun filterPodcasts(enabled: Boolean) = filterItems { it.filterPodcasts(enabled) }
+
+    fun filterHiddenArtists(hiddenArtistIds: Set<String>) = filterItems { it.filterHiddenArtists(hiddenArtistIds) }
+
+    fun filterAiArtists(enabled: Boolean) = filterItems { it.filterAiArtists(enabled) }
+
+    private fun filterItems(transform: (List<YTItem>) -> List<YTItem>) =
+        copy(items = items.mapNotNull { item -> item.copy(items = transform(item.items)).takeIf { it.items.isNotEmpty() } })
 }

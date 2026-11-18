@@ -17,10 +17,16 @@ import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.models.filterExplicit
 import com.metrolist.innertube.models.filterVideoSongs
 import com.metrolist.innertube.models.filterYoutubeShorts
+import com.metrolist.innertube.models.filterAiArtists
+import com.metrolist.innertube.models.filterHiddenArtists
+import com.metrolist.innertube.models.filterPodcasts
 import com.metrolist.innertube.pages.SearchSummaryPage
 import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.HideVideoSongsKey
 import com.metrolist.music.constants.HideYoutubeShortsKey
+import com.metrolist.music.constants.BlockAiArtistsKey
+import com.metrolist.music.constants.HidePodcastsKey
+import com.metrolist.music.constants.HiddenArtistIdsKey
 import com.metrolist.music.models.ItemsPage
 import com.metrolist.music.utils.SearchRoutes
 import com.metrolist.music.utils.dataStore
@@ -55,11 +61,17 @@ constructor(
                             val resolvedPage = page.copy(summaries = resolvedSummaries)
                             val hideExplicit = context.dataStore.get(HideExplicitKey, false)
                             val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
-                            val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
+                             val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
+                             val blockAiArtists = context.dataStore.get(BlockAiArtistsKey, false)
+                             val hidePodcasts = context.dataStore.get(HidePodcastsKey, false)
+                             val hiddenArtistIds = context.dataStore.get(HiddenArtistIdsKey, emptySet())
                             summaryPage =
                                 resolvedPage.filterExplicit(hideExplicit)
                                   .filterVideoSongs(hideVideoSongs)
                                   .filterYoutubeShorts(hideYoutubeShorts)
+                                  .filterPodcasts(hidePodcasts)
+                                  .filterHiddenArtists(hiddenArtistIds)
+                                  .filterAiArtists(blockAiArtists)
                 }.onFailure {
                     reportException(it)
                 }
@@ -96,14 +108,20 @@ constructor(
                                 val resolvedItems = YouTube.resolveArtistIds(result.items)
                                 val hideExplicit = context.dataStore.get(HideExplicitKey, false)
                                 val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
-                                val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
+                                 val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
+                                 val blockAiArtists = context.dataStore.get(BlockAiArtistsKey, false)
+                                 val hidePodcasts = context.dataStore.get(HidePodcastsKey, false)
+                                 val hiddenArtistIds = context.dataStore.get(HiddenArtistIdsKey, emptySet())
                                 viewStateMap[filter.value] =
                                     ItemsPage(
                                         resolvedItems
                                             .distinctBy { it.id }
                                             .filterExplicit(hideExplicit)
                                             .filterVideoSongs(hideVideoSongs)
-                                            .filterYoutubeShorts(hideYoutubeShorts),
+                                            .filterYoutubeShorts(hideYoutubeShorts)
+                                            .filterPodcasts(hidePodcasts)
+                                            .filterHiddenArtists(hiddenArtistIds)
+                                            .filterAiArtists(blockAiArtists),
                                         result.continuation,
                                     )
                             }.onFailure {
@@ -127,10 +145,16 @@ constructor(
             val hideExplicit = context.dataStore.get(HideExplicitKey, false)
             val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
             val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
+            val blockAiArtists = context.dataStore.get(BlockAiArtistsKey, false)
+            val hidePodcasts = context.dataStore.get(HidePodcastsKey, false)
+            val hiddenArtistIds = context.dataStore.get(HiddenArtistIdsKey, emptySet())
             val newItems = resolvedItems
                 .filterExplicit(hideExplicit)
                 .filterVideoSongs(hideVideoSongs)
                 .filterYoutubeShorts(hideYoutubeShorts)
+                .filterPodcasts(hidePodcasts)
+                .filterHiddenArtists(hiddenArtistIds)
+                .filterAiArtists(blockAiArtists)
             viewStateMap[filterValue] = ItemsPage(
                 (viewState.items + newItems).distinctBy { it.id },
                 searchResult.continuation

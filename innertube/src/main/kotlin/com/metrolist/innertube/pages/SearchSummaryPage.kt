@@ -17,6 +17,9 @@ import com.metrolist.innertube.models.YTItem
 import com.metrolist.innertube.models.filterExplicit
 import com.metrolist.innertube.models.filterVideoSongs
 import com.metrolist.innertube.models.filterYoutubeShorts
+import com.metrolist.innertube.models.filterAiArtists
+import com.metrolist.innertube.models.filterHiddenArtists
+import com.metrolist.innertube.models.filterPodcasts
 import com.metrolist.innertube.models.oddElements
 import com.metrolist.innertube.models.splitBySeparator
 import com.metrolist.innertube.utils.parseTime
@@ -79,6 +82,19 @@ data class SearchSummaryPage(
         } else {
             this
         }
+
+    fun filterPodcasts(enabled: Boolean) = filterItems { it.filterPodcasts(enabled) }
+
+    fun filterHiddenArtists(hiddenArtistIds: Set<String>) = filterItems { it.filterHiddenArtists(hiddenArtistIds) }
+
+    fun filterAiArtists(enabled: Boolean) = filterItems { it.filterAiArtists(enabled) }
+
+    private fun filterItems(transform: (List<YTItem>) -> List<YTItem>) =
+        SearchSummaryPage(
+            summaries.mapNotNull { summary ->
+                summary.copy(items = transform(summary.items)).takeIf { it.items.isNotEmpty() }
+            },
+        )
 
     companion object {
         fun fromMusicCardShelfRenderer(renderer: MusicCardShelfRenderer): YTItem? {

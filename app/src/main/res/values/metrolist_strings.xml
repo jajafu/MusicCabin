@@ -535,6 +535,15 @@
     <string name="scrobble_delay_minutes">Scrobble delay (minutes)</string>
     <string name="hide_video_songs">Hide video songs</string>
     <string name="hide_youtube_shorts">Hide YouTube Shorts</string>
+    <string name="block_ai_artists">Block AI-generated artists</string>
+    <string name="block_ai_artists_desc">Detection is approximate; use the hidden artist list for manual control.</string>
+    <string name="hide_podcasts">Hide podcasts</string>
+    <string name="hide_podcasts_desc">Hide podcast shows and episodes from Home and Search.</string>
+    <string name="hide_artist">Hide artist</string>
+    <string name="hidden_artists">Hidden artists</string>
+    <string name="hidden_artists_count">%1$d hidden</string>
+    <string name="no_hidden_artists">No hidden artists</string>
+    <string name="remove">Remove</string>
 
     <string name="details_desc">View the song\'s details</string>
     <string name="edit_desc">Edit the title or artist</string>
