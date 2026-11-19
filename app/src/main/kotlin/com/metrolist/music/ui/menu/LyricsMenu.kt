@@ -21,15 +21,19 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -58,6 +62,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -67,11 +72,11 @@ import com.metrolist.music.LocalDatabase
 import com.metrolist.music.R
 import com.metrolist.music.db.entities.LyricsEntity
 import com.metrolist.music.db.entities.SongEntity
+import com.metrolist.music.lyrics.LyricsEntry
+import com.metrolist.music.lyrics.LyricsResyncHelper
 import com.metrolist.music.lyrics.LyricsTranslationHelper
 import com.metrolist.music.lyrics.LyricsUtils
 import com.metrolist.music.lyrics.markManualLyrics
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.ListDialog
@@ -94,6 +99,211 @@ import com.metrolist.music.constants.OpenRouterDefaultModel
 import com.metrolist.music.constants.OpenRouterModelKey
 import com.metrolist.music.constants.DeeplFormalityKey
 import com.metrolist.music.utils.rememberPreference
+import java.util.Locale
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+@Composable
+private fun WordTimingEditorDialog(
+    lyrics: LyricsEntity?,
+    onDismiss: () -> Unit,
+    onSave: (String) -> Unit,
+) {
+    var entries by remember(lyrics?.lyrics) {
+        mutableStateOf(
+            lyrics?.lyrics?.let(LyricsUtils::parseLyrics).orEmpty()
+        )
+    }
+    var selectedLine by rememberSaveable { mutableIntStateOf(0) }
+    var timingInputs by remember(lyrics?.lyrics) { mutableStateOf<Map<String, String>>(emptyMap()) }
+    val selected = entries.getOrNull(selectedLine)
+    val hasInvalidTiming =
+        timingInputs.values.any { value ->
+            parseEditorSeconds(value)?.let { it.isFinite() && it >= 0.0 } != true
+        } || entries.hasInvalidTiming()
+
+    LaunchedEffect(entries.size) {
+        if (selectedLine !in entries.indices) {
+            selectedLine = 0
+        }
+    }
+
+    DefaultDialog(
+        onDismiss = onDismiss,
+        modifier = Modifier.fillMaxSize(),
+        title = { Text(stringResource(R.string.lyrics_editor_title)) },
+        buttons = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+            TextButton(
+                enabled = entries.isNotEmpty() && !hasInvalidTiming,
+                onClick = { onSave(LyricsUtils.serializeRichSyncLyrics(entries)) },
+            ) { Text(stringResource(R.string.lyrics_editor_save)) }
+        },
+    ) {
+        if (entries.isEmpty()) {
+            Text(stringResource(R.string.lyrics_editor_no_synced_lyrics))
+        } else {
+            if (hasInvalidTiming) {
+                Text(
+                    text = stringResource(R.string.lyrics_editor_invalid_time),
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(bottom = 8.dp),
+                )
+            }
+            Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                LazyColumn(modifier = Modifier.weight(1f)) {
+                    itemsIndexed(entries) { index, entry ->
+                        val displayText = if (entry.text.isBlank()) {
+                            stringResource(R.string.lyrics_editor_blank_line)
+                        } else {
+                            entry.text
+                        }
+                        Text(
+                            text = "${formatEditorSeconds(entry.editorLineTimeSeconds())}  $displayText",
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { selectedLine = index }
+                                .padding(10.dp),
+                            color = if (index == selectedLine) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                }
+                Column(
+                    modifier = Modifier.weight(1.2f).verticalScroll(rememberScrollState()).imePadding(),
+                ) {
+                    if (selected != null) {
+                        val selectedTitle = if (selected.text.isBlank()) {
+                            stringResource(R.string.lyrics_editor_blank_line)
+                        } else {
+                            selected.text
+                        }
+                        Text(selectedTitle, style = MaterialTheme.typography.titleMedium)
+                        Spacer(Modifier.height(8.dp))
+                        if (selected.words.isNullOrEmpty()) {
+                            if (selected.text.isNotBlank()) {
+                                TextButton(onClick = {
+                                    val start = selected.time / 1000.0
+                                    val end = entries.getOrNull(selectedLine + 1)?.editorLineTimeSeconds()
+                                        ?: (start + 3.0)
+                                    val words = LyricsUtils.buildSkeletonWords(selected.text, start, end)
+                                    if (words.isNotEmpty()) {
+                                        entries = entries.toMutableList().also {
+                                            it[selectedLine] = selected.copy(words = words)
+                                        }
+                                    }
+                                }) { Text(stringResource(R.string.lyrics_editor_generate_skeleton)) }
+                            }
+                        } else {
+                            selected.words.forEachIndexed { wordIndex, word ->
+                                val startText =
+                                    timingInputs["$selectedLine-$wordIndex-start"]
+                                        ?: formatEditorInputSeconds(word.startTime)
+                                val endText =
+                                    timingInputs["$selectedLine-$wordIndex-end"]
+                                        ?: formatEditorInputSeconds(word.endTime)
+                                val startValue = parseEditorSeconds(startText)?.takeIf { it.isFinite() }
+                                val endValue = parseEditorSeconds(endText)?.takeIf { it.isFinite() }
+                                val previousEnd = selected.words.getOrNull(wordIndex - 1)?.endTime
+                                val nextStart = selected.words.getOrNull(wordIndex + 1)?.startTime
+                                val startInvalid = startValue == null || startValue < 0.0 ||
+                                    (endValue != null && editorMillis(startValue) > editorMillis(endValue)) ||
+                                    (previousEnd != null && editorMillis(startValue) < editorMillis(previousEnd))
+                                val endInvalid = endValue == null || endValue < 0.0 ||
+                                    (startValue != null && editorMillis(endValue) < editorMillis(startValue)) ||
+                                    (nextStart != null && editorMillis(endValue) > editorMillis(nextStart))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = word.text,
+                                        modifier = Modifier
+                                            .widthIn(min = 40.dp, max = 100.dp)
+                                            .padding(end = 4.dp),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                    OutlinedTextField(
+                                        value = startText,
+                                        onValueChange = { value ->
+                                            timingInputs = timingInputs + ("$selectedLine-$wordIndex-start" to value)
+                                            parseEditorSeconds(value)?.takeIf { it.isFinite() }?.let { parsed ->
+                                                updateEditorWord(entries, selectedLine, wordIndex, parsed, null) { entries = it }
+                                            }
+                                        },
+                                        label = { Text(stringResource(R.string.lyrics_editor_start)) },
+                                        modifier = Modifier.weight(1f),
+                                        singleLine = true,
+                                        isError = startInvalid,
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                    )
+                                    OutlinedTextField(
+                                        value = endText,
+                                        onValueChange = { value ->
+                                            timingInputs = timingInputs + ("$selectedLine-$wordIndex-end" to value)
+                                            parseEditorSeconds(value)?.takeIf { it.isFinite() }?.let { parsed ->
+                                                updateEditorWord(entries, selectedLine, wordIndex, null, parsed) { entries = it }
+                                            }
+                                        },
+                                        label = { Text(stringResource(R.string.lyrics_editor_end)) },
+                                        modifier = Modifier.weight(1f),
+                                        singleLine = true,
+                                        isError = endInvalid,
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun formatEditorSeconds(seconds: Double): String = String.format(Locale.US, "%.2f", seconds)
+
+private fun formatEditorInputSeconds(seconds: Double): String = String.format(Locale.US, "%.3f", seconds)
+
+private fun parseEditorSeconds(value: String): Double? =
+    value.trim().replace(',', '.').toDoubleOrNull()
+
+private fun LyricsEntry.editorLineTimeSeconds(): Double =
+    words?.firstOrNull()?.startTime ?: (time / 1000.0)
+
+/** Normalizes editor times to the millisecond precision used by the saved format. */
+private fun editorMillis(seconds: Double): Long =
+    kotlin.math.floor(seconds * 1000.0 + 0.5).toLong()
+
+private fun List<LyricsEntry>.hasInvalidTiming(): Boolean =
+    any { entry ->
+        val words = entry.words.orEmpty()
+        words.any { word ->
+            !word.startTime.isFinite() || !word.endTime.isFinite() ||
+                word.startTime < 0.0 || editorMillis(word.endTime) < editorMillis(word.startTime)
+        } || words.zipWithNext().any { (current, next) ->
+            editorMillis(next.startTime) < editorMillis(current.endTime)
+        }
+    } || zipWithNext().any { (current, next) ->
+        editorMillis(next.editorLineTimeSeconds()) < editorMillis(current.editorLineTimeSeconds())
+    }
+
+private fun updateEditorWord(
+    entries: List<LyricsEntry>,
+    lineIndex: Int,
+    wordIndex: Int,
+    start: Double?,
+    end: Double?,
+    update: (List<LyricsEntry>) -> Unit,
+) {
+    val line = entries.getOrNull(lineIndex) ?: return
+    val words = line.words?.toMutableList() ?: return
+    val word = words.getOrNull(wordIndex) ?: return
+    words[wordIndex] = word.copy(startTime = start ?: word.startTime, endTime = end ?: word.endTime)
+    update(entries.toMutableList().also { it[lineIndex] = line.copy(words = words) })
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -128,6 +338,36 @@ fun LyricsMenu(
 
     var showEditDialog by rememberSaveable {
         mutableStateOf(false)
+    }
+
+    var showWordTimingEditor by rememberSaveable { mutableStateOf(false) }
+
+    if (showWordTimingEditor) {
+        WordTimingEditorDialog(
+            lyrics = lyricsProvider(),
+            onDismiss = { showWordTimingEditor = false },
+            onSave = { editedLyrics ->
+                val editedId = mediaMetadataProvider().id
+                val existing = lyricsProvider()
+                menuScope.launch(Dispatchers.IO) {
+                    context.markManualLyrics(editedId)
+                    database.query {
+                        upsert(
+                            (existing ?: LyricsEntity(editedId, editedLyrics, "Manual")).copy(
+                                id = editedId,
+                                lyrics = editedLyrics,
+                                provider = "Manual",
+                            ),
+                        )
+                    }
+                    LyricsResyncHelper.triggerResync()
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(context, R.string.lyrics_editor_saved, Toast.LENGTH_SHORT).show()
+                    }
+                }
+                showWordTimingEditor = false
+            },
+        )
     }
 
     if (showEditDialog) {
@@ -456,6 +696,18 @@ fun LyricsMenu(
                             onClick = {
                                 showEditDialog = true
                             },
+                        ),
+                        NewAction(
+                            icon = {
+                                Icon(
+                                    painter = painterResource(R.drawable.edit),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(28.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            },
+                            text = stringResource(R.string.edit_word_timings),
+                            onClick = { showWordTimingEditor = true },
                         ),
                         NewAction(
                             icon = {

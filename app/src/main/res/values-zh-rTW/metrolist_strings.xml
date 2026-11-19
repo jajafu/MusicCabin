@@ -761,6 +761,16 @@
     <string name="varispeed">啟用變速功能</string>
     <string name="varispeed_description">將音調與播放速度關聯起來，從而產生類似磁帶的加速和減速效果</string>
     <string name="lyrics_animation_style_title">逐字動畫風格</string>
+    <string name="edit_word_timings">編輯逐字時間軸</string>
+    <string name="lyrics_editor_title">歌詞時間軸編輯器</string>
+    <string name="lyrics_editor_no_synced_lyrics">這首歌沒有可編輯的同步歌詞。</string>
+    <string name="lyrics_editor_generate_skeleton">產生逐字時間軸骨架</string>
+    <string name="lyrics_editor_save">儲存歌詞</string>
+    <string name="lyrics_editor_start">開始（秒）</string>
+    <string name="lyrics_editor_end">結束（秒）</string>
+    <string name="lyrics_editor_invalid_time">請輸入有效的秒數並依時間先後排列；結束時間不可早於開始時間，也不可早於前一個字的結束時間。</string>
+    <string name="lyrics_editor_blank_line">空白行（用來結束上一句）</string>
+    <string name="lyrics_editor_saved">歌詞已儲存</string>
     <string name="lyrics_animation_fade">逐漸消失</string>
     <string name="lyrics_animation_glow">發光</string>
     <string name="lyrics_animation_apple">Apple Music風格</string>

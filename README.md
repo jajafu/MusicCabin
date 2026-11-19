@@ -19,6 +19,8 @@ What this fork adds on top of Metrolist. Full version history lives in [`changel
   - Lyrics at the bottom of the screen show the previous, current and next line together, sliding with the playback direction and sweeping word by word.
   - One-tap lyrics-source switch in the control row.
   - Lyrics-offset −/+ buttons in the control row, 50 ms per tap.
+  - Mobile word-timing lyrics editor: edit per-word timestamps, generate a timing skeleton for line-synced lyrics, and save the result as manual lyrics.
+    Saving rewrites the edited lyrics as enhanced LRC and may remove unsupported metadata lines.
   - Optional: open straight into the photo frame when the app starts (Settings → Player and audio → Misc on phone; the TV frame's Display settings on TV). Photo frame KTV on FOSS builds, Photo frame KTV 2 on GMS builds.
   - The head unit shows a QR code; scanning it with a phone opens the page (over a phone hotspot on the same local network). Pick photos on the phone, which compresses them and sends them straight to the frame with no USB drive. The same phone page has a "Song requests" tab: search songs, play next, add to the end of the queue, reorder or remove queued songs, and watch the now playing and upcoming queue refresh every 10 seconds.
   - GMS builds can be compiled with your own Google OAuth settings to read photos directly from your personal Drive; see the [Google Drive test guide](docs/photo-frame-google-drive-testing.zh-TW.md).

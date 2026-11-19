@@ -14,6 +14,9 @@ val TIME_REGEX = "\\[(\\d\\d):(\\d\\d)\\.(\\d{2,3})\\]".toRegex()
 // Regex for rich sync format: [MM:SS.mm]<MM:SS.mm> word <MM:SS.mm> word ...
 private val RICH_SYNC_LINE_REGEX = "\\[(\\d{1,2}):(\\d{2})\\.(\\d{2,3})\\](.*)".toRegex()
 private val RICH_SYNC_WORD_REGEX = "<(\\d{1,2}):(\\d{2})\\.(\\d{2,3})>([^<]+)".toRegex()
+private val MULTI_TIME_LINE_REGEX = "^\\[\\d{2}:\\d{2}\\.\\d{2,3}\\]\\s*\\[".toRegex()
+private val ANGLE_TIME_REGEX = "<(\\d{1,2}):(\\d{2})\\.(\\d{2,3})>".toRegex()
+private val SQUARE_TIME_REGEX = "\\[(\\d{1,2}):(\\d{2})\\.(\\d{2,3})\\]".toRegex()
 
 // Regex for Paxsenix v1/v2/bg format
 // [00:00.000]v1: <00:00.000>I <00:00.154>promise...
@@ -27,6 +30,124 @@ private val BACKGROUND_REGEX = "^\\{bg\\}".toRegex()
 
 @Suppress("RegExpRedundantEscape")
 object LyricsUtils {
+    /** Serializes edited entries to the rich LRC format understood by [parseLyrics]. */
+    fun serializeRichSyncLyrics(entries: List<LyricsEntry>): String = buildString {
+        entries.forEach { entry ->
+            val words = entry.words.orEmpty()
+            val lineTime = words.firstOrNull()?.startTime ?: entry.time / 1000.0
+            if (entry.isBackground && words.isNotEmpty()) {
+                append("[bg: ")
+                appendWordTimings(words)
+                append(']')
+            } else {
+                append('[').append(formatSyncTime(lineTime)).append(']')
+                if (!entry.agent.isNullOrBlank() && entry.agent != "bg") {
+                    append("{agent:").append(entry.agent).append('}')
+                }
+                if (words.isEmpty()) {
+                    if (entry.isBackground) append("{bg}")
+                    append(entry.text)
+                } else {
+                    appendWordTimings(words)
+                }
+            }
+            append('\n')
+        }
+    }.trimEnd()
+
+    private fun StringBuilder.appendWordTimings(words: List<WordTimestamp>) {
+        words.forEachIndexed { index, word ->
+            val start = word.startTime.coerceAtLeast(0.0)
+            val end = word.endTime.coerceAtLeast(start)
+            append('<').append(formatSyncTime(start)).append('>')
+            append(word.text)
+            if (word.hasTrailingSpace) append(' ')
+            // Only write an end tag when it differs from the next word's start,
+            // which keeps contiguous words in the standard rich-sync shape.
+            val nextStart = words.getOrNull(index + 1)?.startTime
+            if (nextStart == null || toRoundedMillis(nextStart) != toRoundedMillis(end)) {
+                append('<').append(formatSyncTime(end)).append('>')
+            }
+        }
+    }
+
+    private fun formatSyncTime(seconds: Double): String {
+        val roundedMillis = toRoundedMillis(seconds)
+        val minutes = roundedMillis / 60000
+        val remainder = (roundedMillis % 60000) / 1000.0
+        return String.format(Locale.US, "%02d:%06.3f", minutes, remainder)
+    }
+
+    private fun toRoundedMillis(seconds: Double): Long =
+        kotlin.math.floor(seconds.coerceAtLeast(0.0) * 1000.0 + 0.5).toLong()
+
+    /**
+     * Splits [text] into editable word timings for the word-timing editor skeleton.
+     * Whitespace-separated words stay whole, while CJK characters get one entry each
+     * so their timings can be adjusted independently.
+     */
+    fun buildSkeletonWords(text: String, startTime: Double, endTime: Double): List<WordTimestamp> {
+        val tokens = splitSkeletonTokens(text)
+        if (tokens.isEmpty()) return emptyList()
+        val safeStart = startTime.coerceAtLeast(0.0)
+        val step = (endTime - safeStart).coerceAtLeast(0.1) / tokens.size
+        return tokens.mapIndexed { index, token ->
+            WordTimestamp(
+                text = token.text,
+                startTime = safeStart + step * index,
+                endTime = safeStart + step * (index + 1),
+                hasTrailingSpace = token.hasTrailingSpace,
+            )
+        }
+    }
+
+    private data class SkeletonToken(val text: String, val hasTrailingSpace: Boolean)
+
+    private fun splitSkeletonTokens(text: String): List<SkeletonToken> {
+        val tokens = mutableListOf<SkeletonToken>()
+        Regex("\\S+\\s*").findAll(text).forEach { match ->
+            val chunk = match.value
+            val word = chunk.trimEnd()
+            val hasTrailingSpace = chunk.length > word.length
+            val units = splitSkeletonChunk(word)
+            units.forEachIndexed { index, unit ->
+                tokens.add(SkeletonToken(unit, hasTrailingSpace && index == units.lastIndex))
+            }
+        }
+        return tokens
+    }
+
+    private fun splitSkeletonChunk(chunk: String): List<String> {
+        val units = mutableListOf<String>()
+        val current = StringBuilder()
+        var index = 0
+        while (index < chunk.length) {
+            val codePoint = chunk.codePointAt(index)
+            if (isCjkCodePoint(codePoint)) {
+                if (current.isNotEmpty()) {
+                    units.add(current.toString())
+                    current.clear()
+                }
+                units.add(String(Character.toChars(codePoint)))
+            } else {
+                current.appendCodePoint(codePoint)
+            }
+            index += Character.charCount(codePoint)
+        }
+        if (current.isNotEmpty()) units.add(current.toString())
+        return units
+    }
+
+    private fun isCjkCodePoint(codePoint: Int): Boolean = when (Character.UnicodeScript.of(codePoint)) {
+        Character.UnicodeScript.HAN,
+        Character.UnicodeScript.HIRAGANA,
+        Character.UnicodeScript.KATAKANA,
+        Character.UnicodeScript.HANGUL,
+        Character.UnicodeScript.BOPOMOFO,
+        -> true
+        else -> false
+    }
+
     fun cleanTitleForSearch(title: String): String {
         return title.replace(Regex("\\s*[(\\[].*?[)\\]]"), "").trim()
     }
@@ -132,8 +253,8 @@ object LyricsUtils {
             }
             .filter { !it.trim().startsWith("[offset:") }
         val isRichSync = lines.any { line ->
-            RICH_SYNC_LINE_REGEX.matches(line.trim()) &&
-            RICH_SYNC_WORD_REGEX.containsMatchIn(line)
+            (RICH_SYNC_LINE_REGEX.matches(line.trim()) && RICH_SYNC_WORD_REGEX.containsMatchIn(line)) ||
+                PAXSENIX_BG_LINE_REGEX.matches(line.trim())
         }
         return if (isRichSync) {
             parseRichSyncLyrics(lines)
@@ -147,6 +268,12 @@ object LyricsUtils {
         var lastNonBgAgent: String? = null
         lines.forEachIndexed { index, line ->
             val trimmedLine = line.trim()
+            // A file with background lines may still contain ordinary LRC lines
+            // carrying several timestamps; parse those with the standard parser.
+            if (MULTI_TIME_LINE_REGEX.containsMatchIn(trimmedLine)) {
+                parseLine(trimmedLine)?.let { result.addAll(it) }
+                return@forEachIndexed
+            }
             val bgMatch = PAXSENIX_BG_LINE_REGEX.find(trimmedLine)
             if (bgMatch != null) {
                 val content = bgMatch.groupValues[1]
@@ -224,62 +351,38 @@ object LyricsUtils {
         if (wordMatches.isEmpty()) return null
         val lastMatchEnd = wordMatches.last().range.last
         val trailingContent = content.substring(lastMatchEnd + 1).trim()
-        val angleTrailingMatch = "<(\\d{1,2}):(\\d{2})\\.(\\d{2,3})>".toRegex().find(trailingContent)
-        val squareTrailingMatch = "\\[(\\d{1,2}):(\\d{2})\\.(\\d{2,3})\\]".toRegex().find(trailingContent)
-        val trailingTimeMatch = angleTrailingMatch ?: squareTrailingMatch
-        val trailingEndTime: Double? = if (trailingTimeMatch != null && trailingContent.substring(trailingTimeMatch.range.last + 1).removeSuffix("]").isBlank()) {
-            val tMin = trailingTimeMatch.groupValues[1].toLongOrNull() ?: 0L
-            val tSec = trailingTimeMatch.groupValues[2].toLongOrNull() ?: 0L
-            val tFrac = trailingTimeMatch.groupValues[3].toLongOrNull() ?: 0L
-            val tFracPart = if (trailingTimeMatch.groupValues[3].length == 3) tFrac / 1000.0 else tFrac / 100.0
-            tMin * 60.0 + tSec + tFracPart
-        } else null
+        val trailingEndTime = findExplicitEndTime(trailingContent)
         val wordTimings = mutableListOf<WordTimestamp>()
         wordMatches.forEachIndexed { index, match ->
-            val minutes = match.groupValues[1].toLongOrNull() ?: 0L
-            val seconds = match.groupValues[2].toLongOrNull() ?: 0L
-            val fraction = match.groupValues[3].toLongOrNull() ?: 0L
-            val fractionPart = if (match.groupValues[3].length == 3) fraction / 1000.0 else fraction / 100.0
-            val startTimeSeconds = minutes * 60.0 + seconds + fractionPart
+            val startTimeSeconds = match.toLyricSeconds()
             val rawText = match.groupValues[4]
             val hasTrailingSpace = rawText.endsWith(" ")
             val words = rawText.trim().split(Regex("\\s+")).filter { it.isNotBlank() }
-            val nextTimestamp: Double
-            val nextLineTime: Double?
-            if (index < wordMatches.size - 1) {
-                val nextMatch = wordMatches[index + 1]
-                val nextMin = nextMatch.groupValues[1].toLongOrNull() ?: 0L
-                val nextSec = nextMatch.groupValues[2].toLongOrNull() ?: 0L
-                val nextFrac = nextMatch.groupValues[3].toLongOrNull() ?: 0L
-                val nextFracPart = if (nextMatch.groupValues[3].length == 3) nextFrac / 1000.0 else nextFrac / 100.0
-                nextTimestamp = nextMin * 60.0 + nextSec + nextFracPart
-                nextLineTime = null
+            val isLastGroup = index == wordMatches.lastIndex
+            val nextWordStart = wordMatches.getOrNull(index + 1)?.toLyricSeconds()
+            // The serializer writes an end tag after each word, so an intentional
+            // gap shows up as an end tag before the next word's start tag.
+            val explicitEndTime = if (isLastGroup) {
+                trailingEndTime
             } else {
-                nextLineTime = getNextLineStartTime(currentIndex, allLines)
-                nextTimestamp = trailingEndTime ?: nextLineTime ?: (startTimeSeconds + 0.5)
+                val nextMatch = wordMatches[index + 1]
+                findExplicitEndTime(content.substring(match.range.last + 1, nextMatch.range.first))
             }
+            val nextLineTime = if (isLastGroup) getNextLineStartTime(currentIndex, allLines) else null
+            val groupEndTime = explicitEndTime ?: nextWordStart ?: nextLineTime ?: (startTimeSeconds + 0.5)
             words.forEachIndexed { wordIndex, word ->
                 val isLastWordInGroup = wordIndex == words.lastIndex
-                val isLastWordOverall = index == wordMatches.lastIndex && isLastWordInGroup
-                val wordStartTime = startTimeSeconds + (nextTimestamp - startTimeSeconds) * wordIndex / words.size
+                val isLastWordOverall = isLastGroup && isLastWordInGroup
+                val wordStartTime = startTimeSeconds + (groupEndTime - startTimeSeconds) * wordIndex / words.size
                 val wordEndTime = if (!isLastWordInGroup) {
-                    startTimeSeconds + (nextTimestamp - startTimeSeconds) * (wordIndex + 1) / words.size
-                } else if (!isLastWordOverall) {
-                    nextTimestamp
+                    startTimeSeconds + (groupEndTime - startTimeSeconds) * (wordIndex + 1) / words.size
                 } else {
-                    trailingEndTime ?: nextLineTime ?: (startTimeSeconds + 0.5)
+                    groupEndTime
                 }
-                val wordHasTrailingSpace = if (!isLastWordInGroup) {
-                    true
-                } else if (!isLastWordOverall) {
-                    hasTrailingSpace
-                } else {
-                    val textAfterMatch = if (trailingTimeMatch != null) {
-                        trailingContent.substring(0, trailingTimeMatch.range.first)
-                    } else {
-                        trailingContent
-                    }
-                    textAfterMatch.isNotBlank()
+                val wordHasTrailingSpace = when {
+                    !isLastWordInGroup -> true
+                    !isLastWordOverall -> hasTrailingSpace
+                    else -> hasTrailingSpace || (trailingEndTime == null && trailingContent.isNotBlank())
                 }
                 if (word.isNotBlank()) {
                     wordTimings.add(WordTimestamp(word, wordStartTime, wordEndTime, wordHasTrailingSpace))
@@ -287,6 +390,21 @@ object LyricsUtils {
             }
         }
         return if (wordTimings.isNotEmpty()) wordTimings else null
+    }
+
+    private fun MatchResult.toLyricSeconds(): Double {
+        val minutes = groupValues[1].toLongOrNull() ?: 0L
+        val seconds = groupValues[2].toLongOrNull() ?: 0L
+        val fraction = groupValues[3].toLongOrNull() ?: 0L
+        val fractionPart = if (groupValues[3].length == 3) fraction / 1000.0 else fraction / 100.0
+        return minutes * 60.0 + seconds + fractionPart
+    }
+
+    /** Reads a closing timestamp only when nothing but blanks (or a line bracket) follows it. */
+    private fun findExplicitEndTime(segment: String): Double? {
+        val match = ANGLE_TIME_REGEX.find(segment) ?: SQUARE_TIME_REGEX.find(segment) ?: return null
+        val remainder = segment.substring(match.range.last + 1).trim().removeSuffix("]").trim()
+        return if (remainder.isBlank()) match.toLyricSeconds() else null
     }
 
     private fun getNextLineStartTime(currentIndex: Int, allLines: List<String>): Double? {

@@ -113,6 +113,16 @@
     <string name="text_color">Text color</string>
     <string name="secondary_text_color">Secondary text color</string>
     <string name="background_color">Background color</string>
+    <string name="edit_word_timings">Edit word timings</string>
+    <string name="lyrics_editor_title">Lyrics timing editor</string>
+    <string name="lyrics_editor_no_synced_lyrics">This song has no synced lyrics to edit.</string>
+    <string name="lyrics_editor_generate_skeleton">Generate word timing skeleton</string>
+    <string name="lyrics_editor_save">Save lyrics</string>
+    <string name="lyrics_editor_start">Start (seconds)</string>
+    <string name="lyrics_editor_end">End (seconds)</string>
+    <string name="lyrics_editor_invalid_time">Enter valid seconds in increasing order; each end time cannot be earlier than its start time.</string>
+    <string name="lyrics_editor_blank_line">Blank line (ends the previous line)</string>
+    <string name="lyrics_editor_saved">Lyrics saved</string>
 
     <string name="remove_from_cache">Remove from cache</string>
 

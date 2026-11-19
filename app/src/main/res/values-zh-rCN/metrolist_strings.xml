@@ -794,6 +794,16 @@
     <string name="experimental_lyrics_beta_title">实验性功能</string>
     <string name="experimental_lyrics_beta_message">全新歌词组件目前正在开发中，可能存在错误。确定要启用吗？</string>
     <string name="lyrics_animation_style_title">逐字动画样式</string>
+    <string name="edit_word_timings">编辑逐字时间轴</string>
+    <string name="lyrics_editor_title">歌词时间轴编辑器</string>
+    <string name="lyrics_editor_no_synced_lyrics">这首歌没有可编辑的同步歌词。</string>
+    <string name="lyrics_editor_generate_skeleton">生成逐字时间轴骨架</string>
+    <string name="lyrics_editor_save">保存歌词</string>
+    <string name="lyrics_editor_start">开始（秒）</string>
+    <string name="lyrics_editor_end">结束（秒）</string>
+    <string name="lyrics_editor_invalid_time">请输入有效秒数并按时间先后排列；结束时间不能早于开始时间，也不能早于前一个字的结束时间。</string>
+    <string name="lyrics_editor_blank_line">空白行（用于结束上一句）</string>
+    <string name="lyrics_editor_saved">歌词已保存</string>
     <string name="parsed_from_link">从链接解析</string>
     <string name="back">返回</string>
     <string name="clear_search">清除搜索</string>

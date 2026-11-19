@@ -4,6 +4,26 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.8.5
+
+### 中文
+
+- 開始加入手機版歌詞逐字時間軸編輯器，可調整每個字的開始／結束時間，並將編輯結果保存為手動歌詞。
+- 每個字會保留自己的結束時間，字與字之間刻意留下的空隙在存檔後不再消失。
+- 產生時間軸骨架時，英文以單字為單位、中日韓文字逐字切分，Emoji 等延伸字元不會被拆壞。
+- 編輯器會檢查時間格式與前後順序，無效時禁止儲存；存檔按鈕固定可見，存檔完成後才顯示成功提示，並修正左右版面比例與時間進位的誤判。
+- 儲存時會保留只有時間的空白行，含多個時間標記的一般歌詞行也能正確解析。
+- 版本 code 331；無資料庫 schema 變更。
+
+### English
+
+- Added the first version of the mobile word-timing lyrics editor, allowing per-word start/end times to be adjusted and saved as manual lyrics.
+- Each word now keeps its own end time, so intentional gaps between words survive saving.
+- Skeleton generation keeps English words whole, splits CJK text per character, and no longer breaks emoji or other extended characters.
+- The editor now validates time format and ordering, blocks saving invalid values, keeps the save button visible, shows the success message only after saving completes, and fixes the pane ratio and false positives from time rounding.
+- Saving now keeps blank timestamp-only lines, and ordinary lyrics lines with several timestamps are parsed correctly.
+- Version code 331; no database schema change.
+
 ## 13.8.4
 
 ### 中文
