@@ -53,3 +53,12 @@ MusicCabin is a Kotlin-based third-party YouTube Music client that follows Mater
 
 - Run focused tests or lint checks when they are relevant to the changed code. Broaden validation only when a failure or the change scope justifies it.
 - Follow [`docs/release.md`](docs/release.md) for Foss Release builds, signing, changelog, and GitHub Release procedures.
+
+### Emulator acceptance test
+
+- After completing any app feature or user-visible app fix, install the Foss Debug APK into the MuMu emulator and exercise the real flow there before declaring the work complete. Documentation-only changes are exempt.
+- APK: `app/build/outputs/apk/foss/debug/app-foss-debug.apk`; reinstall with `adb install -r`. MuMu listens on `127.0.0.1:16384`, so run `adb connect 127.0.0.1:16384` if it is not listed by `adb devices`.
+- The emulator may also contain the older `com.metrolist.music` package. Always verify the target package and launch the debug build with `adb shell am start -n com.jajafu.musiccabin.debug/com.metrolist.music.MainActivityAlias`.
+- Drive the UI with `adb shell input tap`, `input text`, and `input keyevent`; inspect screenshots and `uiautomator dump` to confirm what is actually on screen.
+- Confirm the outcome, not just a toast: reopen the screen, replay the flow, or query stored data when persistence is involved. Report the tested path and any findings.
+- If the emulator or the required flow cannot be tested, state that explicitly instead of claiming acceptance.
