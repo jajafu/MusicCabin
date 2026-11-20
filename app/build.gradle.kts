@@ -82,16 +82,42 @@ abstract class GenerateProtoTask : DefaultTask() {
             val url = protocUrl.get()
             logger.lifecycle("Downloading protoc ${url.substringAfterLast('/')} from $url")
             protocFile.parentFile.mkdirs()
-            val connection = URL(url).openConnection() as java.net.HttpURLConnection
-            connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-            val responseCode = connection.responseCode
-            if (responseCode !in 200..299) {
-                throw GradleException("Failed to download protoc: Server returned HTTP response code $responseCode for URL: $url")
-            }
-            connection.inputStream.use { input ->
-                protocFile.outputStream().use { output ->
-                    input.copyTo(output)
+            val downloadUrls = listOf(
+                url,
+                url.replace("https://repo1.maven.org/", "https://repo.maven.apache.org/"),
+            ).distinct()
+            var lastFailure: String? = null
+            var downloaded = false
+            for (attempt in 1..4) {
+                for (downloadUrl in downloadUrls) {
+                    val connection = URL(downloadUrl).openConnection() as java.net.HttpURLConnection
+                    try {
+                        connection.setRequestProperty(
+                            "User-Agent",
+                            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                        )
+                        val responseCode = connection.responseCode
+                        if (responseCode in 200..299) {
+                            connection.inputStream.use { input ->
+                                protocFile.outputStream().use { output -> input.copyTo(output) }
+                            }
+                            downloaded = true
+                            break
+                        }
+                        lastFailure = "$responseCode from $downloadUrl"
+                        logger.warn("protoc download attempt $attempt failed: HTTP $responseCode from $downloadUrl")
+                    } catch (error: java.io.IOException) {
+                        lastFailure = "${error::class.simpleName}: ${error.message} from $downloadUrl"
+                        logger.warn("protoc download attempt $attempt failed: $lastFailure")
+                    } finally {
+                        connection.disconnect()
+                    }
                 }
+                if (downloaded) break
+                if (attempt < 4) Thread.sleep(attempt * 2_000L)
+            }
+            if (!downloaded) {
+                throw GradleException("Failed to download protoc after 4 attempts: $lastFailure")
             }
             protocFile.setExecutable(true)
         }
@@ -318,7 +344,7 @@ fun getProtocUrl(): String {
         else -> "x86_64"
     }
 
-    return "https://repo1.maven.org/maven2/com/google/protobuf/protoc/$protocVersion/protoc-$protocVersion-$osName-$archName.exe"
+    return "https://repo.maven.apache.org/maven2/com/google/protobuf/protoc/$protocVersion/protoc-$protocVersion-$osName-$archName.exe"
 }
 
 val protoDir = rootProject.file("metroproto")
