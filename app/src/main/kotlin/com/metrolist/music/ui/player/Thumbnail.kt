@@ -396,7 +396,7 @@ fun Thumbnail(
                         rows = GridCells.Fixed(1),
                         flingBehavior = rememberSnapFlingBehavior(thumbnailSnapLayoutInfoProvider),
                         userScrollEnabled = isScrollEnabled,
-                        modifier = if (isLandscape) {
+                        modifier = if (isLandscape && !showVideoSurface) {
                             Modifier.size(dimensions.thumbnailSize + (PlayerHorizontalPadding * 2))
                         } else {
                             Modifier.fillMaxSize()
@@ -520,11 +520,19 @@ private fun ThumbnailItem(
     var lastTapTime by remember { mutableLongStateOf(0L) }
     val isCurrentVideoItem = isVideoSong && item.mediaId == currentMediaId
     val videoVisible = showVideoSurface && isCurrentVideoItem
+    // In landscape video mode every carousel cell fills the area beside the
+    // controls, so the current video is not confined to the square cover box.
+    val fullAreaCell = isLandscape && showVideoSurface
+    val fullAreaVideo = fullAreaCell && videoVisible
 
     Box(
         modifier = modifier
             .then(
-                if (isLandscape) {
+                if (fullAreaCell) {
+                    Modifier
+                        .width(dimensions.itemWidth)
+                        .fillMaxSize()
+                } else if (isLandscape) {
                     Modifier.size(dimensions.thumbnailSize + (PlayerHorizontalPadding * 2))
                 } else {
                     Modifier
@@ -532,7 +540,13 @@ private fun ThumbnailItem(
                         .fillMaxSize()
                 }
             )
-            .padding(horizontal = PlayerHorizontalPadding)
+            .then(
+                if (fullAreaVideo) {
+                    Modifier
+                } else {
+                    Modifier.padding(horizontal = PlayerHorizontalPadding)
+                }
+            )
             .graphicsLayer {
                 // Keep the hardware layer for smooth carousel animation, except while a
                 // TextureView is attached (it cannot render inside an offscreen layer).
@@ -574,9 +588,15 @@ private fun ThumbnailItem(
         contentAlignment = Alignment.Center
     ) {
         Box(
-            modifier = Modifier
-                .size(dimensions.thumbnailSize)
-                .clip(RoundedCornerShape(dimensions.cornerRadius))
+            modifier = if (fullAreaVideo) {
+                Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(dimensions.cornerRadius))
+            } else {
+                Modifier
+                    .size(dimensions.thumbnailSize)
+                    .clip(RoundedCornerShape(dimensions.cornerRadius))
+            }
         ) {
             when {
                 hidePlayerThumbnail -> {

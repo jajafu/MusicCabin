@@ -4,6 +4,22 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.8.8
+
+### 中文
+
+- 橫式（landscape）播放時，音樂錄影帶畫面改為填滿播放器左側的整個可用空間，不再縮在正方形封面框內；16:9 影片的顯示高度約為原本的兩倍。
+- 直式（portrait）播放畫面維持不變；影片仍以等比縮放、留黑邊、不裁切的方式顯示。
+- 切換為純聲音、顯示影片畫面、雙擊快轉等操作位置與行為維持不變。
+- 版本 code 334；無資料庫 schema 變更。
+
+### English
+
+- In landscape, the music video now fills the entire available space on the player's left side instead of being confined to the square cover box; a 16:9 video renders roughly twice as tall as before.
+- Portrait playback is unchanged; the video is still letterboxed without cropping.
+- The switch to audio only, show video, and double-tap seek controls keep their positions and behavior.
+- Version code 334; no database schema change.
+
 ## 13.8.7
 
 ### 中文
