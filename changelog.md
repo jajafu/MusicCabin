@@ -15,7 +15,7 @@ This file records project-specific features, fixes, and build changes in `MusicC
 - 開啟此設定後，即使同時開著「隱藏帶影片的音樂」，播放佇列仍會放行影片歌曲，App 內搜尋與首頁也會顯示影片歌曲；Android Auto 與語音入口仍尊重隱藏設定。
 - TV 版目前沒有獨立的影片播放頁，維持純音訊；底部播放列只顯示封面圖，不會播放影片。
 - 版本 code 332；無資料庫 schema 變更。
-- 預設設定調整：音樂錄影帶播放關閉、允許外部修改收藏開啟、啟用高更新率關閉、主題預設為黑色；不變更版本號。
+- 預設設定調整：音樂錄影帶播放關閉、允許外部修改收藏開啟、啟用高更新率關閉、主題跟隨系統自動切換；不變更版本號。
 
 ### English
 
@@ -26,7 +26,7 @@ This file records project-specific features, fixes, and build changes in `MusicC
 - With this setting on, the playback queue keeps video songs even when "Hide video songs" is also on, and video songs stay visible in in-app search and home; Android Auto and voice entry points still respect the hide setting.
 - The TV has no dedicated video page yet and stays audio-only; its now-playing bar shows only the cover and never renders video.
 - Version code 332; no database schema change.
-- Adjusted default settings: music video playback off, external favorite edits allowed, high refresh rate off, and dark theme selected by default; the version number is unchanged.
+- Adjusted default settings: music video playback off, external favorite edits allowed, high refresh rate off, and theme set to follow the system automatically; the version number is unchanged.
 
 ## 13.8.5
 
