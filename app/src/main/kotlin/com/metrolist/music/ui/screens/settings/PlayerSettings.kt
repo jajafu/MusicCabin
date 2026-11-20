@@ -56,6 +56,7 @@ import com.metrolist.music.constants.HistoryDuration
 import com.metrolist.music.constants.KeepScreenOn
 import com.metrolist.music.constants.LoudnessLevel
 import com.metrolist.music.constants.LoudnessLevelKey
+import com.metrolist.music.constants.MusicVideoPlaybackKey
 import com.metrolist.music.constants.PauseOnMute
 import com.metrolist.music.constants.PersistentQueueKey
 import com.metrolist.music.constants.PersistentShuffleAcrossQueuesKey
@@ -228,6 +229,11 @@ fun PlayerSettings(
         defaultValue = 30f
     )
 
+    val (musicVideoPlayback, onMusicVideoPlaybackChange) = rememberPreference(
+        MusicVideoPlaybackKey,
+        defaultValue = false
+    )
+
     var showAudioQualityDialog by remember {
         mutableStateOf(false)
     }
@@ -291,6 +297,27 @@ fun PlayerSettings(
         Material3SettingsGroup(
             title = stringResource(R.string.player),
             items = buildList {
+                add(Material3SettingsItem(
+                    icon = painterResource(R.drawable.slow_motion_video),
+                    title = { Text(stringResource(R.string.music_video_playback)) },
+                    description = { Text(stringResource(R.string.music_video_playback_desc)) },
+                    trailingContent = {
+                        Switch(
+                            checked = musicVideoPlayback,
+                            onCheckedChange = onMusicVideoPlaybackChange,
+                            thumbContent = {
+                                Icon(
+                                    painter = painterResource(
+                                        id = if (musicVideoPlayback) R.drawable.check else R.drawable.close
+                                    ),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(SwitchDefaults.IconSize)
+                                )
+                            }
+                        )
+                    },
+                    onClick = { onMusicVideoPlaybackChange(!musicVideoPlayback) }
+                ))
                 add(Material3SettingsItem(
                     icon = painterResource(R.drawable.graphic_eq),
                     title = { Text(stringResource(R.string.audio_quality)) },

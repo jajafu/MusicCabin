@@ -136,7 +136,7 @@ import com.metrolist.music.discord.PresenceStatus
 import com.metrolist.music.constants.EnableLastFMScrobblingKey
 import com.metrolist.music.constants.EnableSongCacheKey
 import com.metrolist.music.constants.HideExplicitKey
-import com.metrolist.music.constants.HideVideoSongsKey
+import com.metrolist.music.constants.MusicVideoPlaybackKey
 import com.metrolist.music.constants.HistoryDuration
 import com.metrolist.music.constants.LastFMUseNowPlaying
 import com.metrolist.music.constants.MediaSessionConstants
@@ -220,6 +220,7 @@ import com.metrolist.music.utils.YTPlayerUtils
 import com.metrolist.music.utils.cipher.CipherDeobfuscator
 import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.get
+import com.metrolist.music.utils.shouldHideVideoSongsInApp
 import com.metrolist.music.utils.reportException
 import com.metrolist.music.utils.safeDataStoreEdit
 import com.metrolist.music.widget.MetrolistWidgetManager
@@ -227,6 +228,7 @@ import com.metrolist.music.widget.MusicWidgetReceiver
 import com.metrolist.music.widget.PlaylistWidgetReceiver
 import com.metrolist.music.widget.WidgetActionSecurity
 import com.metrolist.music.ui.utils.resize
+import com.metrolist.music.tv.isAndroidTv
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineStart
@@ -270,6 +272,8 @@ import kotlin.random.Random
 
 private const val INSTANT_SILENCE_SKIP_STEP_MS = 15_000L
 private const val INSTANT_SILENCE_SKIP_SETTLE_MS = 350L
+private const val VIDEO_CACHE_KEY_SUFFIX = "#video"
+private const val VIDEO_RESOLUTION_FAILURE_TTL_MS = 30_000L
 
 @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
 @androidx.annotation.OptIn(UnstableApi::class)
@@ -537,6 +541,10 @@ class MusicService :
     @Volatile
     private var cachedHideVideoSongs = false
     @Volatile
+    private var cachedMusicVideoPlayback = false
+    @Volatile
+    private var cachedAudioOffload = false
+    @Volatile
     private var cachedShufflePlaylistFirst = false
     @Volatile
     private var cachedAutoLoadMore = true
@@ -555,6 +563,32 @@ class MusicService :
             }
         }
     )
+
+    // Separate cache for muxed music-video streams so an audio URL can never be reused for a
+    // video item (and vice versa). Same shape and eviction policy as songUrlCache.
+    private val videoUrlCache = Collections.synchronizedMap(
+        object : LinkedHashMap<String, Pair<String, Long>>(0, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Pair<String, Long>>): Boolean {
+                return size > 100
+            }
+        }
+    )
+
+    // A failed video resolution must not be retried for every cache chunk. The entry expires
+    // quickly so a transient YouTube failure can recover without making offline playback noisy.
+    private val videoResolutionFailureCache = Collections.synchronizedMap(
+        object : LinkedHashMap<String, Long>(0, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Long>): Boolean = size > 100
+        },
+    )
+
+    // A rejected video URL (403/410) is not useful to retry for this prepared item; use audio
+    // instead until the item transitions or the player is explicitly re-prepared.
+    private val videoAudioFallbackMediaIds = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+
+    // Media ids whose current MediaItem metadata says they are video songs. Updated on the
+    // player thread, read by the DataSource resolver on its own thread.
+    private val videoMediaIds = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
     // Tracks mediaIds for which a recoverSong() coroutine is currently in flight.
     //
     // resolveDataSpec() (createDataSourceFactory()) calls recoverSong() on every
@@ -887,11 +921,13 @@ class MusicService :
                     Timber.tag(TAG).i("RELOADING STREAM: $mediaId at position ${currentPosition}ms")
 
                     songUrlCache.remove(mediaId)
+                    videoUrlCache.remove(mediaId)
 
                     // CRITICAL: Clear caches synchronously to prevent format parsing errors
                     runBlocking(Dispatchers.IO) {
                         try {
                             playerCache.removeResource(mediaId)
+                            playerCache.removeResource("$mediaId$VIDEO_CACHE_KEY_SUFFIX")
                             downloadCache.removeResource(mediaId)
                             Timber.tag(TAG).d("Cleared player and download cache for $mediaId")
                         } catch (e: Exception) {
@@ -1017,7 +1053,8 @@ class MusicService :
             if (crossfadeEnabled) false else offloadPref
         }.distinctUntilChanged()
             .collectLatest(scope) { useOffload ->
-                player.setOffloadEnabled(useOffload)
+                cachedAudioOffload = useOffload
+                applyPlaybackAudioRouting()
                 secondaryPlayer?.setOffloadEnabled(useOffload)
             }
 
@@ -1253,7 +1290,25 @@ class MusicService :
             dataStore.data.map { it[HideExplicitKey] ?: false }.distinctUntilChanged().collect { cachedHideExplicit = it }
         }
         scope.launch {
-            dataStore.data.map { it[HideVideoSongsKey] ?: false }.distinctUntilChanged().collect { cachedHideVideoSongs = it }
+            dataStore.data
+                .map { prefs -> prefs.shouldHideVideoSongsInApp() }
+                .distinctUntilChanged()
+                .collect { cachedHideVideoSongs = it }
+        }
+        scope.launch {
+            dataStore.data
+                .map { it[MusicVideoPlaybackKey] ?: false }
+                .distinctUntilChanged()
+                .collect { enabled ->
+                    val previous = cachedMusicVideoPlayback
+                    cachedMusicVideoPlayback = enabled
+                    if (previous != enabled) {
+                        applyPlaybackAudioRouting()
+                        // A song already playing keeps its audio-only stream until re-prepared,
+                        // so reload the current item when the mode changes for it.
+                        if (playerInitialized.value) reloadCurrentMediaItemForVideoMode()
+                    }
+                }
         }
         scope.launch {
             dataStore.data.map { it[ShufflePlaylistFirstKey] ?: false }.distinctUntilChanged().collect { cachedShufflePlaylistFirst = it }
@@ -2059,7 +2114,7 @@ class MusicService :
                         queue
                             .getInitialStatus()
                             .filterExplicit(dataStore.get(HideExplicitKey, false))
-                            .filterVideoSongs(dataStore.get(HideVideoSongsKey, false))
+                            .filterVideoSongs(hideVideoSongsForQueue())
                     }
                 if (!playbackRequestTracker.isActive(requestToken) || currentQueue !== queue) {
                     return@launch
@@ -2115,7 +2170,7 @@ class MusicService :
                     radioQueue
                         .getInitialStatus()
                         .filterExplicit(dataStore.get(HideExplicitKey, false))
-                        .filterVideoSongs(dataStore.get(HideVideoSongsKey, false))
+                        .filterVideoSongs(hideVideoSongsForQueue())
                 }
             } catch (error: CancellationException) {
                 throw error
@@ -2175,7 +2230,7 @@ class MusicService :
                             radioQueue
                                 .getInitialStatus()
                                 .filterExplicit(dataStore.get(HideExplicitKey, false))
-                                .filterVideoSongs(dataStore.get(HideVideoSongsKey, false))
+                                .filterVideoSongs(hideVideoSongsForQueue())
                         }
 
                     if (!isActiveRadioRequest(requestToken, sourceQueue, currentMediaId, currentIndex)) {
@@ -3064,6 +3119,7 @@ class MusicService :
         mediaItem: MediaItem?,
         reason: Int,
     ) {
+        lastTransitionedMediaId?.let(videoAudioFallbackMediaIds::remove)
         resetInstantSilenceSkipState()
         manualQueueTracker.onTransition(
             previousIndex = previousMediaItemIndex,
@@ -3112,6 +3168,8 @@ class MusicService :
 
         lastPlaybackSpeed = -1.0f // force update song
 
+        applyPlaybackAudioRouting()
+
         setupAudioNormalization()
 
         scrobbleManager?.onSongStop()
@@ -3148,6 +3206,7 @@ class MusicService :
         timeline: Timeline,
         reason: Int,
     ) {
+        refreshVideoMediaIds()
         if (timeline.isEmpty || player.currentMediaItemIndex == C.INDEX_UNSET) {
             manualQueueTracker.reset()
             return
@@ -3505,12 +3564,12 @@ class MusicService :
             hasCauseOfType<EOFException>(error)
 
     /**
-     * Checks if the error is caused by an expired/forbidden URL (HTTP 403).
+     * Checks if the error is caused by an expired/forbidden URL (HTTP 403/410).
      * This typically happens when a YouTube stream URL expires.
      */
     private fun isExpiredUrlError(error: PlaybackException): Boolean {
         val responseCode = getHttpResponseCode(error)
-        return responseCode == 403
+        return responseCode == 403 || responseCode == 410
     }
 
     /**
@@ -3637,7 +3696,7 @@ class MusicService :
             }
 
             isExpiredUrlError(error) -> {
-                Timber.tag(TAG).d("Expired URL (403) detected, refreshing stream URL")
+                Timber.tag(TAG).d("Expired/rejected URL detected, refreshing stream URL")
                 handleExpiredUrlError(mediaId)
                 return
             }
@@ -3706,9 +3765,13 @@ class MusicService :
         Timber.tag(TAG).d("Performing aggressive cache clear for $mediaId")
 
         songUrlCache.remove(mediaId)
+        videoUrlCache.remove(mediaId)
+        videoResolutionFailureCache.remove(mediaId)
+        videoAudioFallbackMediaIds.remove(mediaId)
 
         try {
             playerCache.removeResource(mediaId)
+            playerCache.removeResource("$mediaId$VIDEO_CACHE_KEY_SUFFIX")
             Timber.tag(TAG).d("Cleared player cache for $mediaId")
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Failed to clear player cache for $mediaId")
@@ -3891,10 +3954,16 @@ class MusicService :
         incrementRetryCount(mediaId)
 
         songUrlCache.remove(mediaId)
-        // A 403/410 on GET means the (HEAD-unvalidated) WEB_REMIX stream URL was bad — mark it so the
-        // re-resolution falls through to the fallback clients instead of retrying WEB_REMIX.
-        YTPlayerUtils.markWebRemixFailed(mediaId)
-        Timber.tag(TAG).d("Cleared cached URL for $mediaId, marked WEB_REMIX failed")
+        videoUrlCache.remove(mediaId)
+        if (player.currentMediaItem?.mediaId == mediaId && player.currentMediaItem?.metadata?.isVideoSong == true) {
+            videoAudioFallbackMediaIds.add(mediaId)
+        }
+        // Only WEB_REMIX uses the HEAD-unvalidated path. Do not poison its failure tracker when
+        // a mobile music-video URL is rejected.
+        if (currentStreamClient.value == "WEB_REMIX" && currentStreamClientForMediaId == mediaId) {
+            YTPlayerUtils.markWebRemixFailed(mediaId)
+            Timber.tag(TAG).d("Cleared cached URL for $mediaId, marked WEB_REMIX failed")
+        }
 
         try {
             YTPlayerUtils.forceRefreshForVideo(mediaId)
@@ -4394,9 +4463,138 @@ class MusicService :
         }
     }
 
+    /** True when the current item is a video song, whether or not video playback is enabled. */
+    private fun isCurrentItemVideoSong(): Boolean {
+        val item = try {
+            player.currentMediaItem
+        } catch (_: Exception) {
+            return false
+        }
+        return item?.metadata?.isVideoSong == true
+    }
+
+    /**
+     * "Hide video songs" is a browsing preference; the explicit music-video opt-in wins for the
+     * queue so videos can actually be reached and played.
+     */
+    private suspend fun hideVideoSongsForQueue(): Boolean =
+        dataStore.shouldHideVideoSongsInApp()
+
+    /** Routes audio focus and offload according to whether the current item renders video. */
+    private fun applyPlaybackAudioRouting() {
+        val currentPlayer = try {
+            player
+        } catch (_: Exception) {
+            return
+        }
+        val isVideo = cachedMusicVideoPlayback && isCurrentItemVideoSong()
+        currentPlayer.setAudioAttributes(
+            AudioAttributes.Builder()
+                .setUsage(C.USAGE_MEDIA)
+                .setContentType(if (isVideo) C.AUDIO_CONTENT_TYPE_MOVIE else C.AUDIO_CONTENT_TYPE_MUSIC)
+                .build(),
+            false,
+        )
+        currentPlayer.setOffloadEnabled(if (isVideo) false else cachedAudioOffload)
+    }
+
+    /** Keeps the resolver's video-id set in sync with the player timeline. */
+    private fun refreshVideoMediaIds() {
+        videoMediaIds.clear()
+        val currentPlayer = try {
+            player
+        } catch (_: Exception) {
+            return
+        }
+        for (index in 0 until currentPlayer.mediaItemCount) {
+            val item = currentPlayer.getMediaItemAt(index)
+            if (item.metadata?.isVideoSong == true) videoMediaIds.add(item.mediaId)
+        }
+    }
+
+    private fun isVideoMediaId(mediaId: String): Boolean {
+        if (!cachedMusicVideoPlayback || isAndroidTv(this)) return false
+        if (mediaId in videoMediaIds) return true
+        return runBlocking(Dispatchers.IO) {
+            database.song(mediaId).first()?.song?.isVideo
+        } == true
+    }
+
+    /** Re-prepares the current video song so a settings change takes effect immediately. */
+    private fun reloadCurrentMediaItemForVideoMode() {
+        val currentPlayer = try {
+            player
+        } catch (_: Exception) {
+            return
+        }
+        val item = currentPlayer.currentMediaItem ?: return
+        if (item.metadata?.isVideoSong != true) return
+        val mediaId = item.mediaId
+        val position = currentPlayer.currentPosition
+        val index = currentPlayer.currentMediaItemIndex
+        val wasPlaying = currentPlayer.playWhenReady
+        songUrlCache.remove(mediaId)
+        videoUrlCache.remove(mediaId)
+        videoResolutionFailureCache.remove(mediaId)
+        videoAudioFallbackMediaIds.remove(mediaId)
+        applyPlaybackAudioRouting()
+        currentPlayer.stop()
+        currentPlayer.seekTo(index, position)
+        currentPlayer.prepare()
+        if (wasPlaying) currentPlayer.play()
+    }
+
     private fun createDataSourceFactory(): DataSource.Factory {
         return ResolvingDataSource.Factory(createCacheDataSource()) { dataSpec ->
-            val mediaId = dataSpec.key ?: error("No media id")
+            // Video items are re-keyed so their bytes can never collide with the audio entry
+            // (including a downloaded audio file) of the same song in either cache.
+            val mediaId =
+                (dataSpec.key ?: error("No media id")).substringBefore(VIDEO_CACHE_KEY_SUFFIX)
+
+            if (isVideoMediaId(mediaId) && mediaId !in videoAudioFallbackMediaIds) {
+                videoUrlCache[mediaId]?.takeIf { it.second > System.currentTimeMillis() }?.let { cached ->
+                    recoverSongDeduped(mediaId)
+                    return@Factory dataSpec
+                        .buildUpon().setKey("$mediaId$VIDEO_CACHE_KEY_SUFFIX").build()
+                        .withUri(cached.first.toUri())
+                        .subrange(dataSpec.uriPositionOffset, CHUNK_LENGTH)
+                }
+
+                videoResolutionFailureCache[mediaId]?.takeIf {
+                    it > System.currentTimeMillis()
+                } ?: run {
+                    if (!isNetworkAvailable()) {
+                        videoResolutionFailureCache[mediaId] =
+                            System.currentTimeMillis() + VIDEO_RESOLUTION_FAILURE_TTL_MS
+                        Timber.tag(TAG).d("Offline while resolving MV stream for $mediaId; using audio")
+                        return@run
+                    }
+                    Timber.tag(TAG).i("FETCHING MV STREAM: $mediaId")
+                    val videoPlaybackData =
+                        runBlocking(Dispatchers.IO) {
+                            YTPlayerUtils.playerResponseForVideoPlayback(mediaId)
+                        }.getOrNull()
+
+                    if (videoPlaybackData != null) {
+                        videoUrlCache[mediaId] =
+                            videoPlaybackData.streamUrl to
+                            (System.currentTimeMillis() + videoPlaybackData.streamExpiresInSeconds * 1000L)
+                        currentStreamClient.value = videoPlaybackData.streamClient
+                        currentStreamClientForMediaId = mediaId
+                        recoverSongDeduped(mediaId, videoPlaybackData)
+                        return@Factory dataSpec
+                            .buildUpon().setKey("$mediaId$VIDEO_CACHE_KEY_SUFFIX").build()
+                            .withUri(videoPlaybackData.streamUrl.toUri())
+                            .subrange(dataSpec.uriPositionOffset, CHUNK_LENGTH)
+                    }
+
+                    videoResolutionFailureCache[mediaId] =
+                        System.currentTimeMillis() + VIDEO_RESOLUTION_FAILURE_TTL_MS
+                }
+
+                // Offline, removed video or a rejected request: keep the song playable as audio.
+                Timber.tag(TAG).w("MV stream unavailable for $mediaId; falling back to audio")
+            }
 
             val shouldBypassCache = bypassCacheForQualityChange.contains(mediaId)
 

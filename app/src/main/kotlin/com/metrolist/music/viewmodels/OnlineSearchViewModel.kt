@@ -22,7 +22,6 @@ import com.metrolist.innertube.models.filterHiddenArtists
 import com.metrolist.innertube.models.filterPodcasts
 import com.metrolist.innertube.pages.SearchSummaryPage
 import com.metrolist.music.constants.HideExplicitKey
-import com.metrolist.music.constants.HideVideoSongsKey
 import com.metrolist.music.constants.HideYoutubeShortsKey
 import com.metrolist.music.constants.BlockAiArtistsKey
 import com.metrolist.music.constants.HidePodcastsKey
@@ -32,6 +31,7 @@ import com.metrolist.music.utils.SearchRoutes
 import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.get
 import com.metrolist.music.utils.reportException
+import com.metrolist.music.utils.shouldHideVideoSongsInApp
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -60,7 +60,7 @@ constructor(
                             }
                             val resolvedPage = page.copy(summaries = resolvedSummaries)
                             val hideExplicit = context.dataStore.get(HideExplicitKey, false)
-                            val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
+                            val hideVideoSongs = context.dataStore.shouldHideVideoSongsInApp()
                              val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
                              val blockAiArtists = context.dataStore.get(BlockAiArtistsKey, false)
                              val hidePodcasts = context.dataStore.get(HidePodcastsKey, false)
@@ -107,7 +107,7 @@ constructor(
                             .onSuccess { result ->
                                 val resolvedItems = YouTube.resolveArtistIds(result.items)
                                 val hideExplicit = context.dataStore.get(HideExplicitKey, false)
-                                val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
+                                val hideVideoSongs = context.dataStore.shouldHideVideoSongsInApp()
                                  val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
                                  val blockAiArtists = context.dataStore.get(BlockAiArtistsKey, false)
                                  val hidePodcasts = context.dataStore.get(HidePodcastsKey, false)
@@ -143,7 +143,7 @@ constructor(
                 YouTube.searchContinuation(continuation).getOrNull() ?: return@launch
             val resolvedItems = YouTube.resolveArtistIds(searchResult.items)
             val hideExplicit = context.dataStore.get(HideExplicitKey, false)
-            val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
+            val hideVideoSongs = context.dataStore.shouldHideVideoSongsInApp()
             val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
             val blockAiArtists = context.dataStore.get(BlockAiArtistsKey, false)
             val hidePodcasts = context.dataStore.get(HidePodcastsKey, false)

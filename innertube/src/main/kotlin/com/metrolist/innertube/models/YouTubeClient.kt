@@ -52,6 +52,12 @@ data class YouTubeClient(
         const val REFERER_YOUTUBE_MUSIC = "$ORIGIN_YOUTUBE_MUSIC/"
         const val API_URL_YOUTUBE_MUSIC = "$ORIGIN_YOUTUBE_MUSIC/youtubei/v1/"
 
+        /**
+         * The regular YouTube site. Music-video (muxed) streams are only served here for the
+         * video-content clients, while music.youtube.com rejects them with a bot check.
+         */
+        const val ORIGIN_YOUTUBE = "https://www.youtube.com"
+
         val WEB = YouTubeClient(
             clientName = "WEB",
             clientVersion = "2.20260114.08.00",

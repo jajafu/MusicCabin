@@ -639,7 +639,7 @@ constructor(
                                             addAll(
                                                 remoteSongs
                                                     .filterExplicit(context.dataStore.get(HideExplicitKey, false))
-                                                    .filterVideoSongs(context.dataStore.get(HideVideoSongsKey, false))
+                                                     .filterVideoSongs(context.dataStore.get(HideVideoSongsKey, false))
                                                     .map { onlineSongItem(browseId!!, it) }
                                             )
                                         } else if (!browseId.isNullOrBlank()) {

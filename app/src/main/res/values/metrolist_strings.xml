@@ -544,6 +544,10 @@
     <string name="scrobble_delay_percent">Scrobble delay (percentage)</string>
     <string name="scrobble_delay_minutes">Scrobble delay (minutes)</string>
     <string name="hide_video_songs">Hide video songs</string>
+    <string name="music_video_playback">Music video playback</string>
+    <string name="music_video_playback_desc">Play YouTube music videos with picture (360p). Needs internet; downloaded songs stay audio-only when offline, and Android Auto stays audio-only. While enabled, video songs stay visible in search and home even if "Hide video songs" is on.</string>
+    <string name="music_video_audio_only">Switch to audio only</string>
+    <string name="music_video_show_video">Show video</string>
     <string name="hide_youtube_shorts">Hide YouTube Shorts</string>
     <string name="block_ai_artists">Block AI-generated artists</string>
     <string name="block_ai_artists_desc">Detection is approximate; use the hidden artist list for manual control.</string>

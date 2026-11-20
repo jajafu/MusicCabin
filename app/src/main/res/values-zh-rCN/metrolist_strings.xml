@@ -192,6 +192,10 @@
     <string name="last_fm_send_likes_description">在 Metrolist 中对歌曲点赞或取消点赞时，Last.fm 中的喜欢或取消喜欢歌曲会同步更新</string>
     <string name="logging_in">正在登录…</string>
     <string name="hide_video_songs">隐藏带视频歌曲</string>
+    <string name="music_video_playback">音乐视频播放</string>
+    <string name="music_video_playback_desc">播放 YouTube 视频画面（360p）。需要网络；离线时已下载的歌曲只播放声音，Android Auto 投射也保持仅有声音。开启时，即使「隐藏带视频歌曲」开着，搜索与首页仍会显示视频歌曲。</string>
+    <string name="music_video_audio_only">切换为纯声音</string>
+    <string name="music_video_show_video">显示视频画面</string>
     <string name="details_desc">查看歌曲详情</string>
     <string name="edit_desc">编辑标题或音乐人</string>
     <string name="start_radio_desc">基于此歌曲启动一个电台</string>

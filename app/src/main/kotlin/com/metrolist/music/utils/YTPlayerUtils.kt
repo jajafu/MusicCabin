@@ -528,6 +528,66 @@ object YTPlayerUtils {
         e.printStackTrace()
     }
     /**
+     * Resolves a muxed (audio + video) stream for a music video.
+     *
+     * The music.youtube.com player endpoint answers video content with a bot check, so this
+     * asks the regular YouTube site with the ANDROID client instead and picks a 360p
+     * single-file format (itag 18). Both tracks then travel through the existing ExoPlayer
+     * pipeline, and no separate audio-only request is made.
+     */
+    suspend fun playerResponseForVideoPlayback(videoId: String): Result<PlaybackData> = runCatching {
+        Timber.tag(TAG).i("MV playback: resolving www.youtube.com stream for $videoId")
+        val response =
+            YouTube.player(
+                videoId = videoId,
+                client = YouTubeClient.MOBILE,
+                apiOrigin = YouTubeClient.ORIGIN_YOUTUBE,
+            ).getOrThrow()
+
+        if (response.playabilityStatus.status != "OK") {
+            throw PlaybackException(
+                response.playabilityStatus.reason ?: "Video unavailable",
+                null,
+                PlaybackException.ERROR_CODE_REMOTE_ERROR,
+            )
+        }
+
+        val streamingData = response.streamingData ?: throw Exception("Video stream data missing")
+        val format =
+            selectMuxedVideoFormat(streamingData.formats.orEmpty())
+                ?: throw Exception("No muxed video format")
+        val streamUrl =
+            findUrlOrNull(format, videoId, response)
+                ?: throw Exception("Could not resolve video stream URL")
+
+        Timber.tag(TAG)
+            .i("MV playback: itag=${format.itag}, ${format.width}x${format.height}, client=${YouTubeClient.MOBILE.clientName}")
+        PlaybackData(
+            audioConfig = response.playerConfig?.audioConfig,
+            videoDetails = response.videoDetails,
+            playbackTracking = response.playbackTracking,
+            format = format,
+            streamUrl = streamUrl,
+            streamExpiresInSeconds = streamingData.expiresInSeconds,
+            streamClient = "WWW_${YouTubeClient.MOBILE.clientName}",
+        )
+    }.onFailure {
+        Timber.tag(TAG).w(it, "MV playback: stream resolution failed for $videoId")
+    }
+
+    /**
+     * Picks the 360p single-file video format. Muxed 720p+ formats are not offered by the
+     * ANDROID client without extra work, and 360p keeps the first phase bandwidth-friendly.
+     */
+    internal fun selectMuxedVideoFormat(
+        formats: List<PlayerResponse.StreamingData.Format>,
+    ): PlayerResponse.StreamingData.Format? {
+        val muxed = formats.filter { it.mimeType.startsWith("video/") && it.height != null }
+        return muxed.firstOrNull { it.itag == 18 }
+            ?: muxed.minByOrNull { kotlin.math.abs((it.height ?: 0) - 360) }
+    }
+
+    /**
      * Player response intended for metadata / playback-tracking retrieval.
      * Stream URLs of this response might not work so don't use them.
      */

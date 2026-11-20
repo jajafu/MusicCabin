@@ -3081,9 +3081,10 @@ object YouTube {
         client: YouTubeClient,
         signatureTimestamp: Int? = null,
         poToken: String? = null,
+        apiOrigin: String = YouTubeClient.ORIGIN_YOUTUBE_MUSIC,
     ): Result<PlayerResponse> =
         runCatching {
-            innerTube.player(client, videoId, playlistId, signatureTimestamp, poToken).body<PlayerResponse>()
+            innerTube.player(client, videoId, playlistId, signatureTimestamp, poToken, apiOrigin).body<PlayerResponse>()
         }
 
     suspend fun registerPlayback(

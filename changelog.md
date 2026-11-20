@@ -4,6 +4,28 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.8.6
+
+### 中文
+
+- 新增「音樂錄影帶播放」設定（預設關閉）：開啟後，帶有 YouTube 影片的歌曲會在手機播放頁顯示影片畫面，畫質 360p，需要網路。影片以完整畫面等比顯示在封面框內，上下或左右留黑邊，不裁切。
+- 影片串流改向一般 YouTube 網站取得影音合一格式，與原本的音訊解析並存；取不到影片時自動退回純音訊，已下載的歌曲離線時仍可正常播放。
+- 播放頁左上角新增「切換為純聲音／顯示影片畫面」按鈕；切換為純聲音時隱藏影片畫面但聲音不中斷，換下一首時會自動恢復顯示影片。
+- 影片歌曲使用獨立的串流網址快取，不會與一般音訊快取混用；影片播放時停用音訊 offload，並把音訊用途標記為影片。
+- 開啟此設定後，即使同時開著「隱藏帶影片的音樂」，播放佇列仍會放行影片歌曲，App 內搜尋與首頁也會顯示影片歌曲；Android Auto 與語音入口仍尊重隱藏設定。
+- TV 版目前沒有獨立的影片播放頁，維持純音訊；底部播放列只顯示封面圖，不會播放影片。
+- 版本 code 332；無資料庫 schema 變更。
+
+### English
+
+- Added the "Music video playback" setting (off by default). When enabled, songs with a YouTube music video show the video on the phone player page at 360p; it needs a network connection. The video is letterboxed inside the square artwork area (black bars, no cropping).
+- Video streams are requested from the regular YouTube site in a muxed format, alongside the existing audio path. If a video stream cannot be resolved, playback falls back to audio, and downloaded songs keep working offline.
+- The player page now has a "switch to audio only / show video" button that hides the video surface while audio continues; the next song restores video automatically.
+- Video songs use a separate stream URL cache so audio and video URLs never mix. Audio offload is disabled for video items, and the audio usage is marked as movie content.
+- With this setting on, the playback queue keeps video songs even when "Hide video songs" is also on, and video songs stay visible in in-app search and home; Android Auto and voice entry points still respect the hide setting.
+- The TV has no dedicated video page yet and stays audio-only; its now-playing bar shows only the cover and never renders video.
+- Version code 332; no database schema change.
+
 ## 13.8.5
 
 ### 中文

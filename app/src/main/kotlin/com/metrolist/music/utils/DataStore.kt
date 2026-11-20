@@ -17,6 +17,8 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.preferencesDataStore
+import com.metrolist.music.constants.HideVideoSongsKey
+import com.metrolist.music.constants.MusicVideoPlaybackKey
 import com.metrolist.music.extensions.toEnum
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
@@ -71,6 +73,17 @@ suspend fun <T> DataStore<Preferences>.get(
     key: Preferences.Key<T>,
     defaultValue: T,
 ): T = data.first()[key] ?: defaultValue
+
+/**
+ * Whether video songs should be filtered from in-app browsing (search, home, YouTube browse).
+ * "Music video playback" lifts the browse filter: the user explicitly opted in to video songs,
+ * so they must stay reachable. Android Auto and voice entry points keep filtering regardless.
+ */
+fun Preferences.shouldHideVideoSongsInApp(): Boolean =
+    (this[HideVideoSongsKey] ?: false) && !(this[MusicVideoPlaybackKey] ?: false)
+
+suspend fun DataStore<Preferences>.shouldHideVideoSongsInApp(): Boolean =
+    data.first().shouldHideVideoSongsInApp()
 
 @Composable
 fun <T> rememberPreference(

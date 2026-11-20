@@ -177,6 +177,10 @@
     <string name="google_cast_description">啟用向 Chromecast 和其他支援投影功能的裝置投屏音頻</string>
     <string name="logging_in">正在登錄…</string>
     <string name="hide_video_songs">隱藏帶影片的音樂</string>
+    <string name="music_video_playback">音樂錄影帶播放</string>
+    <string name="music_video_playback_desc">播放 YouTube 影片畫面（360p）。需要網路；離線時已下載的歌曲只播聲音，Android Auto 投射也維持只有聲音。開啟時，即使「隱藏帶影片的音樂」開著，搜尋與首頁仍會顯示影片歌曲。</string>
+    <string name="music_video_audio_only">切換為純聲音</string>
+    <string name="music_video_show_video">顯示影片畫面</string>
     <string name="details_desc">瀏覽歌曲詳情</string>
     <string name="edit_desc">編輯標題或藝術家</string>
     <string name="start_radio_desc">基於此歌曲創造一個電台</string>

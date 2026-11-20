@@ -29,7 +29,6 @@ import com.metrolist.innertube.pages.HomePage
 import com.metrolist.innertube.utils.completed
 import com.metrolist.music.constants.AccountNameKey
 import com.metrolist.music.constants.HideExplicitKey
-import com.metrolist.music.constants.HideVideoSongsKey
 import com.metrolist.music.constants.HideYoutubeShortsKey
 import com.metrolist.music.constants.BlockAiArtistsKey
 import com.metrolist.music.constants.HidePodcastsKey
@@ -51,6 +50,7 @@ import com.metrolist.music.utils.SyncUtils
 import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.safeDataStoreEdit
 import com.metrolist.music.utils.get
+import com.metrolist.music.utils.shouldHideVideoSongsInApp
 import com.metrolist.music.utils.reportException
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -288,7 +288,7 @@ class HomeViewModel @Inject constructor(
         }
     }
     private suspend fun getDailyDiscover() {
-        val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
+        val hideVideoSongs = context.dataStore.shouldHideVideoSongsInApp()
         val likedSongs = database.likedSongsByCreateDateAsc().first()
         if (likedSongs.isEmpty()) return
 
@@ -336,7 +336,7 @@ class HomeViewModel @Inject constructor(
     }
 
     private suspend fun getQuickPicks() {
-        val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
+        val hideVideoSongs = context.dataStore.shouldHideVideoSongsInApp()
         val relatedSongs = database.quickPicks().first().filterVideoSongs(hideVideoSongs)
         val forgotten = database.forgottenFavorites().first().filterVideoSongs(hideVideoSongs).take(8)
 
@@ -429,7 +429,7 @@ class HomeViewModel @Inject constructor(
         isLoading.value = true
         try {
             val hideExplicit = context.dataStore.get(HideExplicitKey, false)
-            val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
+            val hideVideoSongs = context.dataStore.shouldHideVideoSongsInApp()
             val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
             val blockAiArtists = context.dataStore.get(BlockAiArtistsKey, false)
             val hidePodcasts = context.dataStore.get(HidePodcastsKey, false)
@@ -506,7 +506,7 @@ class HomeViewModel @Inject constructor(
 
         viewModelScope.launch(Dispatchers.IO) {
             val hideExplicit = context.dataStore.get(HideExplicitKey, false)
-            val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
+            val hideVideoSongs = context.dataStore.shouldHideVideoSongsInApp()
             val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
             val blockAiArtists = context.dataStore.get(BlockAiArtistsKey, false)
             val hidePodcasts = context.dataStore.get(HidePodcastsKey, false)
@@ -591,7 +591,7 @@ class HomeViewModel @Inject constructor(
                 val currentChip = selectedChip.value
                 if (currentChip != null) {
                     val hideExplicit = context.dataStore.get(HideExplicitKey, false)
-                    val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
+                    val hideVideoSongs = context.dataStore.shouldHideVideoSongsInApp()
                     val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
                     val blockAiArtists = context.dataStore.get(BlockAiArtistsKey, false)
                     val hidePodcasts = context.dataStore.get(HidePodcastsKey, false)

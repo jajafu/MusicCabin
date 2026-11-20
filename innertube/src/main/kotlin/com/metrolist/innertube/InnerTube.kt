@@ -240,9 +240,15 @@ class InnerTube {
         playlistId: String?,
         signatureTimestamp: Int?,
         poToken: String? = null,
+        apiOrigin: String = YouTubeClient.ORIGIN_YOUTUBE_MUSIC,
     ) = withRetry {
-        httpClient.post("player") {
-            ytClient(client, setLogin = true)
+        httpClient.post("$apiOrigin/youtubei/v1/player") {
+            ytClient(
+                client,
+                setLogin = true,
+                origin = apiOrigin,
+                referer = "$apiOrigin/",
+            )
             setBody(
                 PlayerBody(
                     context = client.toContext(locale, visitorData, dataSyncId).let {

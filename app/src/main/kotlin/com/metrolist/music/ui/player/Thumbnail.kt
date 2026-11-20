@@ -5,6 +5,9 @@
 
 package com.metrolist.music.ui.player
 
+import android.graphics.SurfaceTexture
+import android.view.Surface
+import android.view.TextureView
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -30,10 +33,13 @@ import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
@@ -41,11 +47,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -64,9 +72,12 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import androidx.media3.common.VideoSize
+import androidx.media3.exoplayer.ExoPlayer
 import coil3.compose.AsyncImage
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
@@ -74,6 +85,7 @@ import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.constants.CropAlbumArtKey
 import com.metrolist.music.constants.HidePlayerThumbnailKey
+import com.metrolist.music.constants.MusicVideoPlaybackKey
 import com.metrolist.music.constants.PlayerBackgroundStyle
 import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.constants.PlayerHorizontalPadding
@@ -218,6 +230,11 @@ fun Thumbnail(
     val swipeThumbnail = swipeThumbnailPref && !isListenTogetherGuest
     val hidePlayerThumbnail by rememberPreference(HidePlayerThumbnailKey, false)
     val cropAlbumArt by rememberPreference(CropAlbumArtKey, false)
+    val musicVideoPlayback by rememberPreference(MusicVideoPlaybackKey, false)
+    val isVideoSong = musicVideoPlayback && mediaMetadata?.isVideoSong == true
+    // Per-song switch: turning video off keeps the muxed stream's audio and shows the cover.
+    var videoSurfaceEnabled by rememberSaveable(mediaMetadata?.id) { mutableStateOf(true) }
+    val showVideoSurface = isVideoSong && videoSurfaceEnabled
     val playerBackground by rememberEnumPreference(
         key = PlayerBackgroundStyleKey,
         defaultValue = PlayerBackgroundStyle.DEFAULT
@@ -296,8 +313,11 @@ fun Thumbnail(
     Box(
         modifier = modifier
             .graphicsLayer {
-                // Use hardware layer for entire Thumbnail to ensure smooth 120Hz animations
-                compositingStrategy = CompositingStrategy.Offscreen
+                // TextureView cannot be merged into an offscreen layer; only the thumbnail
+                // carousel needs the hardware layer, so skip it while video is showing.
+                if (!showVideoSurface) {
+                    compositingStrategy = CompositingStrategy.Offscreen
+                }
             }
     ) {
         // Error view
@@ -401,7 +421,10 @@ fun Thumbnail(
                                 isLandscape = isLandscape,
                                 isListenTogetherGuest = isListenTogetherGuest,
                                 currentMediaId = mediaMetadata?.id,
-                                currentMediaThumbnail = mediaMetadata?.thumbnailUrl
+                                currentMediaThumbnail = mediaMetadata?.thumbnailUrl,
+                                isVideoSong = isVideoSong,
+                                showVideoSurface = showVideoSurface,
+                                onToggleVideoSurface = { videoSurfaceEnabled = !videoSurfaceEnabled },
                             )
                         }
                     }
@@ -487,11 +510,16 @@ private fun ThumbnailItem(
     isListenTogetherGuest: Boolean = false,
     currentMediaId: String? = null,
     currentMediaThumbnail: String? = null,
+    isVideoSong: Boolean = false,
+    showVideoSurface: Boolean = false,
+    onToggleVideoSurface: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val incrementalSeekSkipEnabled by rememberPreference(SeekExtraSeconds, defaultValue = false)
     var skipMultiplier by remember { mutableIntStateOf(1) }
     var lastTapTime by remember { mutableLongStateOf(0L) }
+    val isCurrentVideoItem = isVideoSong && item.mediaId == currentMediaId
+    val videoVisible = showVideoSurface && isCurrentVideoItem
 
     Box(
         modifier = modifier
@@ -506,8 +534,11 @@ private fun ThumbnailItem(
             )
             .padding(horizontal = PlayerHorizontalPadding)
             .graphicsLayer {
-                // Render entire thumbnail item on separate hardware layer for smooth animations
-                compositingStrategy = CompositingStrategy.Offscreen
+                // Keep the hardware layer for smooth carousel animation, except while a
+                // TextureView is attached (it cannot render inside an offscreen layer).
+                if (!videoVisible) {
+                    compositingStrategy = CompositingStrategy.Offscreen
+                }
             }
             .pointerInput(Unit) {
                 detectTapGestures(
@@ -547,21 +578,54 @@ private fun ThumbnailItem(
                 .size(dimensions.thumbnailSize)
                 .clip(RoundedCornerShape(dimensions.cornerRadius))
         ) {
-            if (hidePlayerThumbnail) {
-                HiddenThumbnailPlaceholder(textBackgroundColor = textBackgroundColor)
-            } else {
-                val artworkUriToUse = if (item.mediaId == currentMediaId && !currentMediaThumbnail.isNullOrBlank()) {
-                    currentMediaThumbnail
-                } else {
-                    item.mediaMetadata.artworkUri?.toString()
+            when {
+                hidePlayerThumbnail -> {
+                    HiddenThumbnailPlaceholder(textBackgroundColor = textBackgroundColor)
                 }
+                else -> {
+                    val artworkUriToUse = if (item.mediaId == currentMediaId && !currentMediaThumbnail.isNullOrBlank()) {
+                        currentMediaThumbnail
+                    } else {
+                        item.mediaMetadata.artworkUri?.toString()
+                    }
 
-                ThumbnailImage(
-                    artworkUri = artworkUriToUse,
-                    cropArtwork = cropAlbumArt
-                )
+                    Box(Modifier.fillMaxSize()) {
+                        ThumbnailImage(
+                            artworkUri = artworkUriToUse,
+                            cropArtwork = cropAlbumArt,
+                        )
+                        if (videoVisible) {
+                            VideoSurface(
+                                player = playerConnection.player,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        }
+                    }
+                }
             }
-            
+
+            if (isCurrentVideoItem) {
+                IconButton(
+                    onClick = onToggleVideoSurface,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(8.dp)
+                        .size(36.dp)
+                        .background(Color.Black.copy(alpha = 0.35f), CircleShape),
+                ) {
+                    Icon(
+                        painter = painterResource(
+                            if (videoVisible) R.drawable.music_note else R.drawable.slow_motion_video
+                        ),
+                        contentDescription = stringResource(
+                            if (videoVisible) R.string.music_video_audio_only else R.string.music_video_show_video
+                        ),
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+            }
+
             // Cast button at top-right corner of thumbnail
             CastButton(
                 modifier = Modifier
@@ -570,6 +634,95 @@ private fun ThumbnailItem(
                 tintColor = textBackgroundColor
             )
         }
+    }
+}
+
+/**
+ * Renders the player's video output into a TextureView. TextureView (unlike SurfaceView)
+ * participates in Compose layout and transitions, and it is left non-opaque so the cover
+ * still shows through if the stream turns out to be audio-only.
+ */
+@Composable
+private fun VideoSurface(
+    player: ExoPlayer,
+    modifier: Modifier = Modifier,
+) {
+    var videoAspect by remember { mutableFloatStateOf(16f / 9f) }
+    var surface by remember { mutableStateOf<Surface?>(null) }
+    // The letterbox backdrop only appears once real video frames arrive, so a failed
+    // resolution (audio fallback) still shows the album art underneath.
+    var hasRenderedFrame by remember { mutableStateOf(false) }
+
+    DisposableEffect(player) {
+        val listener = object : Player.Listener {
+            override fun onVideoSizeChanged(videoSize: VideoSize) {
+                val width = videoSize.width * videoSize.pixelWidthHeightRatio
+                if (width > 0f && videoSize.height > 0) {
+                    videoAspect = width / videoSize.height
+                }
+            }
+        }
+        player.addListener(listener)
+        onDispose {
+            player.removeListener(listener)
+            surface?.let(player::clearVideoSurface)
+            surface?.release()
+            surface = null
+        }
+    }
+
+    // The thumbnail cell is square; shrink the longer axis so the whole frame fits
+    // (letterbox), instead of center-cropping the video.
+    val scaleX = if (videoAspect > 1f) 1f else videoAspect
+    val scaleY = if (videoAspect > 1f) 1f / videoAspect else 1f
+
+    Box(modifier) {
+        if (hasRenderedFrame) {
+            Box(Modifier.matchParentSize().background(Color.Black))
+        }
+        AndroidView(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    this.scaleX = scaleX
+                    this.scaleY = scaleY
+                },
+            factory = { context ->
+                TextureView(context).apply {
+                    isOpaque = false
+                    surfaceTextureListener = object : TextureView.SurfaceTextureListener {
+                        override fun onSurfaceTextureAvailable(
+                            surfaceTexture: SurfaceTexture,
+                            width: Int,
+                            height: Int,
+                        ) {
+                            surface?.release()
+                            val newSurface = Surface(surfaceTexture)
+                            surface = newSurface
+                            player.setVideoSurface(newSurface)
+                        }
+
+                        override fun onSurfaceTextureSizeChanged(
+                            surfaceTexture: SurfaceTexture,
+                            width: Int,
+                            height: Int,
+                        ) = Unit
+
+                        override fun onSurfaceTextureDestroyed(surfaceTexture: SurfaceTexture): Boolean {
+                            surface?.let(player::clearVideoSurface)
+                            surface?.release()
+                            surface = null
+                            return true
+                        }
+
+                        override fun onSurfaceTextureUpdated(surfaceTexture: SurfaceTexture) {
+                            // Fires for every frame; only the first transition matters.
+                            if (!hasRenderedFrame) hasRenderedFrame = true
+                        }
+                    }
+                }
+            },
+        )
     }
 }
 
