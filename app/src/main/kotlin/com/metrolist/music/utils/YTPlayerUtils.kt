@@ -528,49 +528,108 @@ object YTPlayerUtils {
         e.printStackTrace()
     }
     /**
+     * Clients that can hand out muxed (audio + video) streams on the regular YouTube site, tried
+     * in order. YouTube accepts and rejects each of them independently per network, session and
+     * app version — the previous single-client MV path failed hard everywhere once YouTube started
+     * answering the bare ANDROID request with HTTP 400 — so the first client that yields a
+     * playable muxed format wins.
+     */
+    private val videoPlaybackClients: List<YouTubeClient> =
+        listOf(
+            YouTubeClient.MOBILE,
+            YouTubeClient.IOS,
+            YouTubeClient.TVHTML5_SIMPLY_EMBEDDED_PLAYER,
+        )
+
+    // Clients rejected at the request level (HTTP 4xx, transport errors) or serving no muxed
+    // format are parked here so later MV songs skip the wasted round trip. Playability failures
+    // are per-video and do NOT park a client. Mirrors upstream's 120s failure TTL.
+    private val videoClientFailureUntilMs = java.util.concurrent.ConcurrentHashMap<String, Long>()
+    private const val VIDEO_CLIENT_FAILURE_TTL_MS = 120_000L
+
+    /**
      * Resolves a muxed (audio + video) stream for a music video.
      *
-     * The music.youtube.com player endpoint answers video content with a bot check, so this
-     * asks the regular YouTube site with the ANDROID client instead and picks a 360p
-     * single-file format (itag 18). Both tracks then travel through the existing ExoPlayer
+     * The music.youtube.com player endpoint answers video content with a bot check, so this asks
+     * the regular YouTube site with the video-capable clients in [videoPlaybackClients] and picks
+     * a 360p single-file format (itag 18). Both tracks then travel through the existing ExoPlayer
      * pipeline, and no separate audio-only request is made.
      */
     suspend fun playerResponseForVideoPlayback(videoId: String): Result<PlaybackData> = runCatching {
         Timber.tag(TAG).i("MV playback: resolving www.youtube.com stream for $videoId")
-        val response =
-            YouTube.player(
-                videoId = videoId,
-                client = YouTubeClient.MOBILE,
-                apiOrigin = YouTubeClient.ORIGIN_YOUTUBE,
-            ).getOrThrow()
+        val nowMs = System.currentTimeMillis()
+        var lastFailure: Throwable? = null
 
-        if (response.playabilityStatus.status != "OK") {
-            throw PlaybackException(
-                response.playabilityStatus.reason ?: "Video unavailable",
-                null,
-                PlaybackException.ERROR_CODE_REMOTE_ERROR,
+        for (client in videoPlaybackClients) {
+            if ((videoClientFailureUntilMs[client.clientName] ?: 0L) > nowMs) {
+                Timber.tag(TAG).d("MV playback: skipping ${client.clientName} (recently failed)")
+                continue
+            }
+            if (client.clientName.startsWith("TVHTML5") && "TVHTML5" in disabledStreamClients) {
+                Timber.tag(TAG).d("MV playback: skipping ${client.clientName} (disabled in stream sources)")
+                continue
+            }
+
+            val response =
+                YouTube.player(
+                    videoId = videoId,
+                    client = client,
+                    apiOrigin = YouTubeClient.ORIGIN_YOUTUBE,
+                ).onFailure {
+                    Timber.tag(TAG).w(it, "MV playback: ${client.clientName} player request failed for $videoId")
+                }.getOrNull()
+
+            if (response == null) {
+                // Request-level rejection (HTTP 400/403, network): park the client for a while.
+                videoClientFailureUntilMs[client.clientName] = System.currentTimeMillis() + VIDEO_CLIENT_FAILURE_TTL_MS
+                continue
+            }
+
+            if (response.playabilityStatus.status != "OK") {
+                // Unavailable for this client but not a client-level rejection: don't park it,
+                // another client may still serve the video.
+                Timber.tag(TAG)
+                    .w("MV playback: ${client.clientName} playability ${response.playabilityStatus.status} for $videoId: ${response.playabilityStatus.reason}")
+                lastFailure =
+                    PlaybackException(
+                        response.playabilityStatus.reason ?: "Video unavailable",
+                        null,
+                        PlaybackException.ERROR_CODE_REMOTE_ERROR,
+                    )
+                continue
+            }
+
+            val streamingData = response.streamingData
+            val format = streamingData?.let { selectMuxedVideoFormat(it.formats.orEmpty()) }
+            if (streamingData == null || format == null) {
+                Timber.tag(TAG).w("MV playback: ${client.clientName} returned no muxed format for $videoId")
+                videoClientFailureUntilMs[client.clientName] = System.currentTimeMillis() + VIDEO_CLIENT_FAILURE_TTL_MS
+                continue
+            }
+
+            val streamUrl =
+                findUrlOrNull(format, videoId, response)
+                    ?: run {
+                        Timber.tag(TAG).w("MV playback: ${client.clientName} muxed URL unresolvable for $videoId")
+                        videoClientFailureUntilMs[client.clientName] = System.currentTimeMillis() + VIDEO_CLIENT_FAILURE_TTL_MS
+                        continue
+                    }
+
+            videoClientFailureUntilMs.remove(client.clientName)
+            Timber.tag(TAG)
+                .i("MV playback: itag=${format.itag}, ${format.width}x${format.height}, client=${client.clientName}")
+            return@runCatching PlaybackData(
+                audioConfig = response.playerConfig?.audioConfig,
+                videoDetails = response.videoDetails,
+                playbackTracking = response.playbackTracking,
+                format = format,
+                streamUrl = streamUrl,
+                streamExpiresInSeconds = streamingData.expiresInSeconds,
+                streamClient = "WWW_${client.clientName}",
             )
         }
 
-        val streamingData = response.streamingData ?: throw Exception("Video stream data missing")
-        val format =
-            selectMuxedVideoFormat(streamingData.formats.orEmpty())
-                ?: throw Exception("No muxed video format")
-        val streamUrl =
-            findUrlOrNull(format, videoId, response)
-                ?: throw Exception("Could not resolve video stream URL")
-
-        Timber.tag(TAG)
-            .i("MV playback: itag=${format.itag}, ${format.width}x${format.height}, client=${YouTubeClient.MOBILE.clientName}")
-        PlaybackData(
-            audioConfig = response.playerConfig?.audioConfig,
-            videoDetails = response.videoDetails,
-            playbackTracking = response.playbackTracking,
-            format = format,
-            streamUrl = streamUrl,
-            streamExpiresInSeconds = streamingData.expiresInSeconds,
-            streamClient = "WWW_${YouTubeClient.MOBILE.clientName}",
-        )
+        throw lastFailure ?: Exception("No muxed video client succeeded")
     }.onFailure {
         Timber.tag(TAG).w(it, "MV playback: stream resolution failed for $videoId")
     }

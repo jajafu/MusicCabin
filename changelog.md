@@ -4,6 +4,26 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.8.7
+
+### 中文
+
+- 修正「音樂錄影帶播放」在手機上全部影片不會動的問題：先前只向 YouTube 的 Android 用戶端發出單一影片請求，該請求缺少裝置欄位時會被 YouTube 以 HTTP 400 拒絕，導致所有影片都退回純音訊。
+- 影片請求現在補齊 Android 用戶端的裝置資訊，並改為依序嘗試 Android、iOS、內嵌網頁三種支援影片的來源：第一個來源被拒絕時自動換下一個，直到取得影片為止。
+- 被拒絕的影片來源會暫停使用兩分鐘，避免每一首歌都重複浪費請求時間；任一來源成功後立即清除標記。
+- 在「串流來源」設定中停用 TVHTML5 時，影片解析也會一併跳過對應的內嵌網頁來源。
+- 影片解析仍失敗時，行為與之前相同：自動退回純音訊，播放不中斷。
+- 版本 code 333；無資料庫 schema 變更。
+
+### English
+
+- Fixed music videos never playing on phones: the previous single-client video request to YouTube's Android client was answered with HTTP 400 whenever its device context was incomplete, so every video silently fell back to audio.
+- The video request now sends a complete Android client device context and tries the video-capable clients in order (Android, iOS, embedded web player): a rejected source falls through to the next one until a video stream resolves.
+- Clients rejected at the request level are parked for two minutes so subsequent songs skip the wasted round trip; a successful resolution clears the mark immediately.
+- When TVHTML5 is disabled in the stream source settings, the embedded web video source is skipped as well.
+- When video resolution still fails, behavior is unchanged: playback falls back to audio without interrupting the song.
+- Version code 333; no database schema change.
+
 ## 13.8.6
 
 ### 中文

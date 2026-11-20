@@ -135,11 +135,21 @@ data class YouTubeClient(
             osVersion = "18.2.22C152",
         )
 
+        /**
+         * The www.youtube.com ANDROID client used for music-video (muxed) stream resolution.
+         * The player endpoint rejects a bare ANDROID context with HTTP 400 INVALID_ARGUMENT,
+         * so the device fields below are required, not optional.
+         */
         val MOBILE = YouTubeClient(
             clientName = "ANDROID",
             clientVersion = "21.03.38",
             clientId = "3",
             userAgent = "com.google.android.youtube/21.03.38 (Linux; U; Android 14) gzip",
+            osName = "Android",
+            osVersion = "14",
+            deviceMake = "Google",
+            deviceModel = "Pixel 8",
+            androidSdkVersion = "34",
             loginSupported = true,
             useSignatureTimestamp = true
         )
