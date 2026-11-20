@@ -125,7 +125,7 @@ class VoiceControlReceiver : BroadcastReceiver() {
     private suspend fun handle(context: Context, command: String, query: String) {
         val favoriteCommand = command == VoiceControl.COMMAND_LIKE || command == VoiceControl.COMMAND_UNLIKE
         if (favoriteCommand) {
-            if (!context.dataStore.get(AllowVoiceFavoriteEditKey, false)) {
+            if (!context.dataStore.get(AllowVoiceFavoriteEditKey, true)) {
                 finishWith(
                     Activity.RESULT_CANCELED,
                     VoiceControl.STATUS_DENIED,

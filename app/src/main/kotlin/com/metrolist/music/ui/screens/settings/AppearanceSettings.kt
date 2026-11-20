@@ -155,7 +155,7 @@ fun AppearanceSettings(
     val (enableHighRefreshRate, onEnableHighRefreshRateChange) =
         rememberPreference(
             EnableHighRefreshRateKey,
-            defaultValue = true,
+            defaultValue = false,
         )
     val (enableLandscapeScaling, onEnableLandscapeScalingChange) =
         rememberPreference(

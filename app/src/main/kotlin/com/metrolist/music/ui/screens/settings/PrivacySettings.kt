@@ -72,7 +72,7 @@ fun PrivacySettings(
     )
     val (allowVoiceFavoriteEdit, onAllowVoiceFavoriteEditChange) = rememberPreference(
         key = AllowVoiceFavoriteEditKey,
-        defaultValue = false
+        defaultValue = true
     )
 
     var showVoiceFavoriteWarnDialog by remember {
