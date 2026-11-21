@@ -945,6 +945,11 @@ fun BottomSheetPlayer(
                 label = "playPauseRoundness",
             )
 
+            // Car head units in landscape are short; compact spacing keeps the volume
+            // slider inside the visible area together with the queue reserve below.
+            val isLandscapeOrientation =
+                LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+
             Row(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
@@ -1368,7 +1373,8 @@ fun BottomSheetPlayer(
                 }
             }
 
-            Spacer(Modifier.height(24.dp))
+            // In landscape the vertical space is tight, so use compact spacing
+            Spacer(Modifier.height(if (isLandscapeOrientation) 10.dp else 24.dp))
 
             when (sliderStyle) {
                 SliderStyle.DEFAULT -> {
@@ -1513,7 +1519,7 @@ fun BottomSheetPlayer(
                 )
             }
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(if (isLandscapeOrientation) 10.dp else 24.dp))
 
             AnimatedVisibility(
                 visible = !isFullScreen,
@@ -1840,7 +1846,7 @@ fun BottomSheetPlayer(
                     }
 
                     // Volume control on the player page (same slider as the player menu)
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(if (isLandscapeOrientation) 8.dp else 12.dp))
 
                     VolumeSlider(
                         value = if (isCasting) castVolume else playerVolume.value,
@@ -1883,7 +1889,7 @@ fun BottomSheetPlayer(
                         Modifier
                             .windowInsetsPadding(
                                 WindowInsets.systemBars.only(WindowInsetsSides.Horizontal).add(verticalWindowInsets),
-                            ).padding(bottom = 24.dp + queueBottomReserve)
+                            ).padding(bottom = 12.dp + queueBottomReserve)
                             .fillMaxSize(),
                 ) {
                     Box(

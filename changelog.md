@@ -4,6 +4,20 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.8.11
+
+### 中文
+
+- 橫式播放器控制區改用緊湊間距：進度條上方與按鍵列上方的留白由 24dp 縮為 10dp，音量條上方由 12dp 縮為 8dp，內容與底部按鈕列的間距由 24dp 縮為 12dp。
+- 高度較矮的車機螢幕上，右側控制內容原本就比可用空間高，導致音量條仍被裁切；縮減留白後音量條可完整顯示。
+- 直式畫面的間距維持不變；版本 code 337。
+
+### English
+
+- The landscape player controls now use compact spacing: the gaps above the seek bar and above the play controls shrink from 24dp to 10dp, the gap above the volume slider from 12dp to 8dp, and the bottom gap to the queue bar from 24dp to 12dp.
+- On short car head-unit screens the right-side controls were taller than the available space, which kept clipping the volume slider; the reduced spacing makes it fit fully.
+- Portrait spacing is unchanged; version code 337.
+
 ## 13.8.10
 
 ### 中文
