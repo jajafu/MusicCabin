@@ -4,6 +4,20 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.8.9
+
+### 中文
+
+- 修正橫式播放音樂錄影帶時影片比例被拉寬變形的問題：原本影片先撐滿整個顯示區、再依正方形封面框的比例壓縮，遇到手機橫式的寬扁顯示區就會左右拉寬。
+- 現在改為先量測實際可用區域，再依影片本身的長寬比算出正確大小並置中，上下與左右的黑邊自然產生，任何螢幕比例都不會變形。
+- 直式與純聲音模式的顯示不變；版本 code 335。
+
+### English
+
+- Fixed landscape music videos looking stretched horizontally: the video was first scaled to fill the whole area and then squeezed with the square-cover ratio, which distorted wide phone layouts.
+- The video is now sized from the measured available area and the stream's own aspect ratio, then centered, with the leftover space letterboxed, so no screen shape distorts it.
+- Portrait and audio-only layouts are unchanged; version code 335.
+
 ## 13.8.8
 
 ### 中文

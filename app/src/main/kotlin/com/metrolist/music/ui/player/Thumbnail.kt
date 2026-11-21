@@ -691,22 +691,31 @@ private fun VideoSurface(
         }
     }
 
-    // The thumbnail cell is square; shrink the longer axis so the whole frame fits
-    // (letterbox), instead of center-cropping the video.
-    val scaleX = if (videoAspect > 1f) 1f else videoAspect
-    val scaleY = if (videoAspect > 1f) 1f / videoAspect else 1f
-
-    Box(modifier) {
+    BoxWithConstraints(modifier) {
         if (hasRenderedFrame) {
             Box(Modifier.matchParentSize().background(Color.Black))
         }
+        // Fit the video inside whatever the cell measures (square in portrait, the
+        // whole side panel in landscape) and letterbox the leftover space. Sizing the
+        // view itself keeps the aspect ratio exact for any container shape.
+        val containerWidth = maxWidth
+        val containerHeight = maxHeight
+        val videoWidth: Dp
+        val videoHeight: Dp
+        if (
+            containerHeight != Dp.Infinity &&
+            containerWidth / containerHeight > videoAspect
+        ) {
+            videoHeight = containerHeight
+            videoWidth = Dp(containerHeight.value * videoAspect)
+        } else {
+            videoWidth = containerWidth
+            videoHeight = Dp(containerWidth.value / videoAspect)
+        }
         AndroidView(
             modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer {
-                    this.scaleX = scaleX
-                    this.scaleY = scaleY
-                },
+                .size(videoWidth, videoHeight)
+                .align(Alignment.Center),
             factory = { context ->
                 TextureView(context).apply {
                     isOpaque = false
