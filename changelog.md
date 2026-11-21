@@ -4,6 +4,22 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.8.10
+
+### 中文
+
+- 修正橫式播放器右側的音量控制條被底部按鈕列（播放佇列、隨機、歌詞、循環）蓋住的問題。
+- 原因有二：右側控制區把狀態列高度重複計算了兩次，把內容往下擠；且橫式沒有像直式一樣為底部按鈕列預留空間。
+- 現在上面只預留一次狀態列高度，下面比照直式保留底部按鈕列的高度，音量條會完整顯示在按鈕列上方，不需要滑動畫面。
+- 版本 code 336；無資料庫 schema 變更。
+
+### English
+
+- Fixed the volume slider on the right side of the landscape player being covered by the bottom button row (queue, shuffle, lyrics, repeat).
+- Two causes: the right-side controls counted the status bar height twice, pushing content down, and landscape did not reserve space for the collapsed queue bar like portrait does.
+- The status bar height is now counted once at the top, and the collapsed queue bar height is reserved at the bottom like portrait, so the volume slider is fully visible above the button row without scrolling.
+- Version code 336; no database schema change.
+
 ## 13.8.9
 
 ### 中文

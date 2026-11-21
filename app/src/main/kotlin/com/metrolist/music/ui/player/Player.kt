@@ -1868,14 +1868,22 @@ fun BottomSheetPlayer(
                         WindowInsets.systemBars.getBottom(density),
                     )
                 val verticalPaddingDp = with(density) { verticalPadding.toDp() }
-                val verticalWindowInsets = WindowInsets(left = 0.dp, top = verticalPaddingDp, right = 0.dp, bottom = verticalPaddingDp)
+                // The bottom side keeps only the real bottom inset; the collapsed queue bar
+                // height is reserved separately below so the volume slider is not covered.
+                val verticalWindowInsets = WindowInsets(left = 0.dp, top = verticalPaddingDp, right = 0.dp, bottom = 0.dp)
+                val queueBottomReserve =
+                    if (isFullScreen) {
+                        0.dp
+                    } else {
+                        queueSheetState.collapsedBound
+                    }
 
                 Row(
                     modifier =
                         Modifier
                             .windowInsetsPadding(
                                 WindowInsets.systemBars.only(WindowInsetsSides.Horizontal).add(verticalWindowInsets),
-                            ).padding(bottom = 24.dp)
+                            ).padding(bottom = 24.dp + queueBottomReserve)
                             .fillMaxSize(),
                 ) {
                     Box(
@@ -1917,8 +1925,7 @@ fun BottomSheetPlayer(
                         modifier =
                             Modifier
                                 .weight(if (showInlineLyrics) 0.65f else 1f, false)
-                                .animateContentSize()
-                                .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top)),
+                                .animateContentSize(),
                     ) {
                         Spacer(Modifier.weight(1f))
 
