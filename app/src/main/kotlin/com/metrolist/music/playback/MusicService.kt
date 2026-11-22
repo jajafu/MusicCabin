@@ -686,7 +686,6 @@ class MusicService :
     override fun onCreate() {
         super.onCreate()
         isRunning = true
-        shutdownDeferred = kotlinx.coroutines.CompletableDeferred<Unit>()
 
         setListener(
             object : MediaSessionService.Listener {
@@ -5030,7 +5029,6 @@ class MusicService :
             } catch (_: Exception) {
             }
             super.onDestroy()
-            shutdownDeferred.complete(Unit)
             return
         }
 
@@ -5072,7 +5070,6 @@ class MusicService :
         player.release()
         scope.cancel()
         super.onDestroy()
-        shutdownDeferred.complete(Unit)
     }
 
     override fun onBind(intent: Intent?) = super.onBind(intent) ?: binder
@@ -5826,8 +5823,5 @@ class MusicService :
         @Volatile
         var isRunning = false
             private set
-            
-        @Volatile
-        var shutdownDeferred = kotlinx.coroutines.CompletableDeferred<Unit>().apply { complete(Unit) }
     }
 }

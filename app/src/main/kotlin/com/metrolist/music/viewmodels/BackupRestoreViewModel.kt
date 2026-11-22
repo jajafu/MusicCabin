@@ -36,18 +36,18 @@ import com.metrolist.music.db.entities.SongEntity
 import com.metrolist.music.extensions.div
 import com.metrolist.music.extensions.tryOrNull
 import com.metrolist.music.extensions.zipInputStream
-import com.metrolist.music.playback.MusicService
-import com.metrolist.music.playback.MusicService.Companion.PERSISTENT_AUTOMIX_FILE
-import com.metrolist.music.playback.MusicService.Companion.PERSISTENT_PLAYER_STATE_FILE
-import com.metrolist.music.playback.MusicService.Companion.PERSISTENT_QUEUE_FILE
+import com.metrolist.music.utils.SETTINGS_FILENAME
+import com.metrolist.music.utils.copyFileVerified
+import com.metrolist.music.utils.discardRestoreStaging
+import com.metrolist.music.utils.markRestoreReady
 import com.metrolist.music.utils.reportException
+import com.metrolist.music.utils.restoreStagingDirectory
 import com.metrolist.music.utils.ArtistNameAliases
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeout
 import timber.log.Timber
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -129,10 +129,9 @@ class BackupRestoreViewModel @Inject constructor(
             val extractedSettings = File(restoreDirectory, SETTINGS_FILENAME)
             val extractedAliases = File(restoreDirectory, ArtistNameAliases.BACKUP_FILENAME)
             val restoredDatabase = appContext.getDatabasePath(restoreDbName)
-            val actualSettings = appContext.filesDir / "datastore" / SETTINGS_FILENAME
-            val stagedSettings =
-                appContext.filesDir / "datastore" / "settings.restore_staged.preferences_pb"
-            var stagedDatabase: File? = null
+            val stagingDirectory = restoreStagingDirectory(appContext)
+            val stagedDatabase = File(stagingDirectory, InternalDatabase.DB_NAME)
+            val stagedSettings = File(stagingDirectory, SETTINGS_FILENAME)
             var restartRequired = false
             var incompatibleDatabase = false
 
@@ -141,10 +140,11 @@ class BackupRestoreViewModel @Inject constructor(
                     Timber.tag("RESTORE").i("Starting restore from URI: $uri, clearAuthData: $clearAuthData")
                     restoreDirectory.deleteRecursively()
                     check(restoreDirectory.mkdirs()) { "Could not create restore staging directory" }
+                    discardRestoreStaging(appContext)
+                    check(stagingDirectory.mkdirs()) { "Could not create restore staging directory" }
                     deleteFileOrThrow(restoredDatabase)
                     deleteFileOrThrow(File("${restoredDatabase.absolutePath}-wal"))
                     deleteFileOrThrow(File("${restoredDatabase.absolutePath}-shm"))
-                    stagedSettings.delete()
 
                     val extractedEntries =
                         extractBackupArchive(
@@ -159,17 +159,10 @@ class BackupRestoreViewModel @Inject constructor(
                     val foundDatabase = InternalDatabase.DB_NAME in extractedEntries
                     val foundSettings = SETTINGS_FILENAME in extractedEntries
                     val foundAliases = ArtistNameAliases.BACKUP_FILENAME in extractedEntries
-                    // Validate optional metadata before stopping playback or replacing live files.
-                    val restoredAliases = if (foundAliases) {
+                    // Validate optional metadata before staging anything.
+                    if (foundAliases) {
                         ArtistNameAliases.deserialize(extractedAliases.readText())
-                    } else {
-                        emptyMap()
                     }
-                    val currentDbPath =
-                        database.openHelper.writableDatabase.path
-                            ?: error("Database path is unavailable")
-                    val currentDatabase = File(currentDbPath)
-                    stagedDatabase = File("$currentDbPath.restore_staged")
 
                     if (foundDatabase) {
                         val backupDbVersion = InternalDatabase.readDatabaseVersion(restoredDatabase.absolutePath)
@@ -181,7 +174,7 @@ class BackupRestoreViewModel @Inject constructor(
                             )
                         }
                         validateAndMigrateRestoredDatabase(appContext, restoreDbName)
-                        copyFileVerified(restoredDatabase, checkNotNull(stagedDatabase))
+                        copyFileVerified(restoredDatabase, stagedDatabase)
                     }
 
                     if (foundSettings) {
@@ -192,49 +185,26 @@ class BackupRestoreViewModel @Inject constructor(
                         )
                     }
 
-                    val replacements =
-                        buildList {
-                            if (foundDatabase) {
-                                add(StagedFileReplacement(checkNotNull(stagedDatabase), currentDatabase))
-                            }
-                            if (foundSettings) {
-                                add(StagedFileReplacement(stagedSettings, actualSettings))
-                            }
-                        }
-
-                    restartRequired = true
-                    appContext.stopService(Intent(appContext, MusicService::class.java))
-                    withTimeout(MUSIC_SERVICE_SHUTDOWN_TIMEOUT_MS) {
-                        MusicService.shutdownDeferred.await()
-                    }
-
-                    if (foundDatabase) {
-                        database.checkpoint()
-                        database.close()
-                        deleteFileOrThrow(File("$currentDbPath-wal"))
-                        deleteFileOrThrow(File("$currentDbPath-shm"))
-                    }
-                    promoteStagedFiles(replacements)
-
-                    appContext.filesDir.resolve(PERSISTENT_QUEUE_FILE).delete()
-                    appContext.filesDir.resolve(PERSISTENT_AUTOMIX_FILE).delete()
-                    appContext.filesDir.resolve(PERSISTENT_PLAYER_STATE_FILE).delete()
-                    if (foundAliases || foundDatabase || foundSettings) {
-                        ArtistNameAliases.restore(
-                            appContext,
-                            restoredAliases,
+                    if (foundAliases) {
+                        copyFileVerified(
+                            extractedAliases,
+                            File(stagingDirectory, ArtistNameAliases.BACKUP_FILENAME),
                         )
                     }
+
+                    // Written last: the next process only promotes a complete staging.
+                    markRestoreReady(stagingDirectory)
+                    restartRequired = true
                 }
 
             restoreDirectory.deleteRecursively()
             restoredDatabase.delete()
             File("${restoredDatabase.absolutePath}-wal").delete()
             File("${restoredDatabase.absolutePath}-shm").delete()
-            stagedDatabase?.delete()
-            stagedSettings.delete()
 
             result.onFailure { error ->
+                // Never leave a half-staged restore behind for the next start.
+                runCatching { discardRestoreStaging(appContext) }
                 reportException(error)
                 Timber.tag("RESTORE").e(error, "Restore failed")
                 withContext(Dispatchers.Main) {
@@ -250,7 +220,7 @@ class BackupRestoreViewModel @Inject constructor(
                 }
             }
 
-            if (result.isSuccess || restartRequired) {
+            if (restartRequired) {
                 restartApplication(appContext)
             }
         }
@@ -648,9 +618,7 @@ class BackupRestoreViewModel @Inject constructor(
     }
 
     companion object {
-        const val SETTINGS_FILENAME = "settings.preferences_pb"
         private const val CSV_PREVIEW_LINE_COUNT = 6
         private const val MAX_SETTINGS_PREVIEW_BYTES = 5 * 1024 * 1024
-        private const val MUSIC_SERVICE_SHUTDOWN_TIMEOUT_MS = 5_000L
     }
 }

@@ -35,6 +35,7 @@ import com.metrolist.music.extensions.toInetSocketAddress
 import com.metrolist.music.utils.CrashHandler
 import com.metrolist.music.utils.ArtistNameAliases
 import com.metrolist.music.utils.YouTubeThumbnailFallbackInterceptor
+import com.metrolist.music.utils.finishPendingRestore
 import com.metrolist.music.utils.YTPlayerUtils
 import com.metrolist.music.utils.cipher.CipherDeobfuscator
 import com.metrolist.music.utils.dataStore
@@ -89,6 +90,11 @@ class App :
         // Plant logging BEFORE cipher init so the synchronous config-store load
         // (bundled asset + cached overlay) is captured, not just the async remote refresh.
         Timber.plant(Timber.DebugTree())
+
+        // Apply a restore staged by the previous process before the database or
+        // the settings DataStore are opened.
+        runCatching { finishPendingRestore(this) }
+            .onFailure { Timber.tag("Restore").e(it, "Failed to apply pending restore") }
 
         // Initialize cipher deobfuscator for WEB_REMIX streaming
         CipherDeobfuscator.initialize(this)

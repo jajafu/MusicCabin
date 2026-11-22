@@ -4,6 +4,22 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.8.12
+
+### 中文
+
+- 修正「備份後立即還原」必定失敗的問題：還原流程原本會要求播放服務關閉並等待 5 秒，但服務被介面綁定時 Android 不會銷毀它，等待逾時就中止還原。
+- 現在還原改成兩階段：先在目前程序內驗證備份並放到暫存區，接著自動重新啟動；新程序啟動時、資料庫與設定載入前，才把暫存檔換上。不再需要停止播放服務，也不會再逾時。
+- 若還原驗證失敗，不會留下半套資料，也不會重啟 App；下次啟動會自動丟棄不完整的暫存。
+- 版本 code 338；無資料庫 schema 變更。
+
+### English
+
+- Fixed restore always failing right after a backup: the restore flow used to stop the playback service and wait up to 5 seconds, but Android does not destroy a bound service, so the wait timed out and the restore aborted.
+- Restore is now two-phase: the backup is validated and staged in the current process, the app restarts itself, and the next process applies the staged files before the database and settings are opened. The playback service no longer needs to stop, so the timeout cannot happen.
+- A failed validation leaves no partial data and does not restart the app; an incomplete staging is discarded on the next start.
+- Version code 338; no database schema change.
+
 ## 13.8.11
 
 ### 中文
