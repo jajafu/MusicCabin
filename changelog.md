@@ -4,6 +4,20 @@
 
 This file records project-specific features, fixes, and build changes in `MusicCabin` from `13.6.0` onward. Upstream Metrolist synchronization changes are not repeated here.
 
+## 13.8.13
+
+### 中文
+
+- 修正橫式播放器切換到封面時，封面被縮成中間一個小方塊的問題：封面原本被限制在正方形框內，和撐滿播放區的影片不一致。
+- 現在橫式的封面與影片共用同一個大區域，封面維持原始比例置中，最大可填滿整個播放區；左右或上下的多餘空間自然留白，不會變形。
+- 直式播放維持原本的方形封面，不受影響；版本 code 339，無資料庫 schema 變更。
+
+### English
+
+- Fixed the cover shrinking into a small square in the middle of the landscape player when switching away from the video: the cover was confined to a square box while the video filled the whole playback area.
+- Landscape covers now use the same large area as the video, kept centered at their original aspect ratio and as large as the playback area allows, with natural letterboxing instead of distortion.
+- Portrait playback keeps its square cover unchanged; version code 339, no database schema change.
+
 ## 13.8.12
 
 ### 中文

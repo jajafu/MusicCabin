@@ -396,11 +396,10 @@ fun Thumbnail(
                         rows = GridCells.Fixed(1),
                         flingBehavior = rememberSnapFlingBehavior(thumbnailSnapLayoutInfoProvider),
                         userScrollEnabled = isScrollEnabled,
-                        modifier = if (isLandscape && !showVideoSurface) {
-                            Modifier.size(dimensions.thumbnailSize + (PlayerHorizontalPadding * 2))
-                        } else {
-                            Modifier.fillMaxSize()
-                        }
+                        // Landscape pages always span the whole area beside the controls,
+                        // for the video and the cover alike, so switching to the cover does
+                        // not shrink it into a square.
+                        modifier = Modifier.fillMaxSize()
                     ) {
                         items(
                             items = mediaItems,
@@ -520,28 +519,16 @@ private fun ThumbnailItem(
     var lastTapTime by remember { mutableLongStateOf(0L) }
     val isCurrentVideoItem = isVideoSong && item.mediaId == currentMediaId
     val videoVisible = showVideoSurface && isCurrentVideoItem
-    // In landscape video mode every carousel cell fills the area beside the
-    // controls, so the current video is not confined to the square cover box.
-    val fullAreaCell = isLandscape && showVideoSurface
-    val fullAreaVideo = fullAreaCell && videoVisible
+    // In landscape every carousel cell fills the area beside the controls, whether it
+    // shows the video or the cover, so the artwork is not confined to a small square.
+    val fullAreaCell = isLandscape
 
     Box(
         modifier = modifier
+            .width(dimensions.itemWidth)
+            .fillMaxSize()
             .then(
                 if (fullAreaCell) {
-                    Modifier
-                        .width(dimensions.itemWidth)
-                        .fillMaxSize()
-                } else if (isLandscape) {
-                    Modifier.size(dimensions.thumbnailSize + (PlayerHorizontalPadding * 2))
-                } else {
-                    Modifier
-                        .width(dimensions.itemWidth)
-                        .fillMaxSize()
-                }
-            )
-            .then(
-                if (fullAreaVideo) {
                     Modifier
                 } else {
                     Modifier.padding(horizontal = PlayerHorizontalPadding)
@@ -588,7 +575,7 @@ private fun ThumbnailItem(
         contentAlignment = Alignment.Center
     ) {
         Box(
-            modifier = if (fullAreaVideo) {
+            modifier = if (fullAreaCell) {
                 Modifier
                     .fillMaxSize()
                     .clip(RoundedCornerShape(dimensions.cornerRadius))
